@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.54",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "fluid_simulationCore",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "particle_based_fluid_simulation",
+			"Enabled": false
+		}
+	]
+}
