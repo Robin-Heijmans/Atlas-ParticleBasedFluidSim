@@ -1,5 +1,9 @@
 # Visual Studio 2015 user specific files
 .vs/
+.vscode/
+
+#vars.bat contains local paths
+vars.bat
 
 # Compiled Object files
 *.slo
