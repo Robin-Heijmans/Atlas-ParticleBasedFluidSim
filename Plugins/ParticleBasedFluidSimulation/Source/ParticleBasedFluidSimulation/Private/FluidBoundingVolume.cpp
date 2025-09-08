@@ -5,6 +5,10 @@
 #include "Components/BoxComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 
+#include "Engine/TextureRenderTarget2D.h"
+#include "Kismet/KismetRenderingLibrary.h"
+#include "ShaderInterface/ComputeTest.h"
+
 // Sets default values
 AFluidBoundingVolume::AFluidBoundingVolume()
 {
@@ -93,4 +97,11 @@ void AFluidBoundingVolume::UpdateInstances()
             ParticleMesh->AddInstance(InstanceTransform);
         }
     }
+}
+
+void AFluidBoundingVolume::TestDispatch()
+{
+    RenderTest = UKismetRenderingLibrary::CreateRenderTarget2D(Bounds, 256, 256, RTF_RGBA8);
+    
+    UComputeShaderLibrary::ExecuteRTComputeShader(RenderTest);
 }

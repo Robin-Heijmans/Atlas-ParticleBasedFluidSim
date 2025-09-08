@@ -18,7 +18,6 @@ public class ParticleBasedFluidSimulation : ModuleRules
 		PrivateIncludePaths.AddRange(
 			new string[] {
             	"Runtime/Renderer/Private",
-            	"TanFluid/Private"
 				// ... add other private include paths required here ...
 			}
 			);

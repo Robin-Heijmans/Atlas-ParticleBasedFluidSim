@@ -29,6 +29,9 @@ public:
 	class UBoxComponent* Bounds;
 
 	UPROPERTY(VisibleAnywhere, Category = "Particles")
+    class UTextureRenderTarget2D* RenderTest;
+
+	UPROPERTY(VisibleAnywhere, Category = "Particles")
     class UInstancedStaticMeshComponent* ParticleMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
@@ -42,6 +45,9 @@ public:
 
     UPROPERTY()
     TArray<FParticle> Particles;
+
+	UFUNCTION(CallInEditor, Category = "Particles")
+	void TestDispatch();
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;

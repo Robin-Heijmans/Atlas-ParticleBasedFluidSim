@@ -1,3 +1,5 @@
+// Example from: https://unreal.shadeup.dev/docs/compute (08.09.2025)
+
 #pragma once
 
 #include "CoreMinimal.h"
