@@ -128,7 +128,5 @@ void AFluidBoundingVolume::PostEditChangeProperty(FPropertyChangedEvent& Propert
 
 void AFluidBoundingVolume::TestDispatch()
 {
-    RenderTest = UKismetRenderingLibrary::CreateRenderTarget2D(Bounds, 256, 256, RTF_RGBA8);
-    
-    UComputeShaderLibrary::ExecuteRTComputeShader(RenderTest);
+    UComputeShaderLibrary::ExecuteRTComputeShader(RenderTest, EyePosition);
 }
