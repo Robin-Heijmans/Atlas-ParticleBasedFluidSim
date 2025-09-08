@@ -31,7 +31,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "RenderTest")
     class UTextureRenderTarget2D* RenderTest;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RenderTest")
-    FVector EyePosition = FVector(1);
+    FVector3f EyePosition = FVector3f(1);
 
 	UPROPERTY(VisibleAnywhere, Category = "Particles")
     class UInstancedStaticMeshComponent* ParticleMesh;

@@ -108,7 +108,7 @@ void FComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate& RHI
 	{
 		SCOPE_CYCLE_COUNTER(STAT_ComputeShader_Execute);
 		DECLARE_GPU_STAT(ComputeShader)
-		RDG_EVENT_SCOPE(GraphBuilder, "ComputeShader");
+		RDG_EVENT_SCOPE(GraphBuilder, "TanComputeShader");
 		RDG_GPU_STAT_SCOPE(GraphBuilder, ComputeShader);
 		
 		typename FComputeShader::FPermutationDomain PermutationVector;
@@ -126,9 +126,11 @@ void FComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate& RHI
 
 			
 			FRDGTextureDesc Desc(FRDGTextureDesc::Create2D(Params.RenderTarget->GetSizeXY(), PF_B8G8R8A8, FClearValueBinding::White, TexCreate_RenderTargetable | TexCreate_ShaderResource | TexCreate_UAV));
-			FRDGTextureRef TmpTexture = GraphBuilder.CreateTexture(Desc, TEXT("ComputeShader_TempTexture"));
-			FRDGTextureRef TargetTexture = RegisterExternalTexture(GraphBuilder, Params.RenderTarget->GetRenderTargetTexture(), TEXT("ComputeShader_RT"));
+			FRDGTextureRef TmpTexture = GraphBuilder.CreateTexture(Desc, TEXT("TanComputeShader_TempTexture"));
+			FRDGTextureRef TargetTexture = RegisterExternalTexture(GraphBuilder, Params.RenderTarget->GetRenderTargetTexture(), TEXT("TanComputeShader_RT"));
 			PassParameters->RenderTarget = GraphBuilder.CreateUAV(TmpTexture);
+
+			PassParameters->EyePos = Params.EyePos;
 			
 
 			auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(Params.X, Params.Y, Params.Z), FComputeShaderUtils::kGolden2DGroupSize);
