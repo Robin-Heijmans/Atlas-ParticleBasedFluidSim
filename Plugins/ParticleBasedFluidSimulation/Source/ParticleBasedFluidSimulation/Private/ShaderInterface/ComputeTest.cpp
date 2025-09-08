@@ -58,6 +58,7 @@ public:
 
 		
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, RenderTarget)
+		SHADER_PARAMETER(FVector3f, EyePos) // On the shader side: float3 MyVector;
 		
 
 	END_SHADER_PARAMETER_STRUCT()

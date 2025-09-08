@@ -41,7 +41,8 @@ struct PARTICLEBASEDFLUIDSIMULATION_API FComputeShaderDispatchParams
 
 	
 	FRenderTarget* RenderTarget;
-	
+    float dummy;
+	FVector EyePos;
 	
 
 	FComputeShaderDispatchParams(int x, int y, int z)
@@ -94,11 +95,12 @@ class PARTICLEBASEDFLUIDSIMULATION_API UComputeShaderLibrary : public UObject
 	
 public:
 	UFUNCTION(BlueprintCallable)
-	static void ExecuteRTComputeShader(UTextureRenderTarget2D* RT)
+	static void ExecuteRTComputeShader(UTextureRenderTarget2D* RT, FVector Eye)
 	{
 		// Create a dispatch parameters struct and fill it the input array with our args
 		FComputeShaderDispatchParams Params(RT->SizeX, RT->SizeY, 1);
 		Params.RenderTarget = RT->GameThread_GetRenderTargetResource();
+        Params.EyePos = Eye;
 
 		FComputeShaderInterface::Dispatch(Params);
 	}

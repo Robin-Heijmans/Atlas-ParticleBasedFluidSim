@@ -28,8 +28,10 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Bounds")
 	class UBoxComponent* Bounds;
 
-	UPROPERTY(VisibleAnywhere, Category = "Particles")
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "RenderTest")
     class UTextureRenderTarget2D* RenderTest;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RenderTest")
+    FVector EyePosition = FVector(1);
 
 	UPROPERTY(VisibleAnywhere, Category = "Particles")
     class UInstancedStaticMeshComponent* ParticleMesh;
@@ -46,7 +48,7 @@ public:
     UPROPERTY()
     TArray<FParticle> Particles;
 
-	UFUNCTION(CallInEditor, Category = "Particles")
+	UFUNCTION(CallInEditor, Category = "RenderTest")
 	void TestDispatch();
 
 	// Called every frame

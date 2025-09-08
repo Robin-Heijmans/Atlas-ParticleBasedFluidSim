@@ -27,6 +27,7 @@ AFluidBoundingVolume::AFluidBoundingVolume()
         DefaultSphereMesh = SphereMeshObj.Object;
         ParticleMesh->SetStaticMesh(DefaultSphereMesh);
     }
+    
 }
 
 void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
@@ -35,6 +36,9 @@ void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
 
     InitializeParticles();
     UpdateInstances();
+
+    // creating rendertarget texture for the compute shader test
+    RenderTest = UKismetRenderingLibrary::CreateRenderTarget2D(this, 1024, 1024, RTF_RGBA8);
 }
 
 void AFluidBoundingVolume::InitializeParticles()
@@ -83,6 +87,7 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
 
 	Simulation->StepSimulation(DeltaTime);
 	UpdateInstances();
+    TestDispatch();
 }
 
 void AFluidBoundingVolume::UpdateInstances()
@@ -101,7 +106,5 @@ void AFluidBoundingVolume::UpdateInstances()
 
 void AFluidBoundingVolume::TestDispatch()
 {
-    RenderTest = UKismetRenderingLibrary::CreateRenderTarget2D(Bounds, 256, 256, RTF_RGBA8);
-    
-    UComputeShaderLibrary::ExecuteRTComputeShader(RenderTest);
+    UComputeShaderLibrary::ExecuteRTComputeShader(RenderTest, EyePosition);
 }
