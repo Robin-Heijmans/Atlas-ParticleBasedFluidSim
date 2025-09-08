@@ -17,6 +17,8 @@ public class ParticleBasedFluidSimulation : ModuleRules
 		
 		PrivateIncludePaths.AddRange(
 			new string[] {
+            	"Runtime/Renderer/Private",
+            	"TanFluid/Private"
 				// ... add other private include paths required here ...
 			}
 			);
@@ -26,6 +28,8 @@ public class ParticleBasedFluidSimulation : ModuleRules
 			new string[]
 			{
 				"Core",
+				"Engine",
+				"MaterialShaderQualitySettings"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -38,10 +42,34 @@ public class ParticleBasedFluidSimulation : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+            	"Renderer",
+            	"RenderCore",
+            	"RHI",
+            	"Projects"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
-		
+
+		if (Target.bBuildEditor == true)
+		{
+			PrivateDependencyModuleNames.Add("TargetPlatform");
+
+			PrivateDependencyModuleNames.AddRange(
+                new string[] {
+                    "UnrealEd",
+                    "MaterialUtilities",
+                    "SlateCore",
+                    "Slate"
+                }
+            );
+
+            CircularlyReferencedDependentModules.AddRange(
+                new string[] {
+                    "UnrealEd",
+                    "MaterialUtilities",
+                }
+            );
+		}
 		
 		DynamicallyLoadedModuleNames.AddRange(
 			new string[]
