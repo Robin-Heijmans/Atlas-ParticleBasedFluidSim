@@ -63,7 +63,7 @@ void AFluidBoundingVolume::InitializeParticles()
             {
                 FVector LocalPos = LocalMin + FVector(x * SpacingX, y * SpacingY, z * SpacingZ);
 				FVector WorldPos = BoxTransform.TransformPosition(LocalPos);
-                Particles.Add(FParticle{LocalPos, 1.0f});
+                Particles.Add(FParticle{LocalPos,FVector::ZeroVector, 1.0f});
             }
         }
     }

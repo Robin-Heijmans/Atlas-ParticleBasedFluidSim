@@ -7,8 +7,11 @@ USTRUCT(BlueprintType)
 struct FParticle {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(BlueprintReadOnly)
     FVector Position = FVector::ZeroVector;
+
+    UPROPERTY(BlueprintReadOnly)
+    FVector Acceleration = FVector::ZeroVector;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float Mass = 1.0f;

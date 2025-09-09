@@ -10,12 +10,14 @@ public:
     void InitializeParticles(TArray<FParticle>& InParticles);
     void StepSimulation(float DeltaTime);
 
-    const TArray<FParticle>& GetParticles() const { return Particles; }
+    const TArray<FParticle>& GetParticles() const { return *Particles; }
 private:
-    TArray<FParticle> Particles;
+    TArray<FParticle>* Particles;
 
-    void ComputeForceDensityField() {}
-    void ComputePressureForces() {}
-    void SmoothingKernel(const FVector& Position) {}
-    void Integrate(float DeltaTime) {}
+    void ComputeForceDensityField();
+    void ComputePressureForces();
+    void SmoothingKernel(const FVector& Position);
+    void Integrate(float DeltaTime);
+
+    FVector Gravity = FVector(0.0f, 0.0f, -9.81f);
 };
