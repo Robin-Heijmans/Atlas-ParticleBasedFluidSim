@@ -130,3 +130,13 @@ void AFluidBoundingVolume::TestDispatch()
 {
     UComputeShaderLibrary::ExecuteRTComputeShader(RenderTest, EyePosition);
 }
+
+#if WITH_EDITOR
+void AFluidBoundingVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+    Super::PostEditChangeProperty(PropertyChangedEvent);
+
+    // Update simulation only when values are changed in editor
+    Simulation->ApplySettings(Settings);
+}
+#endif
