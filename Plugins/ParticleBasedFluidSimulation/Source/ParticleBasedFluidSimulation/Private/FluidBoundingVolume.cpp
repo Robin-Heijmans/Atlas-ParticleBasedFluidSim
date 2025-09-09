@@ -5,6 +5,10 @@
 #include "Components/BoxComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 
+#include "Engine/TextureRenderTarget2D.h"
+#include "Kismet/KismetRenderingLibrary.h"
+#include "ShaderInterface/ComputeTest.h"
+
 // Sets default values
 AFluidBoundingVolume::AFluidBoundingVolume()
 {
@@ -23,6 +27,7 @@ AFluidBoundingVolume::AFluidBoundingVolume()
         DefaultSphereMesh = SphereMeshObj.Object;
         ParticleMesh->SetStaticMesh(DefaultSphereMesh);
     }
+    
 }
 
 void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
@@ -31,6 +36,9 @@ void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
 
     InitializeParticles();
     UpdateInstances();
+
+    // creating rendertarget texture for the compute shader test
+    RenderTest = UKismetRenderingLibrary::CreateRenderTarget2D(this, 1024, 1024, RTF_RGBA8);
 }
 
 void AFluidBoundingVolume::InitializeParticles()
@@ -79,6 +87,7 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
 
 	Simulation->StepSimulation(DeltaTime);
 	UpdateInstances();
+    TestDispatch();
 }
 
 void AFluidBoundingVolume::UpdateInstances()
@@ -93,4 +102,9 @@ void AFluidBoundingVolume::UpdateInstances()
             ParticleMesh->AddInstance(InstanceTransform);
         }
     }
+}
+
+void AFluidBoundingVolume::TestDispatch()
+{
+    UComputeShaderLibrary::ExecuteRTComputeShader(RenderTest, EyePosition);
 }

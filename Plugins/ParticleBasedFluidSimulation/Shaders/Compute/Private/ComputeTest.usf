@@ -1,0 +1,38 @@
+#include "/Engine/Public/Platform.ush"
+
+RWTexture2D<float3> RenderTarget;
+float dummy;
+float3 EyePos;
+
+
+// this is wrong but only placeholder
+float3 GetPrimaryDirection(float2 uv, float aspect)
+{
+    const float3 forward	= normalize(float3(1, 0, 0));
+    const float3 right		= normalize(float3(0, 1, 0));
+    const float3 up			= normalize(float3(0, 0, 1));
+
+    float3 topLeft		= EyePos - 2.0 * forward - aspect * right + up;
+    float3 bottomRight	= EyePos - 2.0 * forward + aspect * right - up;
+    float3 bottomLeft	= EyePos - 2.0 * forward - aspect * right - up;
+
+	float3 P = bottomLeft + 
+	uv.x * (bottomRight - bottomLeft) + 
+	uv.y * (topLeft - bottomLeft);
+
+	return normalize(P - EyePos);
+}
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void Compute(
+	uint3 DispatchThreadId : SV_DispatchThreadID,
+	uint GroupIndex : SV_GroupIndex )
+{
+    float3 dir = GetPrimaryDirection(float2(   
+        float(DispatchThreadId.x) / float(THREADS_X), 
+        float(DispatchThreadId.y) / float(THREADS_Y)), 
+        float(THREADS_X) / float(THREADS_Y));
+
+	
+	RenderTarget[DispatchThreadId.xy] = dir;
+}
