@@ -1,9 +1,9 @@
 ---
-name: Feature Name/Desc
+name: Feature
 about: I dont want to write "Acceptance Criteria" all the time :(
-title: Feature
+title: Feature Name/Desc
 labels: ''
-assignees: tanyautor
+assignees: 
 
 ---
 
