@@ -47,29 +47,31 @@ void AFluidBoundingVolume::InitializeParticles()
 
     FVector Extent = Bounds->GetScaledBoxExtent();
 	FVector WorldScale = Bounds->GetComponentScale();
+	FVector AdjustedExtent = Extent - FVector(SphereRadius) * WorldScale;
 
-	float SpacingX = (NumParticlesX > 1) ? ((2 * Extent.X) / (NumParticlesX - 1) / WorldScale.X) : 0.f;
-    float SpacingY = (NumParticlesY > 1) ? ((2 * Extent.Y) / (NumParticlesY - 1) / WorldScale.Y): 0.f;
-    float SpacingZ = (NumParticlesZ > 1) ? ((2 * Extent.Z) / (NumParticlesZ - 1) / WorldScale.Z): 0.f;
+	float SpacingX = (NumParticlesX > 1) ? ((2.0f * AdjustedExtent.X) / (NumParticlesX - 1) / WorldScale.X) : 0.f;
+    float SpacingY = (NumParticlesY > 1) ? ((2.0f * AdjustedExtent.Y) / (NumParticlesY - 1) / WorldScale.Y): 0.f;
+    float SpacingZ = (NumParticlesZ > 1) ? ((2.0f * AdjustedExtent.Z) / (NumParticlesZ - 1) / WorldScale.Z): 0.f;
 
 	const FTransform BoxTransform = Bounds->GetComponentTransform();
-    const FVector LocalMin = -Extent / WorldScale;
-
+    FVector LocalMin = -Extent / WorldScale;
+	FVector LocalMax = Extent / WorldScale;
+	FVector SpawnMin = -AdjustedExtent / WorldScale;
     for (int x = 0; x < NumParticlesX; x++)
     {
         for (int y = 0; y < NumParticlesY; y++)
         {
             for (int z = 0; z < NumParticlesZ; z++)
             {
-                FVector LocalPos = LocalMin + FVector(x * SpacingX, y * SpacingY, z * SpacingZ);
-				FVector WorldPos = BoxTransform.TransformPosition(LocalPos);
-                Particles.Add(FParticle{LocalPos,FVector::ZeroVector, 1.0f});
+                FVector LocalPos = SpawnMin + FVector(x * SpacingX, y * SpacingY, z * SpacingZ);
+				//FVector WorldPos = BoxTransform.TransformPosition(LocalPos);
+                Particles.Add(FParticle{LocalPos, FVector::ZeroVector, 1.0f});
             }
         }
     }
 
 	Simulation = MakeUnique<FFluidSimulationSystem>();
-	Simulation->InitializeParticles(Particles);
+	Simulation->InitializeParticles(Particles, LocalMin, LocalMax);
 }
 
 
@@ -83,9 +85,14 @@ void AFluidBoundingVolume::BeginPlay()
 // Called every frame
 void AFluidBoundingVolume::Tick(float DeltaTime)
 {
+	TotalTime += DeltaTime;
 	Super::Tick(DeltaTime);
-
-	Simulation->StepSimulation(DeltaTime);
+	if (TotalTime >= FixedTimeStep)
+	{
+		Simulation->StepSimulation(FixedTimeStep);
+		TotalTime = 0.0f;
+	}
+	
 	UpdateInstances();
     TestDispatch();
 }
@@ -98,7 +105,7 @@ void AFluidBoundingVolume::UpdateInstances()
     {
         for (const FParticle& Particle : Particles)
         {
-            FTransform InstanceTransform(FRotator::ZeroRotator, Particle.Position, FVector(SphereRadius)); // scale down spheres
+            FTransform InstanceTransform(FRotator::ZeroRotator, Particle.Position, FVector(SphereRadius/50.0f)); // 50.0f is basic sphere mesh radius.
             ParticleMesh->AddInstance(InstanceTransform);
         }
     }
@@ -108,3 +115,13 @@ void AFluidBoundingVolume::TestDispatch()
 {
     UComputeShaderLibrary::ExecuteRTComputeShader(RenderTest, EyePosition);
 }
+
+#if WITH_EDITOR
+void AFluidBoundingVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+    Super::PostEditChangeProperty(PropertyChangedEvent);
+
+    // Update simulation only when values are changed in editor
+    Simulation->ApplySettings(Settings);
+}
+#endif

@@ -11,7 +11,7 @@ struct FParticle {
     FVector Position = FVector::ZeroVector;
 
     UPROPERTY(BlueprintReadOnly)
-    FVector Acceleration = FVector::ZeroVector;
+    FVector Velocity = FVector::ZeroVector;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float Mass = 1.0f;
