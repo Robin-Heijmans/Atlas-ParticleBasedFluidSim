@@ -47,11 +47,11 @@ void AFluidBoundingVolume::InitializeParticles()
 
     FVector Extent = Bounds->GetScaledBoxExtent();
 	FVector WorldScale = Bounds->GetComponentScale();
-	FVector AdjustedExtent = Extent - FVector(SphereRadius) * WorldScale;
+	FVector AdjustedExtent = Extent - FVector(SphereRadius) * WorldScale * 5.0f;
 
-	float SpacingX = (NumParticlesX > 1) ? ((2.0f * AdjustedExtent.X) / (NumParticlesX - 1) / WorldScale.X) : 0.f;
-    float SpacingY = (NumParticlesY > 1) ? ((2.0f * AdjustedExtent.Y) / (NumParticlesY - 1) / WorldScale.Y): 0.f;
-    float SpacingZ = (NumParticlesZ > 1) ? ((2.0f * AdjustedExtent.Z) / (NumParticlesZ - 1) / WorldScale.Z): 0.f;
+	float SpacingX = SphereRadius*2.1f;
+    float SpacingY = SphereRadius*2.1f;
+    float SpacingZ = SphereRadius*2.1f;
 
 	const FTransform BoxTransform = Bounds->GetComponentTransform();
     FVector LocalMin = -Extent / WorldScale;
@@ -65,7 +65,7 @@ void AFluidBoundingVolume::InitializeParticles()
             {
                 FVector LocalPos = SpawnMin + FVector(x * SpacingX, y * SpacingY, z * SpacingZ);
 				//FVector WorldPos = BoxTransform.TransformPosition(LocalPos);
-                Particles.Add(FParticle{LocalPos, FVector::ZeroVector, 1.0f});
+                Particles.Add(FParticle{LocalPos});
             }
         }
     }
@@ -80,6 +80,9 @@ void AFluidBoundingVolume::BeginPlay()
 {
 	Super::BeginPlay();
 	InitializeParticles();
+    if (Simulation){
+        Simulation->ApplySettings(Settings);
+    }
 }
 
 // Called every frame
@@ -90,6 +93,7 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
 	if (TotalTime >= FixedTimeStep)
 	{
 		Simulation->StepSimulation(FixedTimeStep);
+        Particles = Simulation->GetParticles();
 		TotalTime = 0.0f;
 	}
 	

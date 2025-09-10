@@ -48,9 +48,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid system")
 	FFluidSimSettings Settings;
 
-    UPROPERTY(VisibleAnywhere, Category = "Particles")
-    TArray<FParticle> Particles;
-
 	UFUNCTION(CallInEditor, Category = "RenderTest")
 	void TestDispatch();
 
@@ -58,6 +55,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	TUniquePtr<FFluidSimulationSystem> Simulation;
+	TArray<FParticle> Particles;
 private:
 	void InitializeParticles();
 	void UpdateInstances();
@@ -67,7 +65,7 @@ private:
 	#endif
 
 	UStaticMesh* DefaultSphereMesh;
-	const float SphereRadius = 2.5f;
+	const float SphereRadius = 1.0f;
 	const float FixedTimeStep = 1.f/60.f;
 	float TotalTime = 0.0f;
 };
