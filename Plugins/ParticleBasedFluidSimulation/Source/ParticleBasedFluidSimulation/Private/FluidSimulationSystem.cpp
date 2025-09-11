@@ -6,6 +6,10 @@ FFluidSimulationSystem::FFluidSimulationSystem() {
 
 void FFluidSimulationSystem::InitializeParticles(TArray<FParticle>& InParticles, FVector& MinB, FVector& MaxB) {
     Particles = InParticles;
+    TableSize = Particles.Num();
+    SpatialLookup.SetNum(TableSize);
+    StartIndices.SetNum(TableSize);
+
     MinBounds = MinB;
     MaxBounds = MaxB;
 }
@@ -18,6 +22,11 @@ void FFluidSimulationSystem::StepSimulation(float DeltaTime) {
     for (auto& particle : Particles) {
         particle.Velocity += Gravity * DeltaTime;
         particle.PredictedPosition = particle.Position + particle.Velocity * LookAheadTimeStep;
+    }
+
+    UpdateSpatialLookup(SmoothingRadius);
+
+    for (auto& particle : Particles) { 
         // Update densities
         particle.Density = CalculateDensity(particle.PredictedPosition);
 
@@ -63,6 +72,24 @@ void FFluidSimulationSystem::ResolveCollisions(FParticle& particle) {
     }
 }
 
+void FFluidSimulationSystem::UpdateSpatialLookup(const float& Radius) {
+    for (int i = 0; i < Particles.Num(); i++) {
+        FIntVector CellCoords = PositionToCellCoords(Particles[i].PredictedPosition, Radius);
+        uint32 CellKey = GetKeyFromHash(HashCell(CellCoords));
+        SpatialLookup[i] = {CellKey, i};
+        StartIndices[i] = -1;
+    }
+    SpatialLookup.Sort();
+
+    for (int i = 0; i < Particles.Num(); i++) {
+        uint32 Key = SpatialLookup[i].Key;
+        uint32 KeyPrevious = i == 0 ? -1 : SpatialLookup[i-1].Key;
+        if (Key != KeyPrevious) {
+            StartIndices[Key] = i;
+        }
+    }
+}
+
 float FFluidSimulationSystem::ConvertDensityToPressure(const float& Density) {
     float DensityError = Density - TargetDensity;
     return DensityError * PressureAmplifier;
@@ -89,13 +116,20 @@ float FFluidSimulationSystem::SmoothingKernelDerivative(const float& Distance, c
 float FFluidSimulationSystem::CalculateDensity(const FVector& Position) {
     float Density = 0.0f;
 
-    for (const auto& particle : Particles) {
-        FVector Offset = particle.Position - Position;
-        float SqrDistance = FVector::DotProduct(Offset, Offset);
-        if (SqrDistance < (SmoothingRadius * SmoothingRadius)) {
-            float Distance = FMath::Sqrt(SqrDistance);
-            float Influence = SmoothingKernel(Distance, SmoothingRadius);
-            Density += Influence * particle.Mass;
+    FIntVector CentreCoords = PositionToCellCoords(Position, SmoothingRadius);
+    for (const auto& cellOffset : Offsets3D) {
+        uint32 Key = GetKeyFromHash(HashCell(CentreCoords + cellOffset));
+        int StartIndex = static_cast<int>(StartIndices[Key]);
+        for (int i = StartIndex; i < TableSize; i++) {
+            if (SpatialLookup[i].Key != Key) break;
+            int ParticleIndex = SpatialLookup[i].ParticleIndex;
+            FVector Offset = Particles[ParticleIndex].Position - Position;
+            float SqrDistance = FVector::DotProduct(Offset, Offset);
+            if (SqrDistance < (SmoothingRadius * SmoothingRadius)) {
+                float Distance = FMath::Sqrt(SqrDistance);
+                float Influence = SmoothingKernel(Distance, SmoothingRadius);
+                Density += Influence * Particles[ParticleIndex].Mass;
+            }
         }
     }
     return Density;
@@ -103,18 +137,39 @@ float FFluidSimulationSystem::CalculateDensity(const FVector& Position) {
 
 FVector FFluidSimulationSystem::CalculatePressureForce(const FVector& Position, const int Index) {
     FVector PressureForce = FVector::ZeroVector; 
-    for (int i = 0; i < Particles.Num(); i++) {
-        if (Index == i) continue;
-        FVector Offset = Particles[i].Position - Position;
-        float SqrDistance = FVector::DotProduct(Offset, Offset);
-        if (SqrDistance < (SmoothingRadius * SmoothingRadius)) {
-            float Distance = FMath::Sqrt(SqrDistance);
-            FVector Direction = Distance == 0 ? FMath::VRand() : Offset / Distance;
-            float Slope = SmoothingKernelDerivative(Distance, SmoothingRadius);
-            float Density = Particles[i].Density;
-            float SharedPressure = CalculateSharedPressure(Density, Particles[Index].Density);
-            PressureForce += SharedPressure * Direction * Slope * Particles[i].Mass / Density;
+    FIntVector CentreCoords = PositionToCellCoords(Position, SmoothingRadius);
+    for (const auto& cellOffset : Offsets3D) {
+        uint32 Key = GetKeyFromHash(HashCell(CentreCoords + cellOffset));
+        int StartIndex = static_cast<int>(StartIndices[Key]);
+        for (int i = StartIndex; i < TableSize; i++) {
+            if (SpatialLookup[i].Key != Key) break;
+            int ParticleIndex = SpatialLookup[i].ParticleIndex;
+            FVector Offset = Particles[ParticleIndex].Position - Position;
+            float SqrDistance = FVector::DotProduct(Offset, Offset);
+            if (SqrDistance < (SmoothingRadius * SmoothingRadius)) {
+                float Distance = FMath::Sqrt(SqrDistance);
+                FVector Direction = Distance == 0.f ? FMath::VRand() : Offset / Distance;
+                float Slope = SmoothingKernelDerivative(Distance, SmoothingRadius);
+                float Density = Particles[ParticleIndex].Density;
+                float SharedPressure = CalculateSharedPressure(Density, Particles[Index].Density);
+                PressureForce += SharedPressure * Direction * Slope * Particles[ParticleIndex].Mass / Density;
+            }
         }
     }
     return PressureForce;
+}
+
+FIntVector FFluidSimulationSystem::PositionToCellCoords(const FVector& Position, const float& Radius) {
+    uint32 CellX = Position.X/Radius;
+    uint32 CellY = Position.Y/Radius;
+    uint32 CellZ = Position.Z/Radius;
+    return FIntVector(CellX, CellY, CellZ);
+}
+
+uint32 FFluidSimulationSystem::HashCell(const FIntVector& CellCoords) {
+    return CellCoords.X * HashKey1 + CellCoords.Y * HashKey2 + CellCoords.Z * HashKey3; // Multiply with 3 prime numbers
+}
+
+uint32 FFluidSimulationSystem::GetKeyFromHash(const uint32& Hash) {
+    return Hash % TableSize;
 }
