@@ -12,13 +12,13 @@ struct FFluidSimSettings
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid")
-    FVector Gravity = FVector(0.0f, 0.0f, -9.81f);
+    FVector Gravity = FVector(0.0f, 0.0f, -98.1f);
     
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid")
-    float PressureAmplifier = 10.f;
+    float PressureAmplifier = 100.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid")
-    float TargetDensity = 2.f;
+    float TargetDensity = 3.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid")
     float CollisionDampening = 0.6f;
@@ -56,9 +56,9 @@ private:
     FVector MaxBounds = FVector::ZeroVector;
 
     // Simulation Settings
-    FVector Gravity = FVector(0.0f, 0.0f, -9.81f);
-    float PressureAmplifier = 10.f;
-    float TargetDensity = 2.f;
+    FVector Gravity = FVector(0.0f, 0.0f, -98.1f);
+    float PressureAmplifier = 100.f;
+    float TargetDensity = 3.f;
     float CollisionDampening = 0.6f;
     float SmoothingRadius = 4.f;
 
