@@ -4,6 +4,7 @@
 
 #vars.bat contains local paths
 vars.bat
+gen_vars.bat
 
 # Compiled Object files
 *.slo
