@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "FluidSimulationSystem.h"
 #include "Templates/UniquePtr.h"
+#include "ComputeLibrary.h"
 // Has to be last include in header
 #include "FluidBoundingVolume.generated.h"
 
@@ -30,8 +31,6 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "RenderTest")
     class UTextureRenderTarget2D* RenderTest;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RenderTest")
-    FVector3f EyePosition = FVector3f(1);
 
 	UPROPERTY(VisibleAnywhere, Category = "Particles")
     class UInstancedStaticMeshComponent* ParticleMesh;
@@ -58,6 +57,8 @@ public:
 private:
 	void InitializeParticles();
 	void UpdateInstances();
+
+	UComputeShaderLibrary CTShaderLib;
 
 	UStaticMesh* DefaultSphereMesh;
 	const float SphereRadius = 0.05f;

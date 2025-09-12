@@ -1,4 +1,5 @@
-#include "ParticleBasedFluidSimulation/Public/ShaderInterface/ComputeTest.h"
+#include "ComputeLibrary.h"
+
 #include "PixelShaderUtils.h"
 #include "MeshPassProcessor.inl"
 #include "StaticMeshResources.h"
@@ -12,6 +13,7 @@
 #include "MeshPassUtils.h"
 #include "MaterialShader.h"
 
+// Probs a good idea to keep it this size, (maybe look into 64x8x1)
 #define NUM_THREADS_ComputeShader_X 32
 #define NUM_THREADS_ComputeShader_Y 32
 #define NUM_THREADS_ComputeShader_Z 1
@@ -20,48 +22,18 @@ DECLARE_STATS_GROUP(TEXT("ComputeShader"), STATGROUP_ComputeShader, STATCAT_Adva
 DECLARE_CYCLE_STAT(TEXT("ComputeShader Execute"), STAT_ComputeShader_Execute, STATGROUP_ComputeShader);
 
 // This class carries our parameter declarations and acts as the bridge between cpp and HLSL.
-class PARTICLEBASEDFLUIDSIMULATION_API FComputeShader: public FGlobalShader
+class SHADERINTERFACE_API FComputeShader: public FGlobalShader
 {
 public:
 	
 	DECLARE_GLOBAL_SHADER(FComputeShader);
 	SHADER_USE_PARAMETER_STRUCT(FComputeShader, FGlobalShader);
-	
+	using FParameters = FFluidDispatchParams;
 	
 	class FComputeShader_Perm_TEST : SHADER_PERMUTATION_INT("TEST", 1);
 	using FPermutationDomain = TShaderPermutationDomain<
 		FComputeShader_Perm_TEST
 	>;
-
-	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		/*
-		* Here's where you define one or more of the input parameters for your shader.
-		* Some s:
-		*/
-		// SHADER_PARAMETER(uint32, MyUint32) // On the shader side: uint32 MyUint32;
-		// SHADER_PARAMETER(FVector3f, MyVector) // On the shader side: float3 MyVector;
-
-		// SHADER_PARAMETER_TEXTURE(Texture2D, MyTexture) // On the shader side: Texture2D<float4> MyTexture; (float4 should be whatever you expect each pixel in the texture to be, in this case float4(R,G,B,A) for 4 channels)
-		// SHADER_PARAMETER_SAMPLER(SamplerState, MyTextureSampler) // On the shader side: SamplerState MySampler; // CPP side: TStaticSamplerState<ESamplerFilter::SF_Bilinear>::GetRHI();
-
-		// SHADER_PARAMETER_ARRAY(float, MyFloatArray, [3]) // On the shader side: float MyFloatArray[3];
-
-		// SHADER_PARAMETER_UAV(RWTexture2D<FVector4f>, MyTextureUAV) // On the shader side: RWTexture2D<float4> MyTextureUAV;
-		// SHADER_PARAMETER_UAV(RWStructuredBuffer<FMyCustomStruct>, MyCustomStructs) // On the shader side: RWStructuredBuffer<FMyCustomStruct> MyCustomStructs;
-		// SHADER_PARAMETER_UAV(RWBuffer<FMyCustomStruct>, MyCustomStructs) // On the shader side: RWBuffer<FMyCustomStruct> MyCustomStructs;
-
-		// SHADER_PARAMETER_SRV(StructuredBuffer<FMyCustomStruct>, MyCustomStructs) // On the shader side: StructuredBuffer<FMyCustomStruct> MyCustomStructs;
-		// SHADER_PARAMETER_SRV(Buffer<FMyCustomStruct>, MyCustomStructs) // On the shader side: Buffer<FMyCustomStruct> MyCustomStructs;
-		// SHADER_PARAMETER_SRV(Texture2D<FVector4f>, MyReadOnlyTexture) // On the shader side: Texture2D<float4> MyReadOnlyTexture;
-
-		// SHADER_PARAMETER_STRUCT_REF(FMyCustomStruct, MyCustomStruct)
-
-		
-		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, RenderTarget)
-		SHADER_PARAMETER(FVector3f, EyePos) // On the shader side: float3 MyVector;
-		
-
-	END_SHADER_PARAMETER_STRUCT()
 
 public:
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
@@ -98,13 +70,7 @@ public:
 private:
 };
 
-// This will tell the engine to create the shader and where the shader entry point is.
-//                      ShaderType      ShaderPath                  Shader function name    Type
-IMPLEMENT_GLOBAL_SHADER(FComputeShader, "/Shaders/ComputeTest.usf", "Compute", SF_Compute);
-
-void FComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FComputeShaderDispatchParams Params) {
-	FRDGBuilder GraphBuilder(RHICmdList);
-
+void FFluidMarchParams::DispatchRenderThread(FRDGBuilder& GraphBuilder) const
 	{
 		SCOPE_CYCLE_COUNTER(STAT_ComputeShader_Execute);
 		DECLARE_GPU_STAT(ComputeShader)
@@ -125,15 +91,15 @@ void FComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate& RHI
 			FComputeShader::FParameters* PassParameters = GraphBuilder.AllocParameters<FComputeShader::FParameters>();
 
 			
-			FRDGTextureDesc Desc(FRDGTextureDesc::Create2D(Params.RenderTarget->GetSizeXY(), PF_B8G8R8A8, FClearValueBinding::White, TexCreate_RenderTargetable | TexCreate_ShaderResource | TexCreate_UAV));
+			FRDGTextureDesc Desc(FRDGTextureDesc::Create2D(RenderTarget->GetSizeXY(), PF_B8G8R8A8, FClearValueBinding::White, TexCreate_RenderTargetable | TexCreate_ShaderResource | TexCreate_UAV));
 			FRDGTextureRef TmpTexture = GraphBuilder.CreateTexture(Desc, TEXT("TanComputeShader_TempTexture"));
-			FRDGTextureRef TargetTexture = RegisterExternalTexture(GraphBuilder, Params.RenderTarget->GetRenderTargetTexture(), TEXT("TanComputeShader_RT"));
+			FRDGTextureRef TargetTexture = RegisterExternalTexture(GraphBuilder, RenderTarget->GetRenderTargetTexture(), TEXT("TanComputeShader_RT"));
 			PassParameters->RenderTarget = GraphBuilder.CreateUAV(TmpTexture);
 
-			PassParameters->EyePos = Params.EyePos;
+			PassParameters->EyePos = EyePos;
 			
 
-			auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(Params.X, Params.Y, Params.Z), FComputeShaderUtils::kGolden2DGroupSize);
+			auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(X, Y, Z), FComputeShaderUtils::kGolden2DGroupSize);
 			GraphBuilder.AddPass(
 				RDG_EVENT_NAME("ExecuteComputeShader"),
 				PassParameters,
@@ -161,7 +127,16 @@ void FComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate& RHI
 			// We exit here as we don't want to crash the game if the shader is not found or has an error.
 			
 		}
-	}
-
 	GraphBuilder.Execute();
 }
+
+
+void UComputeShaderLibrary::ExecuteFluidMarch(FFluidMarchParams& DispatchParams)
+{
+	FComputeShaderInterface<FFluidMarchParams>::Dispatch(DispatchParams);
+}
+
+
+// This will tell the engine to create the shader and where the shader entry point is.
+//                      ShaderType      ShaderPath                  Shader function name    Type
+IMPLEMENT_GLOBAL_SHADER(FComputeShader, "/Shaders/FluidsMarch.usf", "Compute", SF_Compute);

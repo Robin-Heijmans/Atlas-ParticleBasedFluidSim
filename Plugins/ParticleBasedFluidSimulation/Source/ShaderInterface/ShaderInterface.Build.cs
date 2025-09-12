@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class ParticleBasedFluidSimulation : ModuleRules
+public class ShaderInterface : ModuleRules
 {
-	public ParticleBasedFluidSimulation(ReadOnlyTargetRules Target) : base(Target)
+	public ShaderInterface(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		
@@ -17,7 +17,7 @@ public class ParticleBasedFluidSimulation : ModuleRules
 		
 		PrivateIncludePaths.AddRange(
 			new string[] {
-				"Runtime/Renderer/Private",
+            	"Runtime/Renderer/Private",
 				// ... add other private include paths required here ...
 			}
 			);
@@ -28,8 +28,7 @@ public class ParticleBasedFluidSimulation : ModuleRules
 			{
 				"Core",
 				"Engine",
-				"MaterialShaderQualitySettings",
-				"ShaderInterface"
+				"MaterialShaderQualitySettings"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -38,7 +37,6 @@ public class ParticleBasedFluidSimulation : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"ShaderInterface",
 				"CoreUObject",
 				"Engine",
 				"Slate",

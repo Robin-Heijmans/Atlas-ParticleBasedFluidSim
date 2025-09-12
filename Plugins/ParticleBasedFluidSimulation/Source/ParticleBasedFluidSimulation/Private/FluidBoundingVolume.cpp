@@ -7,7 +7,8 @@
 
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/KismetRenderingLibrary.h"
-#include "ShaderInterface/ComputeTest.h"
+#include "Kismet/GameplayStatics.h"
+#include "ComputeLibrary.h"
 
 // Sets default values
 AFluidBoundingVolume::AFluidBoundingVolume()
@@ -106,5 +107,19 @@ void AFluidBoundingVolume::UpdateInstances()
 
 void AFluidBoundingVolume::TestDispatch()
 {
-    UComputeShaderLibrary::ExecuteRTComputeShader(RenderTest, EyePosition);
+    FMinimalViewInfo DesiredView;
+    FMatrix ViewMatrix;
+    FMatrix ProjectionMatrix;
+    FMatrix ViewProjectionMatrix;
+    GetViewProjectionMatrix(DesiredView, ViewMatrix, ProjectionMatrix, ViewProjectionMatrix);
+
+    FFluidMarchParams Params(RenderTest->SizeX,RenderTest->SizeY,1);
+    Params.EyePos = FVector3f(1,1,-1);
+    Params.BoundsPosition = FVector3f(Bounds->GetComponentTransform().GetLocation());
+    Params.BoundsSize = FVector3f(Bounds->GetComponentScale());
+    Params.View = FMatrix44f(ViewMatrix);
+
+    Params.RenderTarget = RenderTest;
+
+    CTShaderLib.ExecuteFluidMarch(Params);
 }
