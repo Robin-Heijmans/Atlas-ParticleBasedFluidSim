@@ -25,6 +25,9 @@ struct FFluidSimSettings
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid")
     float SmoothingRadius = 4.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid")
+    float ViscosityStrength = 1.f;
 };
 
 class FFluidSimulationSystem
@@ -44,8 +47,10 @@ private:
     float CalculateSharedPressure(const float& DensityA, const float& DensityB);
     float SmoothingKernel(const float& Distance, const float& Radius);
     float SmoothingKernelDerivative(const float& Distance, const float& Radius);
+    float SmoothingKernelViscosity(const float& Distance, const float& Radius);
     float CalculateDensity(const FVector& Position);
     FVector CalculatePressureForce(const FVector& Position, const int Index);
+    FVector CalculateViscosityForce(const FVector& Position, const int Index);
     FIntVector PositionToCellCoords(const FVector& Position, const float& Radius);
     uint32 HashCell(const FIntVector& CellCoords);
     uint32 GetKeyFromHash(const uint32& Hash);
@@ -62,6 +67,7 @@ private:
     float TargetDensity = 3.f;
     float CollisionDampening = 0.6f;
     float SmoothingRadius = 4.f;
+    float ViscosityStrength = 1.f;
 
     uint32 TableSize = 0; 
     const uint32 HashKey1 = 467;
