@@ -77,3 +77,6 @@ Plugins/**/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
+.ignore
+fluid_simulation.code-workspace
