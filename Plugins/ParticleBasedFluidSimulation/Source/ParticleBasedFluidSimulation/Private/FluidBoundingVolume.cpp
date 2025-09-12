@@ -33,10 +33,12 @@ AFluidBoundingVolume::AFluidBoundingVolume()
 void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
 {
     Super::OnConstruction(Transform);
-
-    InitializeParticles();
-    UpdateInstances();
-
+    UpdateVolumeBounds();
+    if (!IsInitialized) {
+        InitializeParticles();
+        IsInitialized = true;
+        UpdateInstances();
+    }
     // creating rendertarget texture for the compute shader test
     RenderTest = UKismetRenderingLibrary::CreateRenderTarget2D(this, 1024, 1024, RTF_RGBA8);
 }
@@ -74,6 +76,15 @@ void AFluidBoundingVolume::InitializeParticles()
 	Simulation->InitializeParticles(Particles, LocalMin, LocalMax);
 }
 
+void AFluidBoundingVolume::UpdateVolumeBounds() {
+    if (!Simulation) return;
+    FVector Extent = Bounds->GetScaledBoxExtent();
+	FVector WorldScale = Bounds->GetComponentScale();
+
+    FVector LocalMin = -Extent / WorldScale;
+	FVector LocalMax = Extent / WorldScale;
+    Simulation->SetVolumeBounds(LocalMin, LocalMax);
+}
 
 // Called when the game starts or when spawned
 void AFluidBoundingVolume::BeginPlay()
@@ -125,6 +136,14 @@ void AFluidBoundingVolume::PostEditChangeProperty(FPropertyChangedEvent& Propert
 {
     Super::PostEditChangeProperty(PropertyChangedEvent);
 
+    const FName PropertyName = PropertyChangedEvent.GetPropertyName();
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(AFluidBoundingVolume, NumParticlesX) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(AFluidBoundingVolume, NumParticlesY) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(AFluidBoundingVolume, NumParticlesZ))
+    {
+        InitializeParticles();
+        UpdateInstances();
+    }
     // Update simulation only when values are changed in editor
     Simulation->ApplySettings(Settings);
 }

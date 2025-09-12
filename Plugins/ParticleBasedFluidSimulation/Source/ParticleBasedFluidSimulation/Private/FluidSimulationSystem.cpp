@@ -14,6 +14,11 @@ void FFluidSimulationSystem::InitializeParticles(TArray<FParticle>& InParticles,
     MaxBounds = MaxB;
 }
 
+void FFluidSimulationSystem::SetVolumeBounds(FVector& MinB, FVector& MaxB) {
+    MinBounds = MinB;
+    MaxBounds = MaxB;
+}
+
 void FFluidSimulationSystem::StepSimulation(float DeltaTime) {
     if (Particles.IsEmpty()) return;
     // GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Particles exist in system"));

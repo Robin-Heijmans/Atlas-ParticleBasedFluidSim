@@ -58,6 +58,7 @@ public:
 	TArray<FParticle> Particles;
 private:
 	void InitializeParticles();
+	void UpdateVolumeBounds();
 	void UpdateInstances();
 
 	#if WITH_EDITOR
@@ -68,4 +69,5 @@ private:
 	const float SphereRadius = 1.0f;
 	const float FixedTimeStep = 1.f/60.f;
 	float TotalTime = 0.0f;
+	bool IsInitialized = false;
 };

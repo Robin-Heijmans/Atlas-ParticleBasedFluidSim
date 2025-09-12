@@ -32,6 +32,7 @@ class FFluidSimulationSystem
 public:
     FFluidSimulationSystem();
     void InitializeParticles(TArray<FParticle>& InParticles, FVector& MinB, FVector& MaxB);
+    void SetVolumeBounds(FVector& MinB, FVector& MaxB);
     void StepSimulation(float DeltaTime);
     void ApplySettings(FFluidSimSettings& settings);
 
