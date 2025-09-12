@@ -1,7 +1,7 @@
 call echo generating vars.bat
 (
     echo REM @echo off
-    echo set UE5_DIR=D:\UE_5.5
+    echo set UE5_DIR=C:\Program Files\Epic Games\UE_5.5
     echo set ROOTDIR=%~dp0
     echo set ROOTDIR=%%ROOTDIR:~0,-1%%
     echo set PROJECT=fluid_simulation

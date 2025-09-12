@@ -26,6 +26,12 @@ AFluidBoundingVolume::AFluidBoundingVolume()
     {
         DefaultSphereMesh = SphereMeshObj.Object;
         ParticleMesh->SetStaticMesh(DefaultSphereMesh);
+        ParticleMesh->NumCustomDataFloats = 3;
+        static ConstructorHelpers::FObjectFinder<UMaterialInterface> ParticleMat(TEXT("/ParticleBasedFluidSimulation/Materials/M_ParticleColor.M_ParticleColor"));
+        if (ParticleMat.Succeeded())
+        {
+            ParticleMesh->SetMaterial(0, ParticleMat.Object);
+        }
     }
     
 }
@@ -33,10 +39,11 @@ AFluidBoundingVolume::AFluidBoundingVolume()
 void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
 {
     Super::OnConstruction(Transform);
-
-    InitializeParticles();
-    UpdateInstances();
-
+    UpdateVolumeBounds();
+    if (!IsInitialized) {
+        InitializeParticles();
+        UpdateInstances();
+    }
     // creating rendertarget texture for the compute shader test
     RenderTest = UKismetRenderingLibrary::CreateRenderTarget2D(this, 1024, 1024, RTF_RGBA8);
 }
@@ -44,6 +51,14 @@ void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
 void AFluidBoundingVolume::InitializeParticles()
 {
     Particles.Empty();
+    const int TotalNumParticles = NumParticlesX * NumParticlesY * NumParticlesZ;
+    const int PreviousNumParticles = ParticleMesh->GetNumInstances();
+
+    if (PreviousNumParticles > TotalNumParticles) {
+        for (int i = PreviousNumParticles - 1; i >= TotalNumParticles; i--) {
+            ParticleMesh->RemoveInstance(i);
+        }
+    }
 
     FVector Extent = Bounds->GetScaledBoxExtent();
 	FVector WorldScale = Bounds->GetComponentScale();
@@ -66,20 +81,37 @@ void AFluidBoundingVolume::InitializeParticles()
                 FVector LocalPos = SpawnMin + FVector(x * SpacingX, y * SpacingY, z * SpacingZ);
 				//FVector WorldPos = BoxTransform.TransformPosition(LocalPos);
                 Particles.Add(FParticle{LocalPos});
+                int CurrentNumParticles = Particles.Num();
+                if (CurrentNumParticles > PreviousNumParticles) {
+                    FTransform InstanceTransform(FRotator::ZeroRotator, LocalPos, FVector(SphereRadius/50.0f));
+                    ParticleMesh->AddInstance(InstanceTransform);
+                }
             }
         }
     }
 
-	Simulation = MakeUnique<FFluidSimulationSystem>();
+    if (!Simulation) {
+	    Simulation = MakeUnique<FFluidSimulationSystem>();
+    }
 	Simulation->InitializeParticles(Particles, LocalMin, LocalMax);
 }
 
+void AFluidBoundingVolume::UpdateVolumeBounds() {
+    if (!Simulation) return;
+    FVector Extent = Bounds->GetScaledBoxExtent();
+	FVector WorldScale = Bounds->GetComponentScale();
+
+    FVector LocalMin = -Extent / WorldScale;
+	FVector LocalMax = Extent / WorldScale;
+    Simulation->SetVolumeBounds(LocalMin, LocalMax);
+}
 
 // Called when the game starts or when spawned
 void AFluidBoundingVolume::BeginPlay()
 {
 	Super::BeginPlay();
 	InitializeParticles();
+    IsInitialized = true;
     if (Simulation){
         Simulation->ApplySettings(Settings);
     }
@@ -103,15 +135,44 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
 
 void AFluidBoundingVolume::UpdateInstances()
 {
-    ParticleMesh->ClearInstances();
+    if (!DefaultSphereMesh || Particles.Num() == 0) return;
 
-    if (DefaultSphereMesh)
+    for (int32 i = 0; i < Particles.Num(); i++)
     {
-        for (const FParticle& Particle : Particles)
-        {
-            FTransform InstanceTransform(FRotator::ZeroRotator, Particle.Position, FVector(SphereRadius/50.0f)); // 50.0f is basic sphere mesh radius.
-            ParticleMesh->AddInstance(InstanceTransform);
-        }
+        const FParticle& particle = Particles[i];
+        FTransform InstanceTransform(
+            FRotator::ZeroRotator,
+            particle.Position,
+            FVector(SphereRadius / 50.0f)
+        );
+        FLinearColor Color = VelocityToColor(particle.Velocity.Length());
+
+        ParticleMesh->SetCustomDataValue(i, 0, Color.R, true);
+        ParticleMesh->SetCustomDataValue(i, 1, Color.G, true);
+        ParticleMesh->SetCustomDataValue(i, 2, Color.B, true);
+        ParticleMesh->UpdateInstanceTransform(i, InstanceTransform, false, true);
+    }
+
+    // Apply all pending transform updates in one go
+    ParticleMesh->MarkRenderStateDirty();
+}
+
+FLinearColor AFluidBoundingVolume::VelocityToColor(const float& Speed) {
+    float Alpha = FMath::Clamp(Speed / MaxSpeedGradient, 0.0f, 1.0f);
+
+    if (Alpha < 0.5f) // interpolate from blue to green
+    {
+        float LocalAlpha = Alpha / 0.5f;
+        FLinearColor StartColor(0.f, 0.f, 0.5f);
+        FLinearColor MidColor(0.f, 1.f, 0.f);
+        return FLinearColor::LerpUsingHSV(StartColor, MidColor, LocalAlpha);
+    }
+    else // interpolate from green to red
+    {
+        float LocalAlpha = (Alpha - 0.5f) / 0.5f;
+        FLinearColor MidColor(0.f, 1.f, 0.f);
+        FLinearColor EndColor(1.f, 0.f, 0.f);
+        return FLinearColor::LerpUsingHSV(MidColor, EndColor, LocalAlpha);
     }
 }
 
@@ -125,6 +186,14 @@ void AFluidBoundingVolume::PostEditChangeProperty(FPropertyChangedEvent& Propert
 {
     Super::PostEditChangeProperty(PropertyChangedEvent);
 
+    const FName PropertyName = PropertyChangedEvent.GetPropertyName();
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(AFluidBoundingVolume, NumParticlesX) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(AFluidBoundingVolume, NumParticlesY) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(AFluidBoundingVolume, NumParticlesZ))
+    {
+        InitializeParticles();
+        UpdateInstances();
+    }
     // Update simulation only when values are changed in editor
     Simulation->ApplySettings(Settings);
 }
