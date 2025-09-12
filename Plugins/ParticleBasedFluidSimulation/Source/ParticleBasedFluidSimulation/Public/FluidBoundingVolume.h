@@ -45,6 +45,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
     int NumParticlesZ = 5;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fluid system")
+    float MaxSpeedGradient = 30.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid system")
 	FFluidSimSettings Settings;
 
@@ -60,6 +63,7 @@ private:
 	void InitializeParticles();
 	void UpdateVolumeBounds();
 	void UpdateInstances();
+	FLinearColor VelocityToColor(const float& Speed);
 
 	#if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
