@@ -58,7 +58,7 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidDispatchParams, )
 	SHADER_PARAMETER(float, dummy3)
 	SHADER_PARAMETER(FMatrix44f, View)
 	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, RenderTarget)
-
+	
 END_SHADER_PARAMETER_STRUCT()
 
 USTRUCT(BlueprintType)
@@ -67,24 +67,24 @@ struct SHADERINTERFACE_API FFluidMarchParams
 	GENERATED_BODY()
 	
 public:
-	int X;
-	int Y;
-	int Z;
+	int X = 1;
+	int Y = 1;
+	int Z = 1;
 
 	UPROPERTY(EditAnywhere)
-	FVector3f EyePos;				//12 | 
-	float dummy;					// 4 | 16
+	FVector3f EyePos = FVector3f(1.f, 1.f, -1.f);				//12 | 
+	float dummy = -1.f;											// 4 | 16
 	// Assuming this is a rect
 	UPROPERTY(EditAnywhere)
-	FVector3f BoundsPosition;		//12 | 28
+	FVector3f BoundsPosition = FVector3f(0.f, 0.f, 0.f);;		//12 | 28
 	UPROPERTY(EditAnywhere)
-	FVector3f BoundsSize;			//12 | 40
-	float dummy2, dummy3;			// 8 | 48
+	FVector3f BoundsSize = FVector3f(1.f, 1.f, 1.f);			//12 | 40
+	float dummy2 = -1.f, dummy3 = -1.f;							// 8 | 48
 
 	UPROPERTY(EditAnywhere)
-	FMatrix44f View;				//64 | 112
+	FMatrix44f View = FMatrix44f();								//64 | 112
 	
-	FRenderTarget* RenderTarget;	// 8
+	FRenderTarget* RenderTarget = nullptr;						// 8
 
 
 	FFluidMarchParams() = default;
@@ -104,31 +104,28 @@ class SHADERINTERFACE_API UComputeLibrary : public UActorComponent
 GENERATED_BODY()
 public:
 
-	template<typename FShaderParam>
-	static void ExecuteShader(FShaderParam& ParamStruct)
+	static void ExecuteShader(FFluidMarchParams& ParamStruct)
 	{
 		if (IsInRenderingThread()) 
 		{
-			DispatchRenderThread<FShaderParam>(GetImmediateCommandList_ForRenderCommand(), ParamStruct);
+			DispatchRenderThread(GetImmediateCommandList_ForRenderCommand(), ParamStruct);
 		}
 		else
 		{
     		UE_LOG(LogTemp, Warning, TEXT("Not in rendering thread"));
-			DispatchRenderThread_Game<FShaderParam>(ParamStruct);
+			DispatchRenderThread_Game(ParamStruct);
 		}
 	}
 
 private:
 
-	template<typename FShaderParam>
-	static void DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FShaderParam& ParamStruct)
+	static void DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FFluidMarchParams& ParamStruct)
 	{
 		FRDGBuilder GraphBuilder(RHICmdList);
 		ParamStruct.Dispatch(GraphBuilder);
 	}
 
-	template<typename FShaderParam>
-	static void DispatchRenderThread_Game(FShaderParam& ParamStruct)
+	static void DispatchRenderThread_Game(FFluidMarchParams& ParamStruct)
 	{
 		ENQUEUE_RENDER_COMMAND(SceneDrawCompletion)(
 		[&ParamStruct](FRHICommandListImmediate& RHICmdList)

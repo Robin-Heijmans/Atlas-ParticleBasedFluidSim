@@ -64,11 +64,12 @@ void FFluidMarchParams::Dispatch(FRDGBuilder& GraphBuilder)
 
 	SCOPE_CYCLE_COUNTER(STAT_ComputeShader_Execute);
 	DECLARE_GPU_STAT(ComputeShader)
-	RDG_EVENT_SCOPE(GraphBuilder, "ComputeShader");
+	RDG_EVENT_SCOPE(GraphBuilder, "TanComputeShader");
 	RDG_GPU_STAT_SCOPE(GraphBuilder, ComputeShader);
 
 	typename FFluidMarchShader::FPermutationDomain PermutationVector;
 	TShaderMapRef<FFluidMarchShader> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel), PermutationVector);
+
 	bool bIsShaderValid = ComputeShader.IsValid();
 	if (bIsShaderValid) 
 	{
@@ -80,9 +81,14 @@ void FFluidMarchParams::Dispatch(FRDGBuilder& GraphBuilder)
 		TexCreate_RenderTargetable | TexCreate_ShaderResource | TexCreate_UAV);
 
 		FRDGTextureRef TmpTexture = GraphBuilder.CreateTexture(Desc, TEXT("TanComputeShader_TempTexture"));
-		FRDGTextureRef TargetTexture = RegisterExternalTexture(GraphBuilder, RenderTarget->GetRenderTargetTexture(), TEXT("TanComputeShader_RT"));
+		FRDGTextureRef TargetTexture = RegisterExternalTexture(GraphBuilder, RenderTarget->GetRenderTargetTexture(), TEXT("TanComputeShader_Output"));
+
 		PassParameters->RenderTarget = GraphBuilder.CreateUAV(TmpTexture);
 		PassParameters->EyePos = EyePos;
+		PassParameters->BoundsPosition = BoundsPosition;
+		PassParameters->BoundsSize = BoundsSize;
+		PassParameters->View = View;
+
 		auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(X, Y, Z), FComputeShaderUtils::kGolden2DGroupSize);
 		GraphBuilder.AddPass(
 			RDG_EVENT_NAME("ExecuteComputeShader"),
@@ -92,6 +98,8 @@ void FFluidMarchParams::Dispatch(FRDGBuilder& GraphBuilder)
 		{
 			FComputeShaderUtils::Dispatch(RHICmdList, ComputeShader, *PassParameters, GroupCount);
 		});
+
+
 		// The copy will fail if we don't have matching formats, let's check and make sure we do.
 		if (TargetTexture->Desc.Format == PF_B8G8R8A8) 
 		{
@@ -111,8 +119,10 @@ void FFluidMarchParams::Dispatch(FRDGBuilder& GraphBuilder)
 		#endif
 		// We exit here as we don't want to crash the game if the shader is not found or has an error.
 	}
+		
 	GraphBuilder.Execute();
 }
+
 
 // This will tell the engine to create the shader and where the shader entry point is.
 //                      ShaderType      ShaderPath                  Shader function name    Type

@@ -200,7 +200,7 @@ void AFluidBoundingVolume::TestDispatch()
     Params.RenderTarget = RenderTest->GameThread_GetRenderTargetResource();
 
     UE_LOG(LogTemp, Warning, TEXT("Dispatching TanFluid"));
-    UComputeLibrary::ExecuteShader<FFluidMarchParams>(Params);
+    UComputeLibrary::ExecuteShader(Params);
 }
 
 #if WITH_EDITOR
