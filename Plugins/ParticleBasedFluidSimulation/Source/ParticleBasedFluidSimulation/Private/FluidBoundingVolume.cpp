@@ -7,13 +7,16 @@
 
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/KismetRenderingLibrary.h"
-#include "ShaderInterface/ComputeTest.h"
+#include "Kismet/GameplayStatics.h"
+
+#include "ComputeLibrary.h"
 
 // Sets default values
 AFluidBoundingVolume::AFluidBoundingVolume()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
 
 	Bounds = CreateDefaultSubobject<UBoxComponent>(TEXT("Bounds"));
     RootComponent = Bounds;
@@ -33,7 +36,6 @@ AFluidBoundingVolume::AFluidBoundingVolume()
             ParticleMesh->SetMaterial(0, ParticleMat.Object);
         }
     }
-    
 }
 
 void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
@@ -178,7 +180,27 @@ FLinearColor AFluidBoundingVolume::VelocityToColor(const float& Speed) {
 
 void AFluidBoundingVolume::TestDispatch()
 {
-    UComputeShaderLibrary::ExecuteRTComputeShader(RenderTest, EyePosition);
+
+    FFluidMarchParams Params(RenderTest->SizeX, RenderTest->SizeY, 1);
+
+    // Get View Matrix
+    //FMinimalViewInfo DesiredView;
+    FMatrix ViewMatrix;
+    //FMatrix ProjectionMatrix;
+    //FMatrix ViewProjectionMatrix;
+    //GetViewProjectionMatrix(DesiredView, ViewMatrix, ProjectionMatrix, ViewProjectionMatrix);
+
+    // Default Params for now
+    Params.EyePos = FVector3f(1,1,-1);
+    Params.BoundsPosition = FVector3f(Bounds->GetComponentTransform().GetLocation());
+    Params.BoundsSize = FVector3f(Bounds->GetComponentScale());
+    Params.View = FMatrix44f(ViewMatrix);
+
+    // RenderTarget for output
+    Params.RenderTarget = RenderTest->GameThread_GetRenderTargetResource();
+
+    UE_LOG(LogTemp, Warning, TEXT("Dispatching TanFluid"));
+    UComputeLibrary::ExecuteShader<FFluidMarchParams>(Params);
 }
 
 #if WITH_EDITOR

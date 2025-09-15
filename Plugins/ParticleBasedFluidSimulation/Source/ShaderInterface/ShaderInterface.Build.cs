@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class ParticleBasedFluidSimulation : ModuleRules
+public class ShaderInterface : ModuleRules
 {
-	public ParticleBasedFluidSimulation(ReadOnlyTargetRules Target) : base(Target)
+	public ShaderInterface(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		
@@ -27,8 +27,9 @@ public class ParticleBasedFluidSimulation : ModuleRules
 			{
 				"Core",
 				"Engine",
-				"MaterialShaderQualitySettings",
-				"ShaderInterface"
+				"Slate",
+				"SlateCore",
+				"MaterialShaderQualitySettings"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);

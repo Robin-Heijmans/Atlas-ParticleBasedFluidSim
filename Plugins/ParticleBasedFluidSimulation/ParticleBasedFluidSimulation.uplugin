@@ -18,6 +18,14 @@
 		{
 			"Name": "ParticleBasedFluidSimulation",
 			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit",
+			"Dependencies": [
+				"ShaderInterface"
+			]
+		},
+		{
+			"Name": "ShaderInterface",
+			"Type": "Runtime",
 			"LoadingPhase": "PostConfigInit"
 		}
 	]

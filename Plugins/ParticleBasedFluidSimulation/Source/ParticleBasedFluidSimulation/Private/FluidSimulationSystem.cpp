@@ -17,6 +17,7 @@ void FFluidSimulationSystem::InitializeParticles(TArray<FParticle>& InParticles,
 void FFluidSimulationSystem::SetVolumeBounds(FVector& MinB, FVector& MaxB) {
     MinBounds = MinB;
     MaxBounds = MaxB;
+    MaxB;
 }
 
 void FFluidSimulationSystem::StepSimulation(float DeltaTime) {
