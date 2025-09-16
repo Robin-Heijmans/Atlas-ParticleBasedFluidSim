@@ -51,11 +51,8 @@
 
 BEGIN_SHADER_PARAMETER_STRUCT(FFluidDispatchParams, )
 	SHADER_PARAMETER(FVector3f, EyePos)
-	SHADER_PARAMETER(float, dummy)
 	SHADER_PARAMETER(FVector3f, BoundsPosition)
 	SHADER_PARAMETER(FVector3f, BoundsSize)
-	SHADER_PARAMETER(float, dummy2)
-	SHADER_PARAMETER(float, dummy3)
 	SHADER_PARAMETER(FMatrix44f, View)
 	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, RenderTarget)
 	
@@ -73,13 +70,13 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	FVector3f EyePos = FVector3f(1.f, 1.f, -1.f);				//12 | 
-	float dummy = -1.f;											// 4 | 16
+	//float dummy = -1.f;											// 4 | 16
 	// Assuming this is a rect
 	UPROPERTY(EditAnywhere)
 	FVector3f BoundsPosition = FVector3f(0.f, 0.f, 0.f);;		//12 | 28
 	UPROPERTY(EditAnywhere)
 	FVector3f BoundsSize = FVector3f(1.f, 1.f, 1.f);			//12 | 40
-	float dummy2 = -1.f, dummy3 = -1.f;							// 8 | 48
+	//float dummy2 = -1.f, dummy3 = -1.f;							// 8 | 48
 
 	UPROPERTY(EditAnywhere)
 	FMatrix44f View = FMatrix44f();								//64 | 112
