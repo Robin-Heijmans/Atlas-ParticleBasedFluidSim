@@ -1,0 +1,68 @@
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/ComputeCommon.ush"
+
+static const int NumThreads = 64;
+
+// Buffers
+RWStructuredBuffer<float3> Positions;
+RWStructuredBuffer<float3> PredictedPositions;
+RWStructuredBuffer<float3> Velocities;
+RWStructuredBuffer<float> Densities; // Density
+RWStructuredBuffer<uint3> SpatialIndices; // used for spatial hashing
+RWStructuredBuffer<uint> SpatialOffsets; // used for spatial hashing
+
+// Settings
+const float PressureAmplifier;
+const float TargetDensity;
+const float CollisionDampening;
+const float SmoothingRadius;
+const float ViscosityStrength;
+const float DeltaTime;
+const float Gravity;
+const uint NumParticles;
+const float3 MaxBounds;
+const float3 MinBounds;
+
+float ConvertDensityToPressure(float Density) {
+    return (Density - TargetDensity) * PressureAmplifier;
+}
+
+void ResolveCollisions(uint ParticleIndex) {
+
+}
+
+[numthreads(NumThreads,1,1)]
+void ExternalForces (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= numParticles) return;
+
+    Velocities[id.x] += float3(0, 0, Gravity) * deltaTime;
+
+    PredictedPositions[id.x] = Positions[id.x] + Velocities[id.x] * 1 / 120.0; // Fixed LookAheadTimeStep
+}
+
+[numthreads(NumThreads,1,1)]
+void UpdateSpatialLookup (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= numParticles) return;
+}
+
+[numthreads(NumThreads,1,1)]
+void CalculateDensity (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= numParticles) return;
+}
+
+[numthreads(NumThreads,1,1)]
+void CalculatePressureForce (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= numParticles) return;
+}
+
+[numthreads(NumThreads,1,1)]
+void CalculateViscosityForce (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= numParticles) return;
+}
+
+[numthreads(NumThreads,1,1)]
+void UpdatePositions (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= numParticles) return;
+    Positions[id.x] = Velocities[id.x] * DeltaTime;
+    ResolveCollisions(id.x);
+}
