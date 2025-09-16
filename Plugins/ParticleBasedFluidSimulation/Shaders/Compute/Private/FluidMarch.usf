@@ -2,11 +2,9 @@
 
 
 float3 EyePos;				//12 | 
-float dummy;					// 4 | 16
 // Assuming this is a rect
 float3 BoundsPosition;		//12 | 28
 float3 BoundsSize;			//12 | 40
-float dummy2, dummy3;			// 8 | 48
 float4x4 View;				//64 | 112
 
 RWTexture2D<float3> RenderTarget;
@@ -41,10 +39,9 @@ void Compute(
 	uint3 DispatchThreadId : SV_DispatchThreadID,
 	uint GroupIndex : SV_GroupIndex )
 {
-    float3 dir = GetPrimaryDirection(float2(   
-        float(DispatchThreadId.x) / float(THREADS_X), 
-        float(DispatchThreadId.y) / float(THREADS_Y)), 
-        float(THREADS_X) / float(THREADS_Y));
+    float Aspect = float(THREADS_X) / float(THREADS_Y);
+    float2 ScreenUV = float2(float(DispatchThreadId.x) / float(THREADS_X), float(DispatchThreadId.y) / float(THREADS_Y));
+    float3 dir = GetPrimaryDirection(ScreenUV, Aspect);
 
 	
 	RenderTarget[DispatchThreadId.xy] = dir;

@@ -49,52 +49,6 @@
 // SHADER_PARAMETER_STRUCT_REF(FMyCustomStruct, MyCustomStruct)
 
 
-BEGIN_SHADER_PARAMETER_STRUCT(FFluidDispatchParams, )
-	SHADER_PARAMETER(FVector3f, EyePos)
-	SHADER_PARAMETER(FVector3f, BoundsPosition)
-	SHADER_PARAMETER(FVector3f, BoundsSize)
-	SHADER_PARAMETER(FMatrix44f, View)
-	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, RenderTarget)
-	
-END_SHADER_PARAMETER_STRUCT()
-
-USTRUCT(BlueprintType)
-struct SHADERINTERFACE_API FFluidMarchParams
-{	
-	GENERATED_BODY()
-	
-public:
-	int X = 1;
-	int Y = 1;
-	int Z = 1;
-
-	UPROPERTY(EditAnywhere)
-	FVector3f EyePos = FVector3f(1.f, 1.f, -1.f);				//12 | 
-	//float dummy = -1.f;											// 4 | 16
-	// Assuming this is a rect
-	UPROPERTY(EditAnywhere)
-	FVector3f BoundsPosition = FVector3f(0.f, 0.f, 0.f);;		//12 | 28
-	UPROPERTY(EditAnywhere)
-	FVector3f BoundsSize = FVector3f(1.f, 1.f, 1.f);			//12 | 40
-	//float dummy2 = -1.f, dummy3 = -1.f;							// 8 | 48
-
-	UPROPERTY(EditAnywhere)
-	FMatrix44f View = FMatrix44f();								//64 | 112
-	
-	FRenderTarget* RenderTarget = nullptr;						// 8
-
-
-	FFluidMarchParams() = default;
-	FFluidMarchParams(int x, int y, int z)
-		: X(x)
-		, Y(y)
-		, Z(z)
-	{
-	}
-	
-	void Dispatch(FRDGBuilder& GraphBuilder);
-};
-
 UCLASS()
 class SHADERINTERFACE_API UComputeLibrary : public UActorComponent
 {
