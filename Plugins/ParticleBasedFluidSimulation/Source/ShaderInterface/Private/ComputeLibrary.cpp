@@ -63,10 +63,10 @@ void FFluidMarchParams::Dispatch(FRDGBuilder& GraphBuilder)
 
     UE_LOG(LogTemp, Warning, TEXT("Executing TanFluid"));
 
-	SCOPE_CYCLE_COUNTER(STAT_ComputeShader_Execute);
-	DECLARE_GPU_STAT(ComputeShader)
-	RDG_EVENT_SCOPE(GraphBuilder, "TanComputeShader");
-	RDG_GPU_STAT_SCOPE(GraphBuilder, ComputeShader);
+	//SCOPE_CYCLE_COUNTER(STAT_ComputeShader_Execute);
+	//DECLARE_GPU_STAT(ComputeShader)
+	//RDG_EVENT_SCOPE(GraphBuilder, "TanComputeShader");
+	//RDG_GPU_STAT_SCOPE(GraphBuilder, ComputeShader);
 
 	typename FFluidMarchShader::FPermutationDomain PermutationVector;
 	TShaderMapRef<FFluidMarchShader> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel), PermutationVector);
@@ -93,7 +93,7 @@ void FFluidMarchParams::Dispatch(FRDGBuilder& GraphBuilder)
 		auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(X, Y, Z), FComputeShaderUtils::kGolden2DGroupSize);
     	UE_LOG(LogTemp, Warning, TEXT("Adding DispatchPass TanFluid"));
 		GraphBuilder.AddPass(
-			RDG_EVENT_NAME("ExecuteComputeShader"),
+			RDG_EVENT_NAME("Execute TanComputeShader"),
 			PassParameters,
 			ERDGPassFlags::AsyncCompute,
 			[&PassParameters, ComputeShader, GroupCount](FRHIComputeCommandList& RHICmdList)
