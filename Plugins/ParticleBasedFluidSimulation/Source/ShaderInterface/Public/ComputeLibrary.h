@@ -104,7 +104,8 @@ class SHADERINTERFACE_API UComputeLibrary : public UActorComponent
 GENERATED_BODY()
 public:
 
-	static void ExecuteShader(FFluidMarchParams& ParamStruct)
+	template<typename TShaderParams>
+	static void ExecuteShader(TShaderParams& ParamStruct)
 	{
 		if (IsInRenderingThread()) 
 		{
@@ -119,18 +120,21 @@ public:
 
 private:
 
-	static void DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FFluidMarchParams& ParamStruct)
+	template<typename TShaderParams>
+	static void DispatchRenderThread(FRHICommandListImmediate& RHICmdList, TShaderParams& ParamStruct)
 	{
 		FRDGBuilder GraphBuilder(RHICmdList);
 		ParamStruct.Dispatch(GraphBuilder);
 	}
 
-	static void DispatchRenderThread_Game(FFluidMarchParams& ParamStruct)
+	template<typename TShaderParams>
+	static void DispatchRenderThread_Game(TShaderParams& ParamStruct)
 	{
 		ENQUEUE_RENDER_COMMAND(SceneDrawCompletion)(
 		[&ParamStruct](FRHICommandListImmediate& RHICmdList)
 		{
-			DispatchRenderThread(RHICmdList, ParamStruct);
+			FRDGBuilder GraphBuilder(GetImmediateCommandList_ForRenderCommand());
+			ParamStruct.Dispatch(GraphBuilder);
 		});
 	}
 };

@@ -12,6 +12,7 @@
 #include "RHIGPUReadback.h"
 #include "MeshPassUtils.h"
 #include "MaterialShader.h"
+#include "RHIBreadcrumbs.h"
 
 // Probs a good idea to keep it this size, (maybe look into 64x8x1)
 #define NUM_THREADS_ComputeShader_X 32
@@ -90,12 +91,14 @@ void FFluidMarchParams::Dispatch(FRDGBuilder& GraphBuilder)
 		PassParameters->View = View;
 
 		auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(X, Y, Z), FComputeShaderUtils::kGolden2DGroupSize);
+    	UE_LOG(LogTemp, Warning, TEXT("Adding DispatchPass TanFluid"));
 		GraphBuilder.AddPass(
 			RDG_EVENT_NAME("ExecuteComputeShader"),
 			PassParameters,
 			ERDGPassFlags::AsyncCompute,
 			[&PassParameters, ComputeShader, GroupCount](FRHIComputeCommandList& RHICmdList)
 		{
+    		UE_LOG(LogTemp, Warning, TEXT("Running DispatchPass TanFluid"));
 			FComputeShaderUtils::Dispatch(RHICmdList, ComputeShader, *PassParameters, GroupCount);
 		});
 
@@ -103,6 +106,7 @@ void FFluidMarchParams::Dispatch(FRDGBuilder& GraphBuilder)
 		// The copy will fail if we don't have matching formats, let's check and make sure we do.
 		if (TargetTexture->Desc.Format == PF_B8G8R8A8) 
 		{
+    		UE_LOG(LogTemp, Warning, TEXT("Adding CopyPass TanFluid"));
 			AddCopyTexturePass(GraphBuilder, TmpTexture, TargetTexture, FRHICopyTextureInfo());
 		} 
 		else 
@@ -119,8 +123,12 @@ void FFluidMarchParams::Dispatch(FRDGBuilder& GraphBuilder)
 		#endif
 		// We exit here as we don't want to crash the game if the shader is not found or has an error.
 	}
-		
+
+
+    UE_LOG(LogTemp, Warning, TEXT("Executing GraphBuilder TanFluid"));
 	GraphBuilder.Execute();
+	
+    UE_LOG(LogTemp, Warning, TEXT("Done GraphBuilder TanFluid"));
 }
 
 
