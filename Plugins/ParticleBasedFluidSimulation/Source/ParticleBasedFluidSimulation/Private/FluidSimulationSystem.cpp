@@ -184,7 +184,6 @@ FVector FFluidSimulationSystem::CalculateViscosityForce(const FVector& Position,
             float SqrDistance = FVector::DotProduct(Offset, Offset);
             if (SqrDistance < (SmoothingRadius * SmoothingRadius)) {
                 float Distance = FMath::Sqrt(SqrDistance);
-                FVector Direction = Distance == 0 ? FVector::UpVector : Offset / Distance;
                 float Influence = SmoothingKernelViscosity(Distance, SmoothingRadius);
                 ViscosityForce += (Particles[ParticleIndex].Velocity - Particles[Index].Velocity) * Influence;
             }

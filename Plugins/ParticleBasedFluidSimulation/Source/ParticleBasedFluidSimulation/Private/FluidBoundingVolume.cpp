@@ -132,7 +132,7 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
 	}
 	
 	UpdateInstances();
-    TestDispatch();
+    //TestDispatch();
 }
 
 void AFluidBoundingVolume::UpdateInstances()
