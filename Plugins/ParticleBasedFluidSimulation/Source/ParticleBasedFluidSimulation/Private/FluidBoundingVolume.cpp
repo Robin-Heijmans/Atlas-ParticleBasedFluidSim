@@ -8,8 +8,10 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Kismet/GameplayStatics.h"
+#include "SceneView.h"
+#include "Engine/World.h"
 
-#include "ComputeLibrary.h"
+#include "Shaders.h"
 
 // Sets default values
 AFluidBoundingVolume::AFluidBoundingVolume()
@@ -47,7 +49,7 @@ void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
         UpdateInstances();
     }
     // creating rendertarget texture for the compute shader test
-    RenderTest = UKismetRenderingLibrary::CreateRenderTarget2D(this, 1024, 1024, RTF_RGBA8);
+    RenderTest = UKismetRenderingLibrary::CreateRenderTarget2D(this, 1920, 1080, RTF_RGBA8);
 }
 
 void AFluidBoundingVolume::InitializeParticles()
@@ -180,21 +182,22 @@ FLinearColor AFluidBoundingVolume::VelocityToColor(const float& Speed) {
 
 void AFluidBoundingVolume::TestDispatch()
 {
-
-    FFluidMarchParams Params(RenderTest->SizeX, RenderTest->SizeY, 1);
+    FFluidMarchDispatchParams Params(RenderTest->SizeX, RenderTest->SizeY, 1);
 
     // Get View Matrix
-    //FMinimalViewInfo DesiredView;
-    FMatrix ViewMatrix;
-    //FMatrix ProjectionMatrix;
-    //FMatrix ViewProjectionMatrix;
-    //GetViewProjectionMatrix(DesiredView, ViewMatrix, ProjectionMatrix, ViewProjectionMatrix);
+    FMinimalViewInfo ViewInfo;
+    FMatrix View, Projection, ViewProjection;
+    APlayerController* Player = GetWorld()->GetFirstPlayerController();
+    Player->CalcCamera(GetWorld()->DeltaTimeSeconds, ViewInfo); 
+
+    UGameplayStatics::GetViewProjectionMatrix(ViewInfo, View, Projection, ViewProjection);
+    FMatrix InvView = View.Inverse();
 
     // Default Params for now
-    Params.EyePos = FVector3f(1,1,-1);
+    Params.EyePos = FVector3f(InvView.GetOrigin());
     Params.BoundsPosition = FVector3f(Bounds->GetComponentTransform().GetLocation());
     Params.BoundsSize = FVector3f(Bounds->GetComponentScale());
-    Params.View = FMatrix44f(ViewMatrix);
+    Params.View = FMatrix44f(View);
 
     // RenderTarget for output
     Params.RenderTarget = RenderTest->GameThread_GetRenderTargetResource();
