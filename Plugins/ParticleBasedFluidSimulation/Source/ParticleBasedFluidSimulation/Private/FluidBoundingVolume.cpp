@@ -132,6 +132,10 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
 	}
 	
 	UpdateInstances();
+<<<<<<< HEAD
+=======
+    //TestDispatch();
+>>>>>>> c9f4392 (wip: shaders for physics calculations + spatial lookup (except sorting))
 }
 
 void AFluidBoundingVolume::UpdateInstances()
