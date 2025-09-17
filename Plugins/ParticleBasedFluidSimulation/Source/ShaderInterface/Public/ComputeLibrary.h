@@ -69,6 +69,12 @@ public:
 		}
 	}
 
+	template<typename TShaderParams>
+	static void ExecuteShader(TShaderParams& ParamStruct, FRDGBuilder& GraphBuilder)
+	{
+		ParamStruct.Dispatch(GraphBuilder);
+	}
+
 private:
 
 	template<typename TShaderParams>
