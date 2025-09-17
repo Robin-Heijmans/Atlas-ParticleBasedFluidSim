@@ -29,9 +29,6 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Bounds")
 	class UBoxComponent* Bounds;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "RenderTest")
-    class UTextureRenderTarget2D* RenderTest;
-
 	UPROPERTY(VisibleAnywhere, Category = "Particles")
     class UInstancedStaticMeshComponent* ParticleMesh;
 
@@ -49,9 +46,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid system")
 	FFluidSimSettings Settings;
-
-	UFUNCTION(CallInEditor, Category = "RenderTest")
-	void TestDispatch();
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;

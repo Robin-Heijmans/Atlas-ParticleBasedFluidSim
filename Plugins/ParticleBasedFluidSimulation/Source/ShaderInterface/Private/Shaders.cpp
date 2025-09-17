@@ -38,14 +38,15 @@ namespace Shaders
 // Dispatch Functions ...
 void FFluidMarchDispatchParams::Dispatch(FRDGBuilder& GraphBuilder)  
 {
+    DECLARE_GPU_STAT(ComputeShader)
+    RDG_EVENT_SCOPE(GraphBuilder, "TanComputeShader");
+    RDG_GPU_STAT_SCOPE(GraphBuilder, ComputeShader);
+
     TShaderMapRef<Shaders::FFluidMarchShader> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
     bool bIsShaderValid = ComputeShader.IsValid();
     if (bIsShaderValid) 
     {
-        DECLARE_GPU_STAT(ComputeShader)
-        //RDG_EVENT_SCOPE(GraphBuilder, "TanComputeShader");
-        RDG_GPU_STAT_SCOPE(GraphBuilder, ComputeShader);
 
         Shaders::FFluidMarchShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMarchShader::FParameters>();
 
@@ -87,10 +88,11 @@ void FFluidMarchDispatchParams::Dispatch(FRDGBuilder& GraphBuilder)
             #endif
         }
     
-        GraphBuilder.Execute();
     } 
     else 
     {
         UE_LOG(LogTemp, Warning, TEXT("The compute shader has a problem."));
     }
+    UE_LOG(LogTemp, Warning, TEXT("Dispatch you fucking bitch"));
+    GraphBuilder.Execute();
 }

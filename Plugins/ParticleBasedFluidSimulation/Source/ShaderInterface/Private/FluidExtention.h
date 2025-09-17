@@ -1,0 +1,33 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "RenderGraphUtils.h"
+#include "SceneViewExtension.h"
+#include "PostProcess/PostProcessMaterial.h"
+#include "DataDrivenShaderPlatformInfo.h"
+#include "SceneRendererInterface.h"
+
+#include "Engine/TextureRenderTarget2D.h"
+#include "Kismet/KismetRenderingLibrary.h"
+
+#include "Shaders.h"
+
+class FFluidExtention : public FSceneViewExtensionBase 
+{
+public:
+	FFluidExtention(const FAutoRegister& AutoRegister);
+
+	virtual int32 GetPriority() const { return 1 << 16; };
+	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {};
+	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override {};
+
+	/* Setup before rendering happens in here. */
+	virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override;
+
+	/* All the rendering happens in here. */
+	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FPostProcessingInputs& Inputs) override;
+
+private:
+	UTextureRenderTarget2D* RenderTest;
+	FFluidMarchDispatchParams FluidMarch;
+};

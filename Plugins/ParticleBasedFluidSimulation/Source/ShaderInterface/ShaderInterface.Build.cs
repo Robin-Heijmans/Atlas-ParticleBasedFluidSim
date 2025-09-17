@@ -1,25 +1,29 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
+using System.IO;
 
 public class ShaderInterface : ModuleRules
 {
 	public ShaderInterface(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
+
 		PublicIncludePaths.AddRange(
 			new string[] {
 				// ... add public include paths required here ...
 			}
 			);
-				
-		
+
+
+		var EngineDir = Path.GetFullPath(Target.RelativeEnginePath);
+
 		PrivateIncludePaths.AddRange(
 			new string[] {
-				// ... add other private include paths required here ...
-			}
-			);
+				// Required to find PostProcessing includes f.ex. screenpass.h & TranslucentPassResource.h
+				Path.Combine(EngineDir, "Source/Runtime/Renderer/Private"),
+				Path.Combine(EngineDir, "Source/Runtime/Renderer/Internal")
+			});
 			
 		
 		PublicDependencyModuleNames.AddRange(
@@ -29,6 +33,9 @@ public class ShaderInterface : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+            	"RenderCore",
+            	"Renderer",
+            	"RHI",
 				"MaterialShaderQualitySettings"
 				// ... add other public dependencies that you statically link with here ...
 			}
