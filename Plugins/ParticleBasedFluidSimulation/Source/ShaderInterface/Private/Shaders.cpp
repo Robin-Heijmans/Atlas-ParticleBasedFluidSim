@@ -32,7 +32,12 @@ namespace Shaders
     IMPLEMENT_GLOBAL_SHADER(FFluidMarchShader, "/Shaders/Compute/FluidMarch.usf", "Compute", SF_Compute);
 
     // ... add new implemenations here
-    
+
+    namespace ShaderParameters
+    {
+
+        IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidUB, "FluidUB");
+    }
 }
 
 // Dispatch Functions ...
@@ -58,11 +63,6 @@ void FFluidMarchDispatchParams::Dispatch(FRDGBuilder& GraphBuilder)
         FRDGTextureRef TmpTexture = GraphBuilder.CreateTexture(Desc, TEXT("TanComputeShader_TempTexture"));
         FRDGTextureRef TargetTexture = RegisterExternalTexture(GraphBuilder, RenderTarget->GetRenderTargetTexture(), TEXT("TanComputeShader_Output"));
 
-        PassParameters->RenderTarget = GraphBuilder.CreateUAV(TmpTexture);
-        PassParameters->EyePos = EyePos;
-        PassParameters->BoundsPosition = BoundsPosition;
-        PassParameters->BoundsSize = BoundsSize;
-        PassParameters->View = View;
 
         auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(X, Y, Z), FComputeShaderUtils::kGolden2DGroupSize);
         UE_LOG(LogTemp, Warning, TEXT("Adding DispatchPass TanFluid"));

@@ -9,13 +9,6 @@ public class ShaderInterface : ModuleRules
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicIncludePaths.AddRange(
-			new string[] {
-				// ... add public include paths required here ...
-			}
-			);
-
-
 		var EngineDir = Path.GetFullPath(Target.RelativeEnginePath);
 
 		PrivateIncludePaths.AddRange(
@@ -29,13 +22,13 @@ public class ShaderInterface : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core",
-				"Engine",
-				"Slate",
-				"SlateCore",
+            	"Core",
+            	"CoreUObject",
+            	"Engine",
             	"RenderCore",
             	"Renderer",
             	"RHI",
+            	"Projects",
 				"MaterialShaderQualitySettings"
 				// ... add other public dependencies that you statically link with here ...
 			}
@@ -54,27 +47,6 @@ public class ShaderInterface : ModuleRules
             	"RHI",
             	"Projects"
 				// ... add private dependencies that you statically link with here ...	
-			}
-			);
-
-		if (Target.bBuildEditor == true)
-		{
-			PrivateDependencyModuleNames.Add("TargetPlatform");
-
-			PrivateDependencyModuleNames.AddRange(
-                new string[] {
-                    "UnrealEd",
-                    "MaterialUtilities",
-                    "SlateCore",
-                    "Slate"
-                }
-            );
-		}
-		
-		DynamicallyLoadedModuleNames.AddRange(
-			new string[]
-			{
-				// ... add any modules that your module loads dynamically here ...
 			}
 			);
 	}
