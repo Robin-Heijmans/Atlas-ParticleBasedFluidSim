@@ -3,12 +3,9 @@
 #include "CoreMinimal.h"
 #include "RenderGraphUtils.h"
 #include "SceneViewExtension.h"
-#include "PostProcess/PostProcessMaterial.h"
-#include "DataDrivenShaderPlatformInfo.h"
 #include "SceneRendererInterface.h"
-
-#include "Engine/TextureRenderTarget2D.h"
-#include "Kismet/KismetRenderingLibrary.h"
+#include "DataDrivenShaderPlatformInfo.h"
+#include "PostProcess/PostProcessMaterial.h"
 
 #include "Shaders.h"
 
@@ -28,6 +25,7 @@ public:
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FPostProcessingInputs& Inputs) override;
 
 private:
-	UTextureRenderTarget2D* RenderTest;
 	FFluidMarchDispatchParams FluidMarch;
+
+	Shaders::ShaderParameters::FFluidUB FluidData;
 };

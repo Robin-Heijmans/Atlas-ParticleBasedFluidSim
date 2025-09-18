@@ -66,13 +66,17 @@ namespace Shaders
         // End()
         // ---------
 
+        BEGIN_UNIFORM_BUFFER_STRUCT(FFluidUB, )
+            SHADER_PARAMETER(FVector3f, BoundsPosition)
+            SHADER_PARAMETER(FVector3f, BoundsSize)
+        END_UNIFORM_BUFFER_STRUCT()
+
         BEGIN_SHADER_PARAMETER_STRUCT(FFluidMarchParams, )
-        	SHADER_PARAMETER(FVector3f, EyePos)
-        	SHADER_PARAMETER(FVector3f, BoundsPosition)
-        	SHADER_PARAMETER(FVector3f, BoundsSize)
-        	SHADER_PARAMETER(FMatrix44f, View)
-        	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, RenderTarget)
-        
+            SHADER_PARAMETER_STRUCT_REF(ShaderParameters::FFluidUB, Fluid)
+            SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
+    		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SceneColor)
+            SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, Target)
+
         END_SHADER_PARAMETER_STRUCT()
     } // namespace ShaderParameterss
 
@@ -85,25 +89,25 @@ namespace Shaders
     // ---------
 
     // This class carries our parameter declarations and acts as the bridge between cpp and HLSL.
-    class SHADERINTERFACE_API FFluidMarchShader : public FGlobalShader
+    class FFluidMarchShader : public FGlobalShader
     {
     public:
     	DECLARE_GLOBAL_SHADER(FFluidMarchShader);
     	SHADER_USE_PARAMETER_STRUCT(FFluidMarchShader, FGlobalShader);
+
     	using FParameters = ShaderParameters::FFluidMarchParams;
+
+        // Basic shader initialization
+        static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+            return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+        }
 
     	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
     	{
-    		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
-
-            #define NUM_THREADS_ComputeShader_X 32
-            #define NUM_THREADS_ComputeShader_Y 32
-            #define NUM_THREADS_ComputeShader_Z 1
-    		OutEnvironment.SetDefine(TEXT("THREADS_X"), NUM_THREADS_ComputeShader_X);
-    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), NUM_THREADS_ComputeShader_Y);
-    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), NUM_THREADS_ComputeShader_Z);
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 32);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
     	}
-    private:
     };
 
 } // namespace Shaders

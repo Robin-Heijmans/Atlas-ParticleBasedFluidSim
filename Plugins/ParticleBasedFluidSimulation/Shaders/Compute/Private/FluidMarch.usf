@@ -1,14 +1,19 @@
 #include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/Common.ush"
 
+struct FFluidUB {
+    // Volume Data
+    float3 BoundsPosition;
+    float3 BoundsSize;
+    
+};
 
-float3 EyePos;				//12 | 
-// Assuming this is a rect
-float3 BoundsPosition;		//12 | 28
-float3 BoundsSize;			//12 | 40
-float4x4 View;				//64 | 112
+ConstantBuffer<FFluidUB> FluidUB;
 
-RWTexture2D<float3> RenderTarget;
+Texture2D<float3> SceneColor;
+RWTexture2D<float4> Target;
 
+/*
 // this is wrong but only placeholder
 float3 GetPrimaryDirection(float2 uv, float aspect)
 {
@@ -33,16 +38,16 @@ float3 GetPrimaryDirection(float2 uv, float aspect)
 
 	return normalize(P - EyePos);
 }
-
+*/
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void Compute(
 	uint3 DispatchThreadId : SV_DispatchThreadID,
 	uint GroupIndex : SV_GroupIndex )
 {
-    float Aspect = float(THREADS_X) / float(THREADS_Y);
+    //float Aspect = float(THREADS_X) / float(THREADS_Y);
     float2 ScreenUV = float2(float(DispatchThreadId.x) / float(THREADS_X), float(DispatchThreadId.y) / float(THREADS_Y));
-    float3 dir = GetPrimaryDirection(ScreenUV, Aspect);
+    //float3 dir = GetPrimaryDirection(ScreenUV, Aspect);
 
 	
-	RenderTarget[DispatchThreadId.xy] = dir;
+	Target[DispatchThreadId.xy] = float4(ScreenUV.x, ScreenUV.y, 1.f, 1.f);
 }
