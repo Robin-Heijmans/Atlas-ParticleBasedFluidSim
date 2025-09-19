@@ -1,14 +1,14 @@
 #include "/Engine/Public/Platform.ush"
 #include "/Engine/Private/Common.ush"
 
-struct FFluidUB {
+struct FFluidVolume {
     // Volume Data
     float3 BoundsPosition;
     float3 BoundsSize;
     
 };
 
-ConstantBuffer<FFluidUB> FluidUB;
+ConstantBuffer<FFluidVolume> FluidVolume;
 
 Texture2D<float3> SceneColor;
 RWTexture2D<float3> Target;
