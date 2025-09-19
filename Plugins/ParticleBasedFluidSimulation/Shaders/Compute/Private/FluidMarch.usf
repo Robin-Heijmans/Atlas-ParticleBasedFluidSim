@@ -11,7 +11,7 @@ struct FFluidUB {
 ConstantBuffer<FFluidUB> FluidUB;
 
 Texture2D<float3> SceneColor;
-RWTexture2D<float4> Target;
+RWTexture2D<float3> Target;
 
 /*
 // this is wrong but only placeholder
@@ -49,5 +49,5 @@ void Compute(
     //float3 dir = GetPrimaryDirection(ScreenUV, Aspect);
 
 	
-	Target[DispatchThreadId.xy] = float4(ScreenUV.x, ScreenUV.y, 1.f, 1.f);
+	Target[DispatchThreadId.xy] = float3(ScreenUV.x, ScreenUV.y, 0.0) + SceneColor[DispatchThreadId.xy];
 }

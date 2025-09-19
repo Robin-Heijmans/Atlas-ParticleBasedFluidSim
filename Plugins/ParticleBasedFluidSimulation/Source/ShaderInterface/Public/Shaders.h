@@ -69,9 +69,9 @@ namespace Shaders
         BEGIN_UNIFORM_BUFFER_STRUCT(FFluidUB, )
             SHADER_PARAMETER(FVector3f, BoundsPosition)
             SHADER_PARAMETER(FVector3f, BoundsSize)
-        END_UNIFORM_BUFFER_STRUCT()
-
-        BEGIN_SHADER_PARAMETER_STRUCT(FFluidMarchParams, )
+            END_UNIFORM_BUFFER_STRUCT()
+            
+            BEGIN_SHADER_PARAMETER_STRUCT(FFluidMarchParams, )
             SHADER_PARAMETER_STRUCT_REF(ShaderParameters::FFluidUB, Fluid)
             SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
     		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SceneColor)

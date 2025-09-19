@@ -43,7 +43,6 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
 	FRDGTexture* SceneColor = Inputs.SceneTextures->GetContents()->SceneColorTexture;
 	const FIntPoint ViewSize = SceneColor->Desc.Extent;
 
-
     RDG_EVENT_SCOPE(GraphBuilder, "TanComputeShader");
 
     FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(InView.Family->GetFeatureLevel());
@@ -69,8 +68,6 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     PassParameters->View = InView.ViewUniformBuffer;
 
     const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, FComputeShaderUtils::kGolden2DGroupSize);
-    UE_LOG(LogTemp, Warning, TEXT("Adding DispatchPass TanFluid"));
-
     
     TShaderMapRef<Shaders::FFluidMarchShader> ComputeShader(GlobalShaderMap);
 
@@ -83,6 +80,5 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
 
     AddCopyTexturePass(GraphBuilder, OutputTexture, SceneColor);
 
-    UE_LOG(LogTemp, Warning, TEXT("please dipatch, im dying here :{"));
-    GraphBuilder.Execute();
+    //GraphBuilder.Execute();
 }
