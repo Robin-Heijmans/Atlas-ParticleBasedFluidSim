@@ -37,22 +37,48 @@ namespace Shaders
 
 // Global Shader Buffers
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolume, "FluidVolume");
+IMPLEMENT_UNIFORM_BUFFER_STRUCT(FParticles, "FluidParticles");
 
 
 // Dispatch Functions ...
-void FGenerateDensityMapDispatchParams::Dispatch(FRDGBuilder& GraphBuilder)
+void FParticleSimulationDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FParticles& Particles)
 {
-    // UwU
-    UE_LOG(LogTemp, Warning, TEXT("The compute shader has a problem."));
+    RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation");
+
+    Shaders::FParticleSimulationShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FParticleSimulationShader::FParameters>();
+    PassParameters->Particles = TUniformBufferRef<FParticles>::CreateUniformBufferImmediate(Particles, EUniformBufferUsage::UniformBuffer_SingleFrame);
+
+    const FIntVector DispatchCount(1,1,1);
+    TShaderMapRef<Shaders::FParticleSimulationShader> ComputeShader(GlobalShaderMap);
+
+    FComputeShaderUtils::AddPass(
+        GraphBuilder,
+        RDG_EVENT_NAME("Execute ParticleSimulation"), 
+        ComputeShader,
+        PassParameters,
+        DispatchCount);
 }
 
-void FSimulateParticlesDispatchParams::Dispatch(FRDGBuilder& GraphBuilder)
+void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FParticles& Particles)
 {
-    // UwU
-    UE_LOG(LogTemp, Warning, TEXT("The compute shader has a problem."));
+    RDG_EVENT_SCOPE(GraphBuilder, "RenderPrep");
+
+    Shaders::FRenderPrepShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FRenderPrepShader::FParameters>();
+    PassParameters->Particles = TUniformBufferRef<FParticles>::CreateUniformBufferImmediate(Particles, EUniformBufferUsage::UniformBuffer_SingleFrame);
+
+    const FIntVector DispatchCount(1,1,1);
+    TShaderMapRef<Shaders::FRenderPrepShader> ComputeShader(GlobalShaderMap);
+
+    FComputeShaderUtils::AddPass(
+        GraphBuilder,
+        RDG_EVENT_NAME("Execute RenderPrep"),
+        ComputeShader,
+        PassParameters,
+        DispatchCount);
 }
 
-void FFluidMarchDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FSceneView& InView, FRDGTexture* SceneColor)  
+
+void FFluidMarchDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FSceneView& InView, FRDGTexture* SceneColor, FFLuidVolume& Volume)  
 {
     RDG_EVENT_SCOPE(GraphBuilder, "FluidMarch");
  

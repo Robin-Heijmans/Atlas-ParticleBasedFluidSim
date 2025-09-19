@@ -28,8 +28,8 @@ FFluidExtention::FFluidExtention(const FAutoRegister& AutoRegister) : FSceneView
 void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily) {
 
     // Default Params for now
-    FluidMarch.Volume.BoundsPosition = FVector3f(0,0,0);
-    FluidMarch.Volume.BoundsSize = FVector3f(1,1,1);
+    FluidVolume.BoundsPosition = FVector3f(0.5,0,0.5);
+    FluidVolume.BoundsSize = FVector3f(1,1,1);
 }
 
 void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FPostProcessingInputs& Inputs) {
@@ -40,8 +40,17 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
 	const FSceneViewFamily& ViewFamily = *InView.Family;    
 	FRDGTexture* SceneColor = Inputs.SceneTextures->GetContents()->SceneColorTexture;
 
-    
+    // Get ShaderMap
     FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(InView.Family->GetFeatureLevel());
+
+    // Update Uniform Buffers
+    // Particles
+	FRDGBufferDesc desc = FRDGBufferDesc::CreateStructuredDesc(sizeof(float), 16/*constant for now, please change later*/);
+	FRDGBufferRef buffer = GraphBuilder.CreateBuffer(desc, TEXT("PositionBuffer Test"));
+
+    const FVector3f Positions[16]{FVector3f(1,-1,1)};
+	GraphBuilder.QueueBufferUpload(buffer, Positions, 16 * sizeof(float));
+	FluidParticles.Position = GraphBuilder.CreateSRV(buffer);
 
     // -- General Pipeline --
     // 1. Physics Simulation
@@ -49,12 +58,12 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     // 3. Dispatch Fluid March / Rendering
 
     // Physics Simulation
-    PhysicsSimulation.Dispatch(GraphBuilder);
+    ParticleSimulation.Dispatch(GraphBuilder, GlobalShaderMap, FluidParticles);
 
     // Render Prep
-    RenderPrep.Dispatch(GraphBuilder);
+    RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, FluidParticles);
 
     // Fluid March
-    FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, InView, SceneColor);
+    FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, InView, SceneColor, FluidVolume);
 
 }

@@ -25,8 +25,12 @@ public:
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FPostProcessingInputs& Inputs) override;
 
 private:
-	FSimulateParticlesDispatchParams PhysicsSimulation;
-	FGenerateDensityMapDispatchParams RenderPrep;
+	// Shader 'Dispatchers'
+	FParticleSimulationDispatchParams ParticleSimulation;
+	FRenderPrepDispatchParams RenderPrep;
 	FFluidMarchDispatchParams FluidMarch;
 
+	// Uniform Buffers
+	FFluidVolume FluidVolume;
+	FParticles FluidParticles;
 };

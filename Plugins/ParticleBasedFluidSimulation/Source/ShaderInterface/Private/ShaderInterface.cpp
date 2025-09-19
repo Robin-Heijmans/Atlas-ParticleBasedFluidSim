@@ -19,6 +19,8 @@ void FShaderInterfaceModule::StartupModule()
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 	FString PluginShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("ParticleBasedFluidSimulation"))->GetBaseDir(), TEXT("Shaders/Compute/Private"));
 	AddShaderSourceDirectoryMapping(TEXT("/Shaders/Compute"), PluginShaderDir);
+	PluginShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("ParticleBasedFluidSimulation"))->GetBaseDir(), TEXT("Shaders/Compute/Public"));
+	AddShaderSourceDirectoryMapping(TEXT("/Shaders/Compute/Headers"), PluginShaderDir);
 }
 
 void FShaderInterfaceModule::ShutdownModule()
