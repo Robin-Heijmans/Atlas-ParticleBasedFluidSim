@@ -49,8 +49,10 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     // 3. Dispatch Fluid March / Rendering
 
     // Physics Simulation
+    PhysicsSimulation.Dispatch(GraphBuilder);
 
     // Render Prep
+    RenderPrep.Dispatch(GraphBuilder);
 
     // Fluid March
     FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, InView, SceneColor);

@@ -1,0 +1,9 @@
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void Compute(
+	uint3 DispatchThreadId : SV_DispatchThreadID,
+	uint GroupIndex : SV_GroupIndex )
+{
+
+    
+}
