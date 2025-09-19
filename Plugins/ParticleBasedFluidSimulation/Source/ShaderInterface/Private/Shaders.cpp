@@ -28,16 +28,30 @@ namespace Shaders
 
     // Implementations ... 
     
-    //                      ShaderType      ShaderPath                  Shader function name    Type
-    IMPLEMENT_GLOBAL_SHADER(FFluidMarchShader, "/Shaders/Compute/FluidMarch.usf", "Compute", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FParticleSimulationShader,  "/Shaders/Compute/ParticleSim.usf", "Compute", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FRenderPrepShader,          "/Shaders/Compute/RenderPrep.usf", "Compute", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMarchShader,          "/Shaders/Compute/FluidMarch.usf", "Compute", SF_Compute);
 
     // ... add new implemenations here
 }
 
-
+// Global Shader Buffers
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolume, "FluidVolume");
 
+
 // Dispatch Functions ...
+void FGenerateDensityMapDispatchParams::Dispatch(FRDGBuilder& GraphBuilder)
+{
+    // UwU
+    UE_LOG(LogTemp, Warning, TEXT("The compute shader has a problem."));
+}
+
+void FSimulateParticlesDispatchParams::Dispatch(FRDGBuilder& GraphBuilder)
+{
+    // UwU
+    UE_LOG(LogTemp, Warning, TEXT("The compute shader has a problem."));
+}
+
 void FFluidMarchDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FSceneView& InView, FRDGTexture* SceneColor)  
 {
     RDG_EVENT_SCOPE(GraphBuilder, "FluidMarch");

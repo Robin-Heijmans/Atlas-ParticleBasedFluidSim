@@ -129,7 +129,48 @@ namespace Shaders
     // ... using FParameters = F*ShaderName*ShaderParams
     // ---------
 
-    // This class carries our parameter declarations and acts as the bridge between cpp and HLSL.
+    class FParticleSimulationShader : public FGlobalShader
+    {
+    public:
+    	DECLARE_GLOBAL_SHADER(FParticleSimulationShader);
+    	SHADER_USE_PARAMETER_STRUCT(FParticleSimulationShader, FGlobalShader);
+
+    	using FParameters = FSimulateParticlesDispatchParams;
+
+        // Basic shader initialization
+        static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+            return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+        }
+
+    	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+    	{
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+    	}
+    };
+
+    class FRenderPrepShader : public FGlobalShader
+    {
+    public:
+    	DECLARE_GLOBAL_SHADER(FRenderPrepShader);
+    	SHADER_USE_PARAMETER_STRUCT(FRenderPrepShader, FGlobalShader);
+
+    	using FParameters = FGenerateDensityMapDispatchParams;
+
+        // Basic shader initialization
+        static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+            return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+        }
+
+    	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+    	{
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+    	}
+    };
+
     class FFluidMarchShader : public FGlobalShader
     {
     public:
