@@ -1,5 +1,3 @@
-static const float PI = 3.1415926;
-
 float SmoothingKernel(float distance, float radius) {
     float volume =  15 / (2 * PI * pow(radius, 5));
     float value = radius-distance;

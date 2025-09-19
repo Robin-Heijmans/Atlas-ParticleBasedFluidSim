@@ -32,5 +32,5 @@ private:
 
 	// Uniform Buffers
 	FFluidVolume FluidVolume;
-	FParticles FluidParticles;
+	FParticles* FluidParticles;
 };

@@ -42,5 +42,5 @@ uint HashCell(int3 cellCoords) {
 }
 
 uint GetKeyFromHash(uint hash, uint tableSize) {
-    return Hash % tableSize;
+    return hash % tableSize;
 }

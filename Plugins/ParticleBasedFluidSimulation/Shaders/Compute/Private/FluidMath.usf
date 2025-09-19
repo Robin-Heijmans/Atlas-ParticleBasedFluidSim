@@ -1,5 +1,4 @@
 #include "/Engine/Private/Common.ush"
-#include "/Engine/Private/ComputeCommon.ush"
 #include "SpatialHash3D.ush"
 #include "SmoothingKernels.ush"
 
@@ -14,16 +13,19 @@ RWStructuredBuffer<uint3> SpatialIndices;
 RWStructuredBuffer<uint> SpatialOffsets;
 
 // Settings
-const float PressureAmplifier;
-const float TargetDensity;
-const float CollisionDampening;
-const float SmoothingRadius;
-const float ViscosityStrength;
-const float DeltaTime;
-const float Gravity;
-const uint NumParticles;
-const float3 MaxBounds;
-const float3 MinBounds;
+cbuffer Params
+{
+    float PressureAmplifier;
+    float TargetDensity;
+    float CollisionDampening;
+    float SmoothingRadius;
+    float ViscosityStrength;
+    float DeltaTime;
+    float Gravity;
+    uint NumParticles;
+    float3 MaxBounds;
+    float3 MinBounds;
+};
 
 float ConvertDensityToPressure(float Density) {
     return (Density - TargetDensity) * PressureAmplifier;
@@ -62,7 +64,7 @@ void UpdateSpatialLookup (uint3 id : SV_DispatchThreadID) {
     int3 cell = PositionToCellCoords(PredictedPositions[index], SmoothingRadius);
     uint hash = HashCell(cell);
     uint key = GetKeyFromHash(hash, NumParticles);
-    SpatialIndices[id.x] = uint(index, hash, key);
+    SpatialIndices[id.x] = uint3(index, hash, key);
 }
 
 [numthreads(NumThreads,1,1)]
@@ -75,17 +77,17 @@ void CalculateDensity (uint3 id : SV_DispatchThreadID) {
 
     float density = 0.0f;
 
-    for (int cellOffset = 0; i < 27; i++) {
+    for (int cellOffset = 0; cellOffset < 27; cellOffset++) {
         uint hash = HashCell(centreCoords + offsets3D[cellOffset]);
         uint key = GetKeyFromHash(hash, NumParticles);
         uint currIndex = SpatialOffsets[key];
 
         for (int i = currIndex; i < NumParticles; i++) {
-            uint3 indexData = spatialIndices[currIndex];
+            uint3 indexData = SpatialIndices[currIndex];
 
             if (indexData[2] != key) break;
             if (indexData[1] != hash) continue;
-            particleIndex = indexData[0];
+            uint particleIndex = indexData[0];
             float3 offset = PredictedPositions[particleIndex] - pos;
             float sqrDistance = dot(offset, offset);
             if (sqrDistance <= sqrRadius) {
@@ -107,19 +109,19 @@ void CalculatePressureForce (uint3 id : SV_DispatchThreadID) {
 
     float density = Densities[id.x];
     float pressure = ConvertDensityToPressure(density);
-    float3 pressureForce = float3(0.0f);
+    float3 pressureForce = float3(0.0f, 0.0f, 0.0f);
 
-    for (int cellOffset = 0; i < 27; i++) {
+    for (int cellOffset = 0; cellOffset < 27; cellOffset++) {
         uint hash = HashCell(centreCoords + offsets3D[cellOffset]);
         uint key = GetKeyFromHash(hash, NumParticles);
         uint currIndex = SpatialOffsets[key];
 
         for (int i = currIndex; i < NumParticles; i++) {
-            uint3 indexData = spatialIndices[currIndex];
+            uint3 indexData = SpatialIndices[currIndex];
 
             if (indexData[2] != key) break;
             if (indexData[1] != hash) continue;
-            particleIndex = indexData[0];
+            uint particleIndex = indexData[0];
             float3 offset = PredictedPositions[particleIndex] - pos;
             float sqrDistance = dot(offset, offset);
             if (sqrDistance <= sqrRadius) {
@@ -143,20 +145,20 @@ void CalculateViscosityForce (uint3 id : SV_DispatchThreadID) {
     int3 centreCoords = PositionToCellCoords(pos, SmoothingRadius);
     float sqrRadius = SmoothingRadius * SmoothingRadius;
 
-    float viscosityForce = float3(0.0f);
+    float3 viscosityForce = float3(0.0f, 0.0f, 0.0f);
     float3 velocity = Velocities[id.x];
 
-    for (int cellOffset = 0; i < 27; i++) {
+    for (int cellOffset = 0; cellOffset < 27; cellOffset++) {
         uint hash = HashCell(centreCoords + offsets3D[cellOffset]);
         uint key = GetKeyFromHash(hash, NumParticles);
         uint currIndex = SpatialOffsets[key];
 
         for (int i = currIndex; i < NumParticles; i++) {
-            uint3 indexData = spatialIndices[currIndex];
+            uint3 indexData = SpatialIndices[currIndex];
 
             if (indexData[2] != key) break;
             if (indexData[1] != hash) continue;
-            particleIndex = indexData[0];
+            uint particleIndex = indexData[0];
             float3 offset = PredictedPositions[particleIndex] - pos;
             float sqrDistance = dot(offset, offset);
             if (sqrDistance <= sqrRadius) {

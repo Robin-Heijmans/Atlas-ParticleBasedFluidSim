@@ -28,9 +28,9 @@ namespace Shaders
 
     // Implementations ... 
     
-    IMPLEMENT_GLOBAL_SHADER(FParticleSimulationShader,  "/Shaders/Compute/ParticleSim.usf", "Compute", SF_Compute);
-    IMPLEMENT_GLOBAL_SHADER(FRenderPrepShader,          "/Shaders/Compute/RenderPrep.usf", "Compute", SF_Compute);
-    IMPLEMENT_GLOBAL_SHADER(FFluidMarchShader,          "/Shaders/Compute/FluidMarch.usf", "Compute", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FParticleSimulationShader,  "/Shaders/Compute/FluidMath.usf", "ExternalForces", SF_Compute);
+    //IMPLEMENT_GLOBAL_SHADER(FRenderPrepShader,          "/Shaders/Compute/RenderPrep.usf", "Compute", SF_Compute);
+    //IMPLEMENT_GLOBAL_SHADER(FFluidMarchShader,          "/Shaders/Compute/FluidMarch.usf", "Compute", SF_Compute);
 
     // ... add new implemenations here
 }
@@ -59,58 +59,58 @@ void FParticleSimulationDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlo
         DispatchCount);
 }
 
-void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FParticles& Particles)
-{
-    RDG_EVENT_SCOPE(GraphBuilder, "RenderPrep");
-
-    Shaders::FRenderPrepShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FRenderPrepShader::FParameters>();
-    PassParameters->Particles = TUniformBufferRef<FParticles>::CreateUniformBufferImmediate(Particles, EUniformBufferUsage::UniformBuffer_SingleFrame);
-
-    const FIntVector DispatchCount(1,1,1);
-    TShaderMapRef<Shaders::FRenderPrepShader> ComputeShader(GlobalShaderMap);
-
-    FComputeShaderUtils::AddPass(
-        GraphBuilder,
-        RDG_EVENT_NAME("Execute RenderPrep"),
-        ComputeShader,
-        PassParameters,
-        DispatchCount);
-}
-
-
-void FFluidMarchDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FSceneView& InView, FRDGTexture* SceneColor, FFLuidVolume& Volume)  
-{
-    RDG_EVENT_SCOPE(GraphBuilder, "FluidMarch");
- 
-    Shaders::FFluidMarchShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMarchShader::FParameters>();
-
-    FRDGTextureDesc OutputDesc {};
-    OutputDesc = SceneColor->Desc;
-    OutputDesc.Reset();
-    OutputDesc.Flags |= TexCreate_UAV;
-    OutputDesc.Flags &= ~(TexCreate_RenderTargetable | TexCreate_FastVRAM);
-    const FLinearColor ClearColor(0., 0., 0., 0.);
-    OutputDesc.ClearValue = FClearValueBinding(ClearColor);
-
-    const FRDGTextureRef OutputTexture = GraphBuilder.CreateTexture(OutputDesc, TEXT("TanFluidShader_Output"));
-
-    PassParameters->Target = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutputTexture));
-    PassParameters->Volume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(Volume, EUniformBufferUsage::UniformBuffer_SingleFrame);
-    PassParameters->SceneColor = SceneColor;
-    PassParameters->View = InView.ViewUniformBuffer;
-
-	const FIntPoint ViewSize = SceneColor->Desc.Extent;
-    const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, FComputeShaderUtils::kGolden2DGroupSize);
-    
-    TShaderMapRef<Shaders::FFluidMarchShader> ComputeShader(GlobalShaderMap);
-
-    FComputeShaderUtils::AddPass(
-        GraphBuilder,
-        RDG_EVENT_NAME("Execute TanComputeShader %dx%d", ViewSize.X, ViewSize.Y),
-        ComputeShader,
-        PassParameters,
-        DispatchCount);
-
-    AddCopyTexturePass(GraphBuilder, OutputTexture, SceneColor);
-
-}
+//void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FParticles Particles)
+//{
+//    RDG_EVENT_SCOPE(GraphBuilder, "RenderPrep");
+//
+//    Shaders::FRenderPrepShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FRenderPrepShader::FParameters>();
+//    PassParameters->Particles = TUniformBufferRef<FParticles>::CreateUniformBufferImmediate(Particles, EUniformBufferUsage::UniformBuffer_SingleFrame);
+//
+//    const FIntVector DispatchCount(1,1,1);
+//    TShaderMapRef<Shaders::FRenderPrepShader> ComputeShader(GlobalShaderMap);
+//
+//    FComputeShaderUtils::AddPass(
+//        GraphBuilder,
+//        RDG_EVENT_NAME("Execute RenderPrep"),
+//        ComputeShader,
+//        PassParameters,
+//        DispatchCount);
+//}
+//
+//
+//void FFluidMarchDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FSceneView& InView, FRDGTexture* SceneColor, FFluidVolume& Volume)  
+//{
+//    RDG_EVENT_SCOPE(GraphBuilder, "FluidMarch");
+// 
+//    Shaders::FFluidMarchShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMarchShader::FParameters>();
+//
+//    FRDGTextureDesc OutputDesc {};
+//    OutputDesc = SceneColor->Desc;
+//    OutputDesc.Reset();
+//    OutputDesc.Flags |= TexCreate_UAV;
+//    OutputDesc.Flags &= ~(TexCreate_RenderTargetable | TexCreate_FastVRAM);
+//    const FLinearColor ClearColor(0., 0., 0., 0.);
+//    OutputDesc.ClearValue = FClearValueBinding(ClearColor);
+//
+//    const FRDGTextureRef OutputTexture = GraphBuilder.CreateTexture(OutputDesc, TEXT("TanFluidShader_Output"));
+//
+//    PassParameters->Target = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutputTexture));
+//    PassParameters->Volume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(Volume, EUniformBufferUsage::UniformBuffer_SingleFrame);
+//    PassParameters->SceneColor = SceneColor;
+//    PassParameters->View = InView.ViewUniformBuffer;
+//
+//	const FIntPoint ViewSize = SceneColor->Desc.Extent;
+//    const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, FComputeShaderUtils::kGolden2DGroupSize);
+//    
+//    TShaderMapRef<Shaders::FFluidMarchShader> ComputeShader(GlobalShaderMap);
+//
+//    FComputeShaderUtils::AddPass(
+//        GraphBuilder,
+//        RDG_EVENT_NAME("Execute TanComputeShader %dx%d", ViewSize.X, ViewSize.Y),
+//        ComputeShader,
+//        PassParameters,
+//        DispatchCount);
+//
+//    AddCopyTexturePass(GraphBuilder, OutputTexture, SceneColor);
+//
+//}

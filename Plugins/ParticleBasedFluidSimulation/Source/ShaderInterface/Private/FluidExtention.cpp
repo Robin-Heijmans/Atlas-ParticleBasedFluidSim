@@ -50,7 +50,8 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
 
     const FVector3f Positions[16]{FVector3f(1,-1,1)};
 	GraphBuilder.QueueBufferUpload(buffer, Positions, 16 * sizeof(float));
-	FluidParticles.Position = GraphBuilder.CreateSRV(buffer);
+    FluidParticles = GraphBuilder.AllocParameters<FParticles>();
+	FluidParticles->Positions = GraphBuilder.CreateUAV(buffer)->GetRHI();
 
     // -- General Pipeline --
     // 1. Physics Simulation
@@ -58,12 +59,12 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     // 3. Dispatch Fluid March / Rendering
 
     // Physics Simulation
-    ParticleSimulation.Dispatch(GraphBuilder, GlobalShaderMap, FluidParticles);
+    //ParticleSimulation.Dispatch(GraphBuilder, GlobalShaderMap, FluidParticles);
 
     // Render Prep
-    RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, FluidParticles);
+    //RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, FluidParticles);
 
     // Fluid March
-    FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, InView, SceneColor, FluidVolume);
+    //FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, InView, SceneColor, FluidVolume);
 
 }
