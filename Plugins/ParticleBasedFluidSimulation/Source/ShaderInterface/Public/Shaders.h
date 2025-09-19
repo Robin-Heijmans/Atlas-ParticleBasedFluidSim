@@ -22,18 +22,37 @@
 // End()
 // ---------
 
+// -- Common.ush --
+// These should be owned by the scene view extention, not the DispatchParams themselves as they are shared across shaders
 // Fluid Volume UB
 BEGIN_UNIFORM_BUFFER_STRUCT(FFluidVolume, )
     SHADER_PARAMETER(FVector3f, BoundsPosition)
     SHADER_PARAMETER(FVector3f, BoundsSize)
 END_UNIFORM_BUFFER_STRUCT()
+
+BEGIN_UNIFORM_BUFFER_STRUCT(FParticles, )
+    SHADER_PARAMETER_RDG_BUFFER_SRV(Buffer<FVector3f>, Position)
+END_UNIFORM_BUFFER_STRUCT()
     
+// -- .usf files --
+// PhysicsSim
+BEGIN_SHADER_PARAMETER_STRUCT(FParticleSimulationParams, )
+    SHADER_PARAMETER_STRUCT_REF(FParticles, Particles)
+
+END_SHADER_PARAMETER_STRUCT()
+
+// RenderPrep
+BEGIN_SHADER_PARAMETER_STRUCT(FRenderPrepParams, )
+    SHADER_PARAMETER_STRUCT_REF(FParticles, Particles)
+
+END_SHADER_PARAMETER_STRUCT()
+
 // FluidMarch
 BEGIN_SHADER_PARAMETER_STRUCT(FFluidMarchParams, )
     SHADER_PARAMETER_STRUCT_REF(FFluidVolume, Volume)
     SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
     SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SceneColor)
-    SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, Target)
+    SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float3>, Target)
 
 END_SHADER_PARAMETER_STRUCT()
 
@@ -61,8 +80,6 @@ public:
     int Y = 1;
     int Z = 1;
 
-    FFluidVolume Volume;
-
     FFluidMarchDispatchParams() = default;
     FFluidMarchDispatchParams(int x, int y, int z)
         : X(x)
@@ -70,12 +87,12 @@ public:
         , Z(z)
     {
     }
-    void Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FSceneView& InView, FRDGTexture* SceneColor);
+    void Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FSceneView& InView, FRDGTexture* SceneColor, FFLuidVolume& Volume);
 };
 
 // GenerateDensityMap
 USTRUCT(BlueprintType)
-struct SHADERINTERFACE_API FGenerateDensityMapDispatchParams
+struct SHADERINTERFACE_API FRenderPrepDispatchParams
 {	
 GENERATED_BODY()
     public:
@@ -83,22 +100,20 @@ GENERATED_BODY()
     int Y = 1;
     int Z = 1;
 
-    // 3d Texture for read/write ops
-
-    FGenerateDensityMapDispatchParams() = default;
-    FGenerateDensityMapDispatchParams(int x, int y, int z)
+    FRenderPrepDispatchParams() = default;
+    FRenderPrepDispatchParams(int x, int y, int z)
         : X(x)
         , Y(y)
         , Z(z)
     {
     }
 
-    void Dispatch(FRDGBuilder& GraphBuilder);
+    void Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FParticles Particles);
 };
 
 // SimulateParticles
 USTRUCT(BlueprintType)
-struct SHADERINTERFACE_API FSimulateParticlesDispatchParams
+struct SHADERINTERFACE_API FParticleSimulationDispatchParams
 {	
 GENERATED_BODY()
     public:
@@ -106,17 +121,15 @@ GENERATED_BODY()
     int Y = 1;
     int Z = 1;
 
-    // Particle data, buffers for position, velocity, etc.
-
-    FSimulateParticlesDispatchParams() = default;
-    FSimulateParticlesDispatchParams(int x, int y, int z)
+    FParticleSimulationDispatchParams() = default;
+    FParticleSimulationDispatchParams(int x, int y, int z)
         : X(x)
         , Y(y)
         , Z(z)
     {
     }
 
-    void Dispatch(FRDGBuilder& GraphBuilder);
+    void Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FParticles& Particles);
 };
 
 
@@ -135,7 +148,7 @@ namespace Shaders
     	DECLARE_GLOBAL_SHADER(FParticleSimulationShader);
     	SHADER_USE_PARAMETER_STRUCT(FParticleSimulationShader, FGlobalShader);
 
-    	using FParameters = FSimulateParticlesDispatchParams;
+    	using FParameters = FParticleSimulationParams;
 
         // Basic shader initialization
         static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
@@ -156,7 +169,7 @@ namespace Shaders
     	DECLARE_GLOBAL_SHADER(FRenderPrepShader);
     	SHADER_USE_PARAMETER_STRUCT(FRenderPrepShader, FGlobalShader);
 
-    	using FParameters = FGenerateDensityMapDispatchParams;
+    	using FParameters = FRenderPrepParams;
 
         // Basic shader initialization
         static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
