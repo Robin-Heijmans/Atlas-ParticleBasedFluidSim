@@ -32,67 +32,45 @@ namespace Shaders
     IMPLEMENT_GLOBAL_SHADER(FFluidMarchShader, "/Shaders/Compute/FluidMarch.usf", "Compute", SF_Compute);
 
     // ... add new implemenations here
-
-    namespace ShaderParameters
-    {
-
-        IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidUB, "FluidUB");
-    }
 }
 
+
+IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolume, "FluidVolume");
+
 // Dispatch Functions ...
-void FFluidMarchDispatchParams::Dispatch(FRDGBuilder& GraphBuilder)  
+void FFluidMarchDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FSceneView& InView, FRDGTexture* SceneColor)  
 {
-    DECLARE_GPU_STAT(ComputeShader)
-    RDG_EVENT_SCOPE(GraphBuilder, "TanComputeShader");
-    RDG_GPU_STAT_SCOPE(GraphBuilder, ComputeShader);
+    RDG_EVENT_SCOPE(GraphBuilder, "FluidMarch");
+ 
+    Shaders::FFluidMarchShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMarchShader::FParameters>();
 
-    TShaderMapRef<Shaders::FFluidMarchShader> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+    FRDGTextureDesc OutputDesc {};
+    OutputDesc = SceneColor->Desc;
+    OutputDesc.Reset();
+    OutputDesc.Flags |= TexCreate_UAV;
+    OutputDesc.Flags &= ~(TexCreate_RenderTargetable | TexCreate_FastVRAM);
+    const FLinearColor ClearColor(0., 0., 0., 0.);
+    OutputDesc.ClearValue = FClearValueBinding(ClearColor);
 
-    bool bIsShaderValid = ComputeShader.IsValid();
-    if (bIsShaderValid) 
-    {
+    const FRDGTextureRef OutputTexture = GraphBuilder.CreateTexture(OutputDesc, TEXT("TanFluidShader_Output"));
 
-        Shaders::FFluidMarchShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMarchShader::FParameters>();
+    PassParameters->Target = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutputTexture));
+    PassParameters->Volume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(Volume, EUniformBufferUsage::UniformBuffer_SingleFrame);
+    PassParameters->SceneColor = SceneColor;
+    PassParameters->View = InView.ViewUniformBuffer;
 
-        FRDGTextureDesc Desc = FRDGTextureDesc::Create2D(RenderTarget->GetSizeXY(), 
-        PF_B8G8R8A8, 
-        FClearValueBinding::White, 
-        TexCreate_RenderTargetable | TexCreate_ShaderResource | TexCreate_UAV);
-
-        FRDGTextureRef TmpTexture = GraphBuilder.CreateTexture(Desc, TEXT("TanComputeShader_TempTexture"));
-        FRDGTextureRef TargetTexture = RegisterExternalTexture(GraphBuilder, RenderTarget->GetRenderTargetTexture(), TEXT("TanComputeShader_Output"));
-
-
-        auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(X, Y, Z), FComputeShaderUtils::kGolden2DGroupSize);
-        UE_LOG(LogTemp, Warning, TEXT("Adding DispatchPass TanFluid"));
-        GraphBuilder.AddPass(
-            RDG_EVENT_NAME("Execute TanComputeShader"),
-            PassParameters,
-            ERDGPassFlags::AsyncCompute,
-            [&PassParameters, ComputeShader, GroupCount](FRHIComputeCommandList& RHICmdList)
-        {
-            FComputeShaderUtils::Dispatch(RHICmdList, ComputeShader, *PassParameters, GroupCount);
-        });
-
-
-        // The copy will fail if we don't have matching formats, let's check and make sure we do.
-        if (TargetTexture->Desc.Format == PF_B8G8R8A8) 
-        {
-            AddCopyTexturePass(GraphBuilder, TmpTexture, TargetTexture, FRHICopyTextureInfo());
-        } 
-        else 
-        {
-            #if WITH_EDITOR
-                GEngine->AddOnScreenDebugMessage((uint64)42145125184, 6.f, FColor::Red, FString(TEXT("The provided render target has an incompatible format (Please change the RT format to: RGBA8).")));
-            #endif
-        }
+	const FIntPoint ViewSize = SceneColor->Desc.Extent;
+    const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, FComputeShaderUtils::kGolden2DGroupSize);
     
-    } 
-    else 
-    {
-        UE_LOG(LogTemp, Warning, TEXT("The compute shader has a problem."));
-    }
-    UE_LOG(LogTemp, Warning, TEXT("Dispatch you fucking bitch"));
-    GraphBuilder.Execute();
+    TShaderMapRef<Shaders::FFluidMarchShader> ComputeShader(GlobalShaderMap);
+
+    FComputeShaderUtils::AddPass(
+        GraphBuilder,
+        RDG_EVENT_NAME("Execute TanComputeShader %dx%d", ViewSize.X, ViewSize.Y),
+        ComputeShader,
+        PassParameters,
+        DispatchCount);
+
+    AddCopyTexturePass(GraphBuilder, OutputTexture, SceneColor);
+
 }

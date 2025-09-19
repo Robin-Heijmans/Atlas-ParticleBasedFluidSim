@@ -28,10 +28,8 @@ FFluidExtention::FFluidExtention(const FAutoRegister& AutoRegister) : FSceneView
 void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily) {
 
     // Default Params for now
-    FluidMarch.EyePos = FVector3f(1,1,1);
-    FluidMarch.BoundsPosition = FVector3f(0,0,0);
-    FluidMarch.BoundsSize = FVector3f(1,1,1);
-    FluidMarch.View = FMatrix44f();
+    FluidMarch.Volume.BoundsPosition = FVector3f(0,0,0);
+    FluidMarch.Volume.BoundsSize = FVector3f(1,1,1);
 }
 
 void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FPostProcessingInputs& Inputs) {
@@ -41,44 +39,20 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     // Get SceneColor
 	const FSceneViewFamily& ViewFamily = *InView.Family;    
 	FRDGTexture* SceneColor = Inputs.SceneTextures->GetContents()->SceneColorTexture;
-	const FIntPoint ViewSize = SceneColor->Desc.Extent;
 
-    RDG_EVENT_SCOPE(GraphBuilder, "TanComputeShader");
-
+    
     FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(InView.Family->GetFeatureLevel());
 
-    Shaders::FFluidMarchShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMarchShader::FParameters>();
+    // -- General Pipeline --
+    // 1. Physics Simulation
+    // 2. Generate Density Map / Render Prep
+    // 3. Dispatch Fluid March / Rendering
 
-    FRDGTextureDesc OutputDesc {};
-    OutputDesc = SceneColor->Desc;
-    OutputDesc.Reset();
-    OutputDesc.Flags |= TexCreate_UAV;
-    OutputDesc.Flags &= ~(TexCreate_RenderTargetable | TexCreate_FastVRAM);
-    const FLinearColor ClearColor(0., 0., 0., 0.);
-    OutputDesc.ClearValue = FClearValueBinding(ClearColor);
+    // Physics Simulation
 
-    const FRDGTextureRef OutputTexture = GraphBuilder.CreateTexture(OutputDesc, TEXT("TanFluidShader_Output"));
+    // Render Prep
 
-    FluidData.BoundsPosition = FVector3f(0,0,0);
-    FluidData.BoundsSize = FVector3f(1,1,1);
-    
-    PassParameters->Target = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutputTexture));
-    PassParameters->Fluid = TUniformBufferRef<Shaders::ShaderParameters::FFluidUB>::CreateUniformBufferImmediate(FluidData, EUniformBufferUsage::UniformBuffer_SingleFrame);
-    PassParameters->SceneColor = SceneColor;
-    PassParameters->View = InView.ViewUniformBuffer;
+    // Fluid March
+    FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, InView, SceneColor);
 
-    const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, FComputeShaderUtils::kGolden2DGroupSize);
-    
-    TShaderMapRef<Shaders::FFluidMarchShader> ComputeShader(GlobalShaderMap);
-
-    FComputeShaderUtils::AddPass(
-        GraphBuilder,
-        RDG_EVENT_NAME("Execute TanComputeShader %dx%d", ViewSize.X, ViewSize.Y),
-        ComputeShader,
-        PassParameters,
-        DispatchCount);
-
-    AddCopyTexturePass(GraphBuilder, OutputTexture, SceneColor);
-
-    //GraphBuilder.Execute();
 }
