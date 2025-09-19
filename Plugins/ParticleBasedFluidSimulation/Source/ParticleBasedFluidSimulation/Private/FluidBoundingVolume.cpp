@@ -48,8 +48,6 @@ void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
         InitializeParticles();
         UpdateInstances();
     }
-    // creating rendertarget texture for the compute shader test
-    RenderTest = UKismetRenderingLibrary::CreateRenderTarget2D(this, 1920, 1080, RTF_RGBA8);
 }
 
 void AFluidBoundingVolume::InitializeParticles()
@@ -134,7 +132,6 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
 	}
 	
 	UpdateInstances();
-    TestDispatch();
 }
 
 void AFluidBoundingVolume::UpdateInstances()
@@ -178,32 +175,6 @@ FLinearColor AFluidBoundingVolume::VelocityToColor(const float& Speed) {
         FLinearColor EndColor(1.f, 0.f, 0.f);
         return FLinearColor::LerpUsingHSV(MidColor, EndColor, LocalAlpha);
     }
-}
-
-void AFluidBoundingVolume::TestDispatch()
-{
-    FFluidMarchDispatchParams Params(RenderTest->SizeX, RenderTest->SizeY, 1);
-
-    // Get View Matrix
-    FMinimalViewInfo ViewInfo;
-    FMatrix View, Projection, ViewProjection;
-    APlayerController* Player = GetWorld()->GetFirstPlayerController();
-    Player->CalcCamera(GetWorld()->DeltaTimeSeconds, ViewInfo); 
-
-    UGameplayStatics::GetViewProjectionMatrix(ViewInfo, View, Projection, ViewProjection);
-    FMatrix InvView = View.Inverse();
-
-    // Default Params for now
-    Params.EyePos = FVector3f(InvView.GetOrigin());
-    Params.BoundsPosition = FVector3f(Bounds->GetComponentTransform().GetLocation());
-    Params.BoundsSize = FVector3f(Bounds->GetComponentScale());
-    Params.View = FMatrix44f(View);
-
-    // RenderTarget for output
-    Params.RenderTarget = RenderTest->GameThread_GetRenderTargetResource();
-
-    UE_LOG(LogTemp, Warning, TEXT("Dispatching TanFluid"));
-    UComputeLibrary::ExecuteShader(Params);
 }
 
 #if WITH_EDITOR
