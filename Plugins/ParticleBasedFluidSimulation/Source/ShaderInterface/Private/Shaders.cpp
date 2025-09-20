@@ -46,9 +46,10 @@ void FParticleSimulationDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlo
     RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation");
 
     Shaders::FParticleSimulationShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FParticleSimulationShader::FParameters>();
-    PassParameters->Particles = TUniformBufferRef<FParticles>::CreateUniformBufferImmediate(Particles, EUniformBufferUsage::UniformBuffer_SingleFrame);
-
-    const FIntVector DispatchCount(1,1,1);
+    PassParameters->Positions = Particles.Positions;
+    PassParameters->NumParticles = Particles.NumParticles;
+    
+    const FIntVector DispatchCount(X,Y,Z);
     TShaderMapRef<Shaders::FParticleSimulationShader> ComputeShader(GlobalShaderMap);
 
     FComputeShaderUtils::AddPass(
@@ -59,14 +60,14 @@ void FParticleSimulationDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlo
         DispatchCount);
 }
 
-void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FParticles& Particles)
+void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, TUniformBufferRef<FParticles>& Particles)
 {
     RDG_EVENT_SCOPE(GraphBuilder, "RenderPrep");
 
     Shaders::FRenderPrepShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FRenderPrepShader::FParameters>();
-    PassParameters->Particles = TUniformBufferRef<FParticles>::CreateUniformBufferImmediate(Particles, EUniformBufferUsage::UniformBuffer_SingleFrame);
+    //PassParameters->Particles = Particles;
 
-    const FIntVector DispatchCount(1,1,1);
+    const FIntVector DispatchCount(X,Y,Z);
     TShaderMapRef<Shaders::FRenderPrepShader> ComputeShader(GlobalShaderMap);
 
     FComputeShaderUtils::AddPass(
@@ -78,7 +79,7 @@ void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShade
 }
 
 
-void FFluidMarchDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FSceneView& InView, FRDGTexture* SceneColor, FFLuidVolume& Volume)  
+void FFluidMarchDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FSceneView& InView, FRDGTexture* SceneColor, FFluidVolume& Volume)  
 {
     RDG_EVENT_SCOPE(GraphBuilder, "FluidMarch");
  

@@ -31,19 +31,23 @@ BEGIN_UNIFORM_BUFFER_STRUCT(FFluidVolume, )
 END_UNIFORM_BUFFER_STRUCT()
 
 BEGIN_UNIFORM_BUFFER_STRUCT(FParticles, )
-    SHADER_PARAMETER_RDG_BUFFER_SRV(Buffer<FVector3f>, Position)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Positions)
+    SHADER_PARAMETER(uint32, NumParticles)
 END_UNIFORM_BUFFER_STRUCT()
     
 // -- .usf files --
 // PhysicsSim
 BEGIN_SHADER_PARAMETER_STRUCT(FParticleSimulationParams, )
-    SHADER_PARAMETER_STRUCT_REF(FParticles, Particles)
+    //SHADER_PARAMETER_STRUCT_REF(FParticles, Particles)
 
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Positions)
+    SHADER_PARAMETER(uint32, NumParticles)
+    
 END_SHADER_PARAMETER_STRUCT()
 
 // RenderPrep
 BEGIN_SHADER_PARAMETER_STRUCT(FRenderPrepParams, )
-    SHADER_PARAMETER_STRUCT_REF(FParticles, Particles)
+    //SHADER_PARAMETER_STRUCT_REF(FParticles, Particles)
 
 END_SHADER_PARAMETER_STRUCT()
 
@@ -87,7 +91,7 @@ public:
         , Z(z)
     {
     }
-    void Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FSceneView& InView, FRDGTexture* SceneColor, FFLuidVolume& Volume);
+    void Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FSceneView& InView, FRDGTexture* SceneColor, FFluidVolume& Volume);
 };
 
 // GenerateDensityMap
@@ -108,7 +112,7 @@ GENERATED_BODY()
     {
     }
 
-    void Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FParticles Particles);
+    void Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, TUniformBufferRef<FParticles>& Particles);
 };
 
 // SimulateParticles

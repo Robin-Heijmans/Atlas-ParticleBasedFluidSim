@@ -1,17 +1,8 @@
 // Common definition of Uniform Buffers, shared between usf files
 
-#define MAX_PARTICLES 5000
 
-struct FFluidVolume {
-    // Volume Data
-    float3 BoundsPosition;
-    float3 BoundsSize;
-    
-};
+
 
 struct FParticles {
     // Particle Buffers
-    float PositionX[16];
-    float PositionY[16];
-    float PositionZ[16];
 };

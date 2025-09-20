@@ -3,17 +3,16 @@
 
 #include "/Shaders/Compute/Headers/Common.ush"
 
-Buffer<FParticles> FluidParticles;
+//ConstantBuffer<FParticles> FluidParticles;
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void Compute(
 	uint3 DispatchThreadId : SV_DispatchThreadID,
 	uint GroupIndex : SV_GroupIndex )
 {
-    for(int i = 0; i < 16; i++)
-    {
-        FluidParticles.PositionX[i] -= 0.01;
-        FluidParticles.PositionY[i] -= 0.01;
-        FluidParticles.PositionZ[i] -= 0.01;
-    }
+    //for(int i = 0; i < FluidParticles.NumPositions; i++)
+    //{
+    //    float3 sub = float3(0.01, 0.01, 0.01);
+    //    //FluidParticles.Positions[i] -= sub;
+    //}
 }

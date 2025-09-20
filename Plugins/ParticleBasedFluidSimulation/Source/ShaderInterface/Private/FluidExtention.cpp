@@ -8,6 +8,7 @@
 
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetRenderingLibrary.h"
+#include "UnifiedBuffer.h"
 
 #include "ComputeLibrary.h"
 
@@ -32,6 +33,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily) {
     FluidVolume.BoundsSize = FVector3f(1,1,1);
 }
 
+
 void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FPostProcessingInputs& Inputs) {
 	// Dipatch Shader here
     if (CVarShaderOn.GetValueOnRenderThread() == 0) return; 
@@ -45,12 +47,24 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
 
     // Update Uniform Buffers
     // Particles
-	FRDGBufferDesc desc = FRDGBufferDesc::CreateStructuredDesc(sizeof(float), 16/*constant for now, please change later*/);
-	FRDGBufferRef buffer = GraphBuilder.CreateBuffer(desc, TEXT("PositionBuffer Test"));
+    TArray<FVector3f> Positions; 
+    Positions.Init(FVector3f(1,-1,1), 16);
 
-    const FVector3f Positions[16]{FVector3f(1,-1,1)};
-	GraphBuilder.QueueBufferUpload(buffer, Positions, 16 * sizeof(float));
-	FluidParticles.Position = GraphBuilder.CreateSRV(buffer);
+    FRDGBufferDesc OutDesc = FRDGBufferDesc::CreateStructuredDesc(Positions.GetTypeSize(), Positions.Num());
+    RWBuffer = GraphBuilder.CreateBuffer(OutDesc, TEXT("PositionBuffer RW"));
+
+    GraphBuilder.QueueBufferUpload(RWBuffer, Positions.GetData(), Positions.GetAllocatedSize());
+
+    PooledBuffer = GraphBuilder.ConvertToExternalBuffer(RWBuffer);
+    
+    FRDGBufferRef UAVBuffer = GraphBuilder.RegisterExternalBuffer(PooledBuffer, TEXT("Particle UAV"));
+
+    FParticles Particles;
+    Particles.Positions = GraphBuilder.CreateUAV(UAVBuffer);
+    Particles.NumParticles = Positions.Num();
+
+    //TUniformBufferRef<FParticles> UB = TUniformBufferRef<FParticles>::CreateUniformBufferImmediate(Particles, EUniformBufferUsage::UniformBuffer_SingleDraw);
+    
 
     // -- General Pipeline --
     // 1. Physics Simulation
@@ -58,10 +72,10 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     // 3. Dispatch Fluid March / Rendering
 
     // Physics Simulation
-    ParticleSimulation.Dispatch(GraphBuilder, GlobalShaderMap, FluidParticles);
+    ParticleSimulation.Dispatch(GraphBuilder, GlobalShaderMap, Particles);
 
     // Render Prep
-    RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, FluidParticles);
+    //RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, ParticleUB);
 
     // Fluid March
     FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, InView, SceneColor, FluidVolume);

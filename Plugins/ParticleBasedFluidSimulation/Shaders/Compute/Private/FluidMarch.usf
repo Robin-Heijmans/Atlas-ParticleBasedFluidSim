@@ -1,6 +1,12 @@
 #include "/Engine/Public/Platform.ush"
 #include "/Engine/Private/Common.ush"
-#include "/Shaders/Compute/Headers/Common.ush"
+
+struct FFluidVolume {
+    // Volume Data
+    float3 BoundsPosition;
+    float3 BoundsSize;
+    
+};
 
 ConstantBuffer<FFluidVolume> FluidVolume;
 

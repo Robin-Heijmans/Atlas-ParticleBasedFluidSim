@@ -6,6 +6,7 @@
 #include "SceneRendererInterface.h"
 #include "DataDrivenShaderPlatformInfo.h"
 #include "PostProcess/PostProcessMaterial.h"
+#include "SceneView.h"
 
 #include "Shaders.h"
 
@@ -17,6 +18,7 @@ public:
 	virtual int32 GetPriority() const { return 1 << 16; };
 	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {};
 	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override {};
+
 
 	/* Setup before rendering happens in here. */
 	virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override;
@@ -30,7 +32,9 @@ private:
 	FRenderPrepDispatchParams RenderPrep;
 	FFluidMarchDispatchParams FluidMarch;
 
+	FRDGBufferRef RWBuffer;
+	TRefCountPtr<FRDGPooledBuffer> PooledBuffer;
+
 	// Uniform Buffers
 	FFluidVolume FluidVolume;
-	FParticles FluidParticles;
 };
