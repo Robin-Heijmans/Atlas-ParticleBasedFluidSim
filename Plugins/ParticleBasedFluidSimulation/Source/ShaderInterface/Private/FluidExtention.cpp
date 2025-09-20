@@ -14,7 +14,7 @@
 namespace {
 	TAutoConsoleVariable<int32> CVarShaderOn(
 		TEXT("r.Fluid"),
-		0,
+		1,
 		TEXT("Enable Fluid Rendering \n")
 		TEXT(" 0: OFF;")
 		TEXT(" 1: ON."),
@@ -44,27 +44,24 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(InView.Family->GetFeatureLevel());
 
     // Update Uniform Buffers
-    // Particles
-	FRDGBufferDesc desc = FRDGBufferDesc::CreateStructuredDesc(sizeof(float), 16/*constant for now, please change later*/);
-	FRDGBufferRef buffer = GraphBuilder.CreateBuffer(desc, TEXT("PositionBuffer Test"));
-
-    const FVector3f Positions[16]{FVector3f(1,-1,1)};
-	GraphBuilder.QueueBufferUpload(buffer, Positions, 16 * sizeof(float));
-    FluidParticles = GraphBuilder.AllocParameters<FParticles>();
-	FluidParticles->Positions = GraphBuilder.CreateUAV(buffer)->GetRHI();
-
+    
+    
     // -- General Pipeline --
     // 1. Physics Simulation
     // 2. Generate Density Map / Render Prep
     // 3. Dispatch Fluid March / Rendering
 
     // Physics Simulation
-    //ParticleSimulation.Dispatch(GraphBuilder, GlobalShaderMap, FluidParticles);
+    TArray<FVector3f> Positions; 
+    Positions.Init(FVector3f(1,-1,1), 16);
+
+    //ParticleSimulation.CreateBuffers(GraphBuilder, Positions);
+    //ParticleSimulation.Dispatch(GraphBuilder, GlobalShaderMap);
 
     // Render Prep
     //RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, FluidParticles);
 
     // Fluid March
     //FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, InView, SceneColor, FluidVolume);
-
+    //GraphBuilder.Execute();
 }

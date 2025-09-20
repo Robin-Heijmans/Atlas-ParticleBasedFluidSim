@@ -13,8 +13,6 @@
 #include "MeshPassUtils.h"
 #include "MaterialShader.h"
 
-
-
 // ---------
 // This file contains
 // IMPLEMENT_GLOBAL_SHADER()/BUFFER() implementations for shader classes from Shaders.h
@@ -28,7 +26,7 @@ namespace Shaders
 
     // Implementations ... 
     
-    IMPLEMENT_GLOBAL_SHADER(FParticleSimulationShader,  "/Shaders/Compute/FluidMath.usf", "ExternalForces", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FParticleSimulationShader,  "/Shaders/Compute/SimpleTest.usf", "ExternalForces", SF_Compute);
     //IMPLEMENT_GLOBAL_SHADER(FRenderPrepShader,          "/Shaders/Compute/RenderPrep.usf", "Compute", SF_Compute);
     //IMPLEMENT_GLOBAL_SHADER(FFluidMarchShader,          "/Shaders/Compute/FluidMarch.usf", "Compute", SF_Compute);
 
@@ -37,26 +35,112 @@ namespace Shaders
 
 // Global Shader Buffers
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolume, "FluidVolume");
-IMPLEMENT_UNIFORM_BUFFER_STRUCT(FParticles, "FluidParticles");
+//IMPLEMENT_UNIFORM_BUFFER_STRUCT(FParticles, "FluidParticles");
 
+void FParticleSimulationDispatchParams::CreateBuffers(FRDGBuilder& GraphBuilder, const TArray<FVector3f>& Positions)
+{
+    int NumParticles = Positions.Num();
+    
+    auto CreateStructuredBuffer = [&](int ElementSize, const TCHAR* Name, const void* InitialData = nullptr)
+    {
+        FRDGBufferDesc Desc = FRDGBufferDesc::CreateStructuredDesc(ElementSize, NumParticles);
+        FRDGBufferRef Buffer = GraphBuilder.CreateBuffer(Desc, Name);
+
+        if (InitialData)
+        {
+            GraphBuilder.QueueBufferUpload(Buffer, InitialData, NumParticles * ElementSize);
+        }
+
+        FRDGBufferUAVRef UAV = GraphBuilder.CreateUAV(Buffer);
+        return TTuple<FRDGBufferRef, FRDGBufferUAVRef>(Buffer, UAV);
+    };
+
+    TTuple<FRDGBufferRef, FRDGBufferUAVRef> Buff;
+
+    //if (!PositionBuffer|| !VelocityBuffer) {
+    Buff = CreateStructuredBuffer(sizeof(FVector3f), TEXT("Positions"), Positions.GetData());
+    PositionBuffer = Buff.Get<0>();
+    PositionsUAV = Buff.Get<1>();
+
+        //Buff = CreateStructuredBuffer(sizeof(FVector3f), TEXT("Velocities"));
+        //VelocityBuffer = Buff.Get<0>();
+        //VelocitiesUAV = Buff.Get<1>();
+    //}
+
+    //Buff = CreateStructuredBuffer(sizeof(FVector3f), TEXT("PredictedPositions"));
+    //PredictedPositionBuffer = Buff.Get<0>();
+    //PredictedPositionUAV = Buff.Get<1>();
+
+    //Buff = CreateStructuredBuffer(sizeof(float), TEXT("Densities"));
+    //DensityBuffer = Buff.Get<0>();
+    //DensityUAV = Buff.Get<1>();
+//
+    //Buff = CreateStructuredBuffer(sizeof(FVector), TEXT("SpatialIndices"));
+    //SpatialIndicesBuffer = Buff.Get<0>();
+    //SpatialIndicesUAV = Buff.Get<1>();
+//
+    //Buff = CreateStructuredBuffer(sizeof(int), TEXT("SpatialOffsets"));
+    //SpatialOffsetsBuffer = Buff.Get<0>();
+    //SpatialOffsetsUAV = Buff.Get<1>();
+
+    BindBuffers(GraphBuilder, NumParticles);
+}
+
+void FParticleSimulationDispatchParams::BindBuffers(FRDGBuilder& GraphBuilder, const int& NumParticles) 
+{
+    PassParameters = GraphBuilder.AllocParameters<Shaders::FParticleSimulationShader::FParameters>();
+    PassParameters->Positions = PositionsUAV;
+    //PassParameters->PredictedPositions = PredictedPositionUAV;
+    //PassParameters->Velocities = VelocitiesUAV;
+    //PassParameters->Densities = DensityUAV;
+    //PassParameters->SpatialIndices = SpatialIndicesUAV;
+    //PassParameters->SpatialOffsets = SpatialOffsetsUAV;
+
+    //PassParameters->CollisionDampening = 0.6f;
+    //PassParameters->DeltaTime = 1.f/60.f;
+    //PassParameters->Gravity = -98.1f;
+    PassParameters->NumParticles = NumParticles;
+    //PassParameters->PressureAmplifier = 100.f;
+    //PassParameters->SmoothingRadius = 4.f;
+    //PassParameters->TargetDensity = 3.f;
+    //PassParameters->ViscosityStrength = 1.f;
+}
 
 // Dispatch Functions ...
-void FParticleSimulationDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FParticles& Particles)
+void FParticleSimulationDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap)
 {
+    if (!PassParameters) return;
     RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation");
 
-    Shaders::FParticleSimulationShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FParticleSimulationShader::FParameters>();
-    PassParameters->Particles = TUniformBufferRef<FParticles>::CreateUniformBufferImmediate(Particles, EUniformBufferUsage::UniformBuffer_SingleFrame);
-
-    const FIntVector DispatchCount(1,1,1);
+    const FIntVector DispatchCount(16,1,1);
     TShaderMapRef<Shaders::FParticleSimulationShader> ComputeShader(GlobalShaderMap);
+    check(ComputeShader.IsValid());
 
     FComputeShaderUtils::AddPass(
         GraphBuilder,
         RDG_EVENT_NAME("Execute ParticleSimulation"), 
         ComputeShader,
         PassParameters,
-        DispatchCount);
+        DispatchCount);//,ERDGPassFlags::Compute | ERDGPassFlags::NeverCull);
+
+    //int NumParticles = PassParameters->NumParticles;
+    //GraphBuilder.AddPass(
+    //    RDG_EVENT_NAME("ReadbackPredictedPositions"),
+    //    ERDGPassFlags::NeverCull,
+    //    [PredictedBuffer = Buffer, NumParticles](FRHICommandListImmediate& RHICmdList)
+    //    {
+    //        FRHIGPUBufferReadback Readback(TEXT("PredictedPositionsReadback"));
+    //        Readback.EnqueueCopy(RHICmdList, PredictedBuffer->GetRHI(), sizeof(FVector3f) * NumParticles);
+//
+    //        FVector3f* Data = (FVector3f*)Readback.Lock(sizeof(FVector3f) * NumParticles);
+    //        if (Data)
+    //        {
+    //            GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green,
+    //                FString::Printf(TEXT("First particle: X=%f Y=%f Z=%f"), Data[0].X, Data[0].Y, Data[0].Z));
+    //        }
+    //        Readback.Unlock();
+    //    }
+    //);
 }
 
 //void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FParticles Particles)

@@ -1,0 +1,18 @@
+#include "/Engine/Private/Common.ush"
+
+RWStructuredBuffer<float3> Positions;
+RWStructuredBuffer<float3> PredictedPositions;
+//RWStructuredBuffer<float3> Velocities;
+
+//float Gravity;
+//float DeltaTime;
+uint NumParticles;
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void ExternalForces (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= NumParticles) return;
+
+    //Velocities[id.x] += float3(0, 0, Gravity) * DeltaTime;
+
+    PredictedPositions[id.x] = Positions[id.x] + 0.01; // Fixed LookAheadTimeStep
+}

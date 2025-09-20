@@ -47,7 +47,7 @@ void ResolveCollisions(uint ParticleIndex) {
     }
 }
 
-[numthreads(NumThreads,1,1)]
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void ExternalForces (uint3 id : SV_DispatchThreadID) {
     if (id.x >= NumParticles) return;
 
@@ -56,7 +56,7 @@ void ExternalForces (uint3 id : SV_DispatchThreadID) {
     PredictedPositions[id.x] = Positions[id.x] + Velocities[id.x] * 1 / 120.0; // Fixed LookAheadTimeStep
 }
 
-[numthreads(NumThreads,1,1)]
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void UpdateSpatialLookup (uint3 id : SV_DispatchThreadID) {
     if (id.x >= NumParticles) return;
 
@@ -67,7 +67,7 @@ void UpdateSpatialLookup (uint3 id : SV_DispatchThreadID) {
     SpatialIndices[id.x] = uint3(index, hash, key);
 }
 
-[numthreads(NumThreads,1,1)]
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void CalculateDensity (uint3 id : SV_DispatchThreadID) {
     if (id.x >= NumParticles) return;
 
@@ -99,7 +99,7 @@ void CalculateDensity (uint3 id : SV_DispatchThreadID) {
     Densities[id.x] = density;
 }
 
-[numthreads(NumThreads,1,1)]
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void CalculatePressureForce (uint3 id : SV_DispatchThreadID) {
     if (id.x >= NumParticles) return;
 
@@ -137,7 +137,7 @@ void CalculatePressureForce (uint3 id : SV_DispatchThreadID) {
     Velocities[id.x] += pressureAcceleration * DeltaTime;
 }
 
-[numthreads(NumThreads,1,1)]
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void CalculateViscosityForce (uint3 id : SV_DispatchThreadID) {
     if (id.x >= NumParticles) return;
 
@@ -170,7 +170,7 @@ void CalculateViscosityForce (uint3 id : SV_DispatchThreadID) {
     Velocities[id.x] += viscosityForce * ViscosityStrength * DeltaTime; 
 }
 
-[numthreads(NumThreads,1,1)]
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void UpdatePositions (uint3 id : SV_DispatchThreadID) {
     if (id.x >= NumParticles) return;
 
