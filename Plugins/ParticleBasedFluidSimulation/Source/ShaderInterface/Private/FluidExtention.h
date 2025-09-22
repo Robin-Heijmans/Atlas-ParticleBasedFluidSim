@@ -32,8 +32,7 @@ private:
 	FRenderPrepDispatchParams RenderPrep;
 	FFluidMarchDispatchParams FluidMarch;
 
-	FRDGBufferRef RWBuffer;
-	TRefCountPtr<FRDGPooledBuffer> PooledBuffer;
+	FTextureRHIRef DensityMap;
 
 	// Uniform Buffers
 	FFluidVolume FluidVolume;
