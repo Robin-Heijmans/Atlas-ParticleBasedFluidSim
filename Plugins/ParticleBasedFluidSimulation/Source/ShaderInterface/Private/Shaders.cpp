@@ -81,6 +81,7 @@ void FRenderPrepDispatchParams::Dispatch(
     FComputeShaderUtils::AddPass(
         GraphBuilder,
         RDG_EVENT_NAME("Execute RenderPrep"),
+        ERDGPassFlags::AsyncCompute,
         ComputeShader,
         PassParameters,
         DispatchCount);
@@ -125,6 +126,7 @@ void FFluidMarchDispatchParams::Dispatch(
     FComputeShaderUtils::AddPass(
         GraphBuilder,
         RDG_EVENT_NAME("Execute TanComputeShader %dx%d", ViewSize.X, ViewSize.Y),
+        ERDGPassFlags::AsyncCompute,
         ComputeShader,
         PassParameters,
         DispatchCount);

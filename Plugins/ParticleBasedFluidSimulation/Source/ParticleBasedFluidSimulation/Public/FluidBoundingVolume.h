@@ -52,6 +52,7 @@ public:
 
 	TUniquePtr<FFluidSimulationSystem> Simulation;
 	TArray<FParticle> Particles;
+    bool RenderPrep = true;
 private:
 	void InitializeParticles();
 	void UpdateVolumeBounds();

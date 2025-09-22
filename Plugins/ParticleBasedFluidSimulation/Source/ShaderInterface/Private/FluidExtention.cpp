@@ -91,10 +91,8 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
 
     FluidVolume.BoundsPosition = FVector3f(BoundingVolume->GetActorLocation());
     FluidVolume.BoundsSize = FVector3f(BoundingVolume->Bounds->GetScaledBoxExtent());
-    
-    static bool once = true;
 
-    //if(once)
+    if(BoundingVolume->RenderPrep)
     {
         ENQUEUE_RENDER_COMMAND(GenDensityMap)(
         [this, BoundingVolume](FRHICommandListImmediate& RHICmdList) {
@@ -108,7 +106,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
             Positions.Init(FVector3f::ZeroVector, NumElements);
             for(int i = 0; i < NumElements; i++)
             {
-                Positions[i] = FVector3f(BoundingVolume->Particles[i].Position + BoundingVolume->Bounds->GetScaledBoxExtent()) / FVector3f(BoundingVolume->Bounds->GetScaledBoxExtent() * 2.f);
+                Positions[i] = FVector3f(BoundingVolume->Particles[i].Position + BoundingVolume->Bounds->GetUnscaledBoxExtent()) / FVector3f(BoundingVolume->Bounds->GetUnscaledBoxExtent() * 2.f);
             }
 
 
@@ -122,7 +120,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
 
             GraphBuilder.Execute();
         });
-        once = false;
+        BoundingVolume->RenderPrep = false;
     }
 }
 

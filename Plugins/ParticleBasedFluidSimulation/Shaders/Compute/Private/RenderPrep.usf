@@ -19,10 +19,11 @@ bool SphereIntersection(float3 sphere, float radius, float3 against)
 
 float CalcDensity(float3 UVW)
 {
+    const float particle_radius = 0.1;
     const float influence = 10.0;
     for(int i = 0; i < NumParticles; i++)
     {
-        if(SphereIntersection(Positions[i], 0.01, UVW))
+        if(SphereIntersection(Positions[i], particle_radius, UVW))
         {
             return influence;
         }
@@ -33,7 +34,7 @@ float CalcDensity(float3 UVW)
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void Compute(
 	uint3 DispatchThreadId : SV_DispatchThreadID,
-	uint GroupIndex : SV_GroupIndex )
+	uint GroupIndex : SV_GroupIndex)
 {
     const float3 UVW = (float3(DispatchThreadId)) / float3(DensityMapSize, DensityMapSize, DensityMapSize);
     const float density = CalcDensity(UVW);
