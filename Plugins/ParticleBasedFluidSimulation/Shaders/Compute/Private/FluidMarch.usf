@@ -1,0 +1,53 @@
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/Common.ush"
+
+struct FFluidVolume {
+    // Volume Data
+    float3 BoundsPosition;
+    float3 BoundsSize;
+    
+};
+
+ConstantBuffer<FFluidVolume> FluidVolume;
+
+Texture2D<float3> SceneColor;
+RWTexture2D<float3> Target;
+
+/*
+// this is wrong but only placeholder
+float3 GetPrimaryDirection(float2 uv, float aspect)
+{
+
+#if 0	// column major
+    const float3 right		= normalize(float3(View[0][0], View[0][1], View[0][2]));
+    const float3 up			= normalize(float3(View[1][0], View[1][1], View[1][2]));
+    const float3 forward	= normalize(float3(View[2][0], View[2][1], View[2][2]));
+#else	// row major
+    const float3 right		= normalize(float3(View[0][0], View[1][0], View[2][0]));
+    const float3 up			= normalize(float3(View[0][1], View[1][1], View[2][1]));
+    const float3 forward	= normalize(float3(View[0][2], View[1][2], View[2][2]));
+#endif
+
+    float3 topLeft		= EyePos - 2.0 * forward - aspect * right + up;
+    float3 bottomRight	= EyePos - 2.0 * forward + aspect * right - up;
+    float3 bottomLeft	= EyePos - 2.0 * forward - aspect * right - up;
+
+	float3 P = bottomLeft + 
+	uv.x * (bottomRight - bottomLeft) + 
+	uv.y * (topLeft - bottomLeft);
+
+	return normalize(P - EyePos);
+}
+*/
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void Compute(
+	uint3 DispatchThreadId : SV_DispatchThreadID,
+	uint GroupIndex : SV_GroupIndex )
+{
+    //float Aspect = float(THREADS_X) / float(THREADS_Y);
+    float2 ScreenUV = float2(float(DispatchThreadId.x) / float(THREADS_X), float(DispatchThreadId.y) / float(THREADS_Y));
+    //float3 dir = GetPrimaryDirection(ScreenUV, Aspect);
+
+	
+	Target[DispatchThreadId.xy] = SceneColor[DispatchThreadId.xy] + FluidVolume.BoundsPosition;
+}

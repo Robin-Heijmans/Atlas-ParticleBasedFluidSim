@@ -7,13 +7,18 @@
 
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/KismetRenderingLibrary.h"
-#include "ShaderInterface/ComputeTest.h"
+#include "Kismet/GameplayStatics.h"
+#include "SceneView.h"
+#include "Engine/World.h"
+
+#include "Shaders.h"
 
 // Sets default values
 AFluidBoundingVolume::AFluidBoundingVolume()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
 
 	Bounds = CreateDefaultSubobject<UBoxComponent>(TEXT("Bounds"));
     RootComponent = Bounds;
@@ -33,7 +38,6 @@ AFluidBoundingVolume::AFluidBoundingVolume()
             ParticleMesh->SetMaterial(0, ParticleMat.Object);
         }
     }
-    
 }
 
 void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
@@ -44,8 +48,6 @@ void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
         InitializeParticles();
         UpdateInstances();
     }
-    // creating rendertarget texture for the compute shader test
-    RenderTest = UKismetRenderingLibrary::CreateRenderTarget2D(this, 1024, 1024, RTF_RGBA8);
 }
 
 void AFluidBoundingVolume::InitializeParticles()
@@ -130,7 +132,6 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
 	}
 	
 	UpdateInstances();
-    TestDispatch();
 }
 
 void AFluidBoundingVolume::UpdateInstances()
@@ -174,11 +175,6 @@ FLinearColor AFluidBoundingVolume::VelocityToColor(const float& Speed) {
         FLinearColor EndColor(1.f, 0.f, 0.f);
         return FLinearColor::LerpUsingHSV(MidColor, EndColor, LocalAlpha);
     }
-}
-
-void AFluidBoundingVolume::TestDispatch()
-{
-    UComputeShaderLibrary::ExecuteRTComputeShader(RenderTest, EyePosition);
 }
 
 #if WITH_EDITOR

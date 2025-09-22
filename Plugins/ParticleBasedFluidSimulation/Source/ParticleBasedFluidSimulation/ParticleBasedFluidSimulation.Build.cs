@@ -17,7 +17,6 @@ public class ParticleBasedFluidSimulation : ModuleRules
 		
 		PrivateIncludePaths.AddRange(
 			new string[] {
-            	"Runtime/Renderer/Private",
 				// ... add other private include paths required here ...
 			}
 			);
@@ -28,7 +27,8 @@ public class ParticleBasedFluidSimulation : ModuleRules
 			{
 				"Core",
 				"Engine",
-				"MaterialShaderQualitySettings"
+				"MaterialShaderQualitySettings",
+				"ShaderInterface"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -59,13 +59,6 @@ public class ParticleBasedFluidSimulation : ModuleRules
                     "MaterialUtilities",
                     "SlateCore",
                     "Slate"
-                }
-            );
-
-            CircularlyReferencedDependentModules.AddRange(
-                new string[] {
-                    "UnrealEd",
-                    "MaterialUtilities",
                 }
             );
 		}

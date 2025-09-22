@@ -1,0 +1,8 @@
+// Common definition of Uniform Buffers, shared between usf files
+
+
+
+
+struct FParticles {
+    // Particle Buffers
+};

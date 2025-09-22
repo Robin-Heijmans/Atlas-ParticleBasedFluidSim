@@ -4,21 +4,34 @@
 	"VersionName": "1.0",
 	"FriendlyName": "ParticleBasedFluidSimulation",
 	"Description": "",
-	"Category": "Other",
-	"CreatedBy": "",
-	"CreatedByURL": "",
+	"Category": "Physics",
+	"CreatedBy": "Robin Heijmans & Tanya Helmers",
+	"CreatedByURL": "https://github.com/Robin-Heijmans & https://github.com/tanyautor",
 	"DocsURL": "",
 	"MarketplaceURL": "",
 	"SupportURL": "",
 	"CanContainContent": true,
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
-	"Installed": false,
+	"Installed": false,	
+	"SupportedTargetPlatforms": [
+		"Win64"
+	],
 	"Modules": [
 		{
 			"Name": "ParticleBasedFluidSimulation",
+			"Type": "Editor",
+			"LoadingPhase": "Default",
+			"Dependencies": [
+				"ShaderInterface"
+			]
+		},
+		{
+			"Name": "ShaderInterface",
 			"Type": "Runtime",
-			"LoadingPhase": "PostConfigInit"
+			"LoadingPhase": "PostConfigInit",
+			"CanHotReload": false
 		}
-	]
+	],
+	"EnabledByDefault": true
 }

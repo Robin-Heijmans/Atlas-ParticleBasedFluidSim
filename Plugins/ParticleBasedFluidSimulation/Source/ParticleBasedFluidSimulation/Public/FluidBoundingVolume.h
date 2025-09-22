@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "FluidSimulationSystem.h"
 #include "Templates/UniquePtr.h"
+
 // Has to be last include in header
 #include "FluidBoundingVolume.generated.h"
 
@@ -28,11 +29,6 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Bounds")
 	class UBoxComponent* Bounds;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "RenderTest")
-    class UTextureRenderTarget2D* RenderTest;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RenderTest")
-    FVector3f EyePosition = FVector3f(1);
-
 	UPROPERTY(VisibleAnywhere, Category = "Particles")
     class UInstancedStaticMeshComponent* ParticleMesh;
 
@@ -50,9 +46,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid system")
 	FFluidSimSettings Settings;
-
-	UFUNCTION(CallInEditor, Category = "RenderTest")
-	void TestDispatch();
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;

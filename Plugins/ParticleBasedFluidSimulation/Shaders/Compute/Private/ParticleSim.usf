@@ -1,0 +1,16 @@
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/Common.ush"
+
+#include "/Shaders/Compute/Headers/ParticleData.ush"
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void Compute(
+	uint3 DispatchThreadId : SV_DispatchThreadID,
+	uint GroupIndex : SV_GroupIndex )
+{
+    for(int i = 0; i < NumParticles; i++)
+    {
+        float3 sub = float3(0.1, 0.1, 0.1);
+        Positions[i] += sub;
+    }
+}
