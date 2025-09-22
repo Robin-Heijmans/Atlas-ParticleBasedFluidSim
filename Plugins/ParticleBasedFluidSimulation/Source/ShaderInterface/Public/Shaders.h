@@ -100,7 +100,7 @@ public:
         const FSceneView& InView, 
         FRDGTexture* SceneColor, 
         FFluidVolume& Volume, 
-        FRDGTextureRef DensityMap);
+        const FRDGTextureRef& DensityMap);
 };
 
 // GenerateDensityMap
@@ -123,7 +123,7 @@ GENERATED_BODY()
 
     void Dispatch(FRDGBuilder& GraphBuilder, 
         FGlobalShaderMap* GlobalShaderMap, 
-        FRDGTextureRef DensityMap);
+       const  FRDGTextureRef& DensityMap);
 };
 
 // SimulateParticles

@@ -12,7 +12,8 @@
 
 #include "ComputeLibrary.h"
 
-namespace {
+namespace 
+{
 	TAutoConsoleVariable<int32> CVarShaderOn(
 		TEXT("r.Fluid"),
 		0,
@@ -22,18 +23,15 @@ namespace {
 		ECVF_RenderThreadSafe);
 }
 
-FFluidExtention::FFluidExtention(const FAutoRegister& AutoRegister) : FSceneViewExtensionBase(AutoRegister) {
+FFluidExtention::FFluidExtention(const FAutoRegister& AutoRegister) : FSceneViewExtensionBase(AutoRegister) 
+{
 	UE_LOG(LogTemp, Log, TEXT("Fluid: Custom SceneViewExtension registered"));
-}
-
-void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily) {
 
     // Default Params for now
     FluidVolume.BoundsPosition = FVector3f(-288.779695,8.043881,122.825553);
     FluidVolume.BoundsSize = FVector3f(56,56,56);
 
-
-    ENQUEUE_RENDER_COMMAND(ShBakeGeneration)(
+    ENQUEUE_RENDER_COMMAND(GenDensityMap)(
     [this](FRHICommandListImmediate& RHICmdList) {
         FRDGBuilder GraphBuilder(RHICmdList);
 
@@ -45,8 +43,8 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily) {
                 .SetInitialState(ERHIAccess::SRVCompute);
 
         DensityMap = RHICreateTexture(Desc);
-        const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("TanFluidShader_DensityMap")));
         
+        const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("TanFluidShader_DensityMap")));
         FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
         RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, DensityMapRef);
 
@@ -54,7 +52,13 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily) {
     });
 }
 
-void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FPostProcessingInputs& Inputs) {
+void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily) 
+{
+
+}
+
+void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FPostProcessingInputs& Inputs) 
+{
 	// Dipatch Shader here
     if (CVarShaderOn.GetValueOnRenderThread() == 0) return; 
 
@@ -67,22 +71,6 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
 
     // Update Uniform Buffers
     // Particles
-    TArray<FVector3f> Positions; 
-    Positions.Init(FVector3f(1,-1,1), 16);
-
-    FRDGBufferDesc OutDesc = FRDGBufferDesc::CreateStructuredDesc(Positions.GetTypeSize(), Positions.Num());
-    RWBuffer = GraphBuilder.CreateBuffer(OutDesc, TEXT("PositionBuffer RW"));
-
-    GraphBuilder.QueueBufferUpload(RWBuffer, Positions.GetData(), Positions.GetAllocatedSize());
-
-    PooledBuffer = GraphBuilder.ConvertToExternalBuffer(RWBuffer);
-    
-    FRDGBufferRef UAVBuffer = GraphBuilder.RegisterExternalBuffer(PooledBuffer, TEXT("Particle UAV"));
-
-    FParticles Particles;
-    Particles.Positions = GraphBuilder.CreateUAV(UAVBuffer);
-    Particles.NumParticles = Positions.Num();
-
     const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("TanFluidShader_DensityMap")));
 
     // -- General Pipeline --
@@ -91,7 +79,7 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     // 3. Dispatch Fluid March / Rendering
 
     // Physics Simulation
-    ParticleSimulation.Dispatch(GraphBuilder, GlobalShaderMap, Particles);
+    //ParticleSimulation.Dispatch(GraphBuilder, GlobalShaderMap, Particles);
 
     // Render Prep
     //RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, DensityMapRef);

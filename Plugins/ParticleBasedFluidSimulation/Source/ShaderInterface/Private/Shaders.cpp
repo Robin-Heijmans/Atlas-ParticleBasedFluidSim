@@ -60,7 +60,7 @@ void FParticleSimulationDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlo
         DispatchCount);
 }
 
-void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRDGTextureRef DensityMapRef)
+void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FRDGTextureRef& DensityMapRef)
 {
     RDG_EVENT_SCOPE(GraphBuilder, "RenderPrep");
 
@@ -85,7 +85,7 @@ void FFluidMarchDispatchParams::Dispatch(
     const FSceneView& InView, 
     FRDGTexture* SceneColor, 
     FFluidVolume& Volume, 
-    FRDGTextureRef DensityMapRef)  
+    const FRDGTextureRef& DensityMapRef)  
 {
     RDG_EVENT_SCOPE(GraphBuilder, "FluidMarch");
  
