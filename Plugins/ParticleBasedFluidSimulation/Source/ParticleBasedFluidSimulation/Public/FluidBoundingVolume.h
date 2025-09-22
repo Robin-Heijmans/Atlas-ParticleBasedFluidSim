@@ -26,7 +26,7 @@ protected:
 	virtual void OnConstruction(const FTransform& Transform) override;
 
 public:	
-	UPROPERTY(VisibleAnywhere, Category = "Bounds")
+	UPROPERTY(EditAnywhere, Category = "Bounds")
 	class UBoxComponent* Bounds;
 
 	UPROPERTY(VisibleAnywhere, Category = "Particles")

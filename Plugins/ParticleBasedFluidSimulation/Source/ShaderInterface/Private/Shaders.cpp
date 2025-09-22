@@ -60,15 +60,22 @@ void FParticleSimulationDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlo
         DispatchCount);
 }
 
-void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FRDGTextureRef& DensityMapRef)
+void FRenderPrepDispatchParams::Dispatch(
+    FRDGBuilder& GraphBuilder, 
+    FGlobalShaderMap* GlobalShaderMap, 
+    const FRDGTextureRef& DensityMapRef,  
+    const FRDGBufferRef& PositionsRef)
 {
     RDG_EVENT_SCOPE(GraphBuilder, "RenderPrep");
 
     Shaders::FRenderPrepShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FRenderPrepShader::FParameters>();
     PassParameters->DensityMap = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(DensityMapRef));
-    PassParameters->DensityMapSize = DensityMapRef->GetRHI()->GetSizeXYZ().Size();
+    PassParameters->DensityMapSize = 128; // PLS PUT ME OUT OF MY MISERY
 
-    const FIntVector DispatchCount(64,64,64);
+    PassParameters->Positions = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(PositionsRef));
+    PassParameters->NumParticles = PositionsRef->GetRHI()->GetSize() / sizeof(FVector3f);
+
+    const FIntVector DispatchCount(16,16,16);
     TShaderMapRef<Shaders::FRenderPrepShader> ComputeShader(GlobalShaderMap);
 
     FComputeShaderUtils::AddPass(

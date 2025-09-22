@@ -27,8 +27,7 @@ public class ParticleBasedFluidSimulation : ModuleRules
 			{
 				"Core",
 				"Engine",
-				"MaterialShaderQualitySettings",
-				"ShaderInterface"
+				"MaterialShaderQualitySettings"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);

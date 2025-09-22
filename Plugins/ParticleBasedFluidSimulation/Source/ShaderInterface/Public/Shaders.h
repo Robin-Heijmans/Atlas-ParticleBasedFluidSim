@@ -47,6 +47,9 @@ END_SHADER_PARAMETER_STRUCT()
 
 // RenderPrep
 BEGIN_SHADER_PARAMETER_STRUCT(FRenderPrepParams, )
+    SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<float3>, Positions)
+    SHADER_PARAMETER(uint32, NumParticles)
+
     SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture3D<float3>, DensityMap)
     SHADER_PARAMETER(uint32, DensityMapSize)
 
@@ -123,7 +126,8 @@ GENERATED_BODY()
 
     void Dispatch(FRDGBuilder& GraphBuilder, 
         FGlobalShaderMap* GlobalShaderMap, 
-       const  FRDGTextureRef& DensityMap);
+       const FRDGTextureRef& DensityMap,
+       const FRDGBufferRef& PositionsRef);
 };
 
 // SimulateParticles

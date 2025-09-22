@@ -5,28 +5,29 @@
 
 //ConstantBuffer<FParticles> FluidParticles;
 
+StructuredBuffer<float3> Positions;
+uint NumParticles;
+
 RWTexture3D<float3> DensityMap;
 uint DensityMapSize;
 
-float SampleWorley(float3 UVW)
+bool SphereIntersection(float3 sphere, float radius, float3 against)
 {
-    const float influecne = 0.5;
-    const float3 points[5] = 
-    {
-        float3(1.0, 1.0, 1.0),
-        float3(0.7, 0.2, 0.5),
-        float3(0.5, 0.7, 0.2),
-        float3(0.2, 0.5, 0.7),
-        float3(0.0, 0.0, 0.0)
-    };
+    float champion = length(sphere - against);
+    return champion < radius;
+}
 
-    float closest = 1e34f;
-    for(int i = 0; i < 5; i++)
+float CalcDensity(float3 UVW)
+{
+    const float influence = 10.0;
+    for(int i = 0; i < NumParticles; i++)
     {
-        float champion = length(points[i] - UVW);
-        if(champion < closest) closest = champion;
+        if(SphereIntersection(Positions[i], 0.01, UVW))
+        {
+            return influence;
+        }
     }
-    return 1.0 - closest;
+    return 0.0;
 }
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
@@ -34,8 +35,8 @@ void Compute(
 	uint3 DispatchThreadId : SV_DispatchThreadID,
 	uint GroupIndex : SV_GroupIndex )
 {
-    const float3 UVW = (float3(DispatchThreadId) + 0.5) / DensityMapSize * 2.0;
-    const float worley = SampleWorley(UVW);
+    const float3 UVW = (float3(DispatchThreadId)) / float3(DensityMapSize, DensityMapSize, DensityMapSize);
+    const float density = CalcDensity(UVW);
 
-    DensityMap[DispatchThreadId] = float3(worley,worley,worley);
+    DensityMap[DispatchThreadId] = float3(density, density, density);
 }

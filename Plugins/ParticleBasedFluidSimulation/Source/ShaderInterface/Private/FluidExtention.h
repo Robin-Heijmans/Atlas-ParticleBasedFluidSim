@@ -33,6 +33,7 @@ private:
 	FFluidMarchDispatchParams FluidMarch;
 
 	FTextureRHIRef DensityMap;
+	TRefCountPtr<FRDGPooledBuffer> PooledPositions;
 
 	// Uniform Buffers
 	FFluidVolume FluidVolume;
