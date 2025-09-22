@@ -10,44 +10,155 @@ struct FFluidVolume {
 
 ConstantBuffer<FFluidVolume> FluidVolume;
 
+Texture3D<float3> DensityMap;
+uint DensityMapSize;
+
 Texture2D<float3> SceneColor;
 RWTexture2D<float3> Target;
 
-/*
-// this is wrong but only placeholder
-float3 GetPrimaryDirection(float2 uv, float aspect)
+
+float2 GetPixelUV(const uint2 Pixel) { return (float2(Pixel) + 0.5 - View.TemporalAAJitter.xy) * View.ViewSizeAndInvSize.zw; }
+
+float3 GetRayOrigin() { return View.WorldViewOriginHigh + View.WorldViewOriginLow; }
+
+float3 GetRayDirection(float2 UV)
 {
-
-#if 0	// column major
-    const float3 right		= normalize(float3(View[0][0], View[0][1], View[0][2]));
-    const float3 up			= normalize(float3(View[1][0], View[1][1], View[1][2]));
-    const float3 forward	= normalize(float3(View[2][0], View[2][1], View[2][2]));
-#else	// row major
-    const float3 right		= normalize(float3(View[0][0], View[1][0], View[2][0]));
-    const float3 up			= normalize(float3(View[0][1], View[1][1], View[2][1]));
-    const float3 forward	= normalize(float3(View[0][2], View[1][2], View[2][2]));
-#endif
-
-    float3 topLeft		= EyePos - 2.0 * forward - aspect * right + up;
-    float3 bottomRight	= EyePos - 2.0 * forward + aspect * right - up;
-    float3 bottomLeft	= EyePos - 2.0 * forward - aspect * right - up;
-
-	float3 P = bottomLeft + 
-	uv.x * (bottomRight - bottomLeft) + 
-	uv.y * (topLeft - bottomLeft);
-
-	return normalize(P - EyePos);
+    float2 NDC = (UV - 0.5) * 2.0;
+    NDC.y = -NDC.y;
+    
+    // Unproject from clip space to view space
+    const float4 ClipPos = float4(NDC, 1.0f, 1.0f);
+    float4 ViewPos = mul(ClipPos, View.ClipToView);
+    ViewPos.xyz /= ViewPos.w;
+    
+    // Transform view space direction to world space
+    return normalize(mul(float4(ViewPos.xyz, 0.0f), View.ViewToTranslatedWorld).xyz);
 }
-*/
+
+float CubeIntersect(const float3 RayO, const float3 RayD)
+{
+    float3 RayrD = float3(
+		1.0 / (RayD.x),
+		1.0 / (RayD.y),
+		1.0 / (RayD.z));
+
+    // Compute t-min and t-max for each axis (X, Y, Z)
+    float tmin = ((FluidVolume.BoundsPosition - FluidVolume.BoundsSize).x - RayO.x) * RayrD.x;
+    float tmax = ((FluidVolume.BoundsPosition + FluidVolume.BoundsSize).x - RayO.x) * RayrD.x;
+
+    if (tmin > tmax) {
+        // Swap if tmin is greater than tmax
+        float temp = tmin;
+        tmin = tmax;
+        tmax = temp;
+    }
+
+    // Check for intersection along the Y axis
+    float tymin = ((FluidVolume.BoundsPosition - FluidVolume.BoundsSize).y - RayO.y) * RayrD.y;
+    float tymax = ((FluidVolume.BoundsPosition + FluidVolume.BoundsSize).y - RayO.y) * RayrD.y;
+
+    if (tymin > tymax) {
+        // Swap if tymin is greater than tymax
+        float temp = tymin;
+        tymin = tymax;
+        tymax = temp;
+    }
+
+    // Update tmin and tmax for the intersection of X and Y planes
+    if (tmin > tymax || tymin > tmax)
+        return -1.0;  // No intersection
+
+    // Update tmin and tmax based on the Y-axis bounds
+    tmin = max(tmin, tymin);
+    tmax = min(tmax, tymax);
+
+    // Check for intersection along the Z axis
+    float tzmin = ((FluidVolume.BoundsPosition - FluidVolume.BoundsSize).z - RayO.z) * RayrD.z;
+    float tzmax = ((FluidVolume.BoundsPosition + FluidVolume.BoundsSize).z - RayO.z) * RayrD.z;
+
+    if (tzmin > tzmax) {
+        // Swap if tzmin is greater than tzmax
+        float temp = tzmin;
+        tzmin = tzmax;
+        tzmax = temp;
+    }
+
+    // Update tmin and tmax for the intersection of X, Y, and Z planes
+    if (tmin > tzmax || tzmin > tmax)
+        return -1.0;  // No intersection
+
+    // Final tmin and tmax after checking all axes
+    tmin = max(tmin, tzmin);
+    tmax = min(tmax, tzmax);
+
+    // If tmax is less than 0, the cube is behind the ray, no intersection
+    if (tmax < 0.0)
+        return -1.0;  // No intersection
+
+    // Return the closest positive intersection distance
+    if (tmin < 0.0)
+        return tmax;  // If tmin is negative, we hit the cube from behind, so return tmax
+    return tmin;  // Otherwise, return tmin
+}
+
+bool CubeContains(const float3 RayPos)
+{
+    return
+		RayPos.x >= (FluidVolume.BoundsPosition - FluidVolume.BoundsSize).x &&
+		RayPos.y >= (FluidVolume.BoundsPosition - FluidVolume.BoundsSize).y &&
+		RayPos.z >= (FluidVolume.BoundsPosition - FluidVolume.BoundsSize).z &&
+		RayPos.x <= (FluidVolume.BoundsPosition + FluidVolume.BoundsSize).x &&
+		RayPos.y <= (FluidVolume.BoundsPosition + FluidVolume.BoundsSize).y &&
+		RayPos.z <= (FluidVolume.BoundsPosition + FluidVolume.BoundsSize).z;
+}
+
+const float SampleDensity(const float3 RayPos)
+{
+    const float3 UVW = (RayPos - FluidVolume.BoundsPosition) / FluidVolume.BoundsSize * 0.5 + 0.5;
+    const float3 Density = DensityMap.SampleLevel(GlobalBilinearClampedSampler, UVW, 0);
+    return Density.x;
+}
+
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void Compute(
 	uint3 DispatchThreadId : SV_DispatchThreadID,
 	uint GroupIndex : SV_GroupIndex )
 {
-    //float Aspect = float(THREADS_X) / float(THREADS_Y);
-    float2 ScreenUV = float2(float(DispatchThreadId.x) / float(THREADS_X), float(DispatchThreadId.y) / float(THREADS_Y));
-    //float3 dir = GetPrimaryDirection(ScreenUV, Aspect);
-
+    // Calculate the pixel coordinate of this thread.
+    const uint2 Pixel = View.ViewRectMinAndSize.xy + DispatchThreadId.xy;
+    
+	// Make sure this pixel isn't outside the viewport bounds.
+    if (any(Pixel >= View.ViewRectMinAndSize.zw)) return;
 	
-	Target[DispatchThreadId.xy] = SceneColor[DispatchThreadId.xy] + FluidVolume.BoundsPosition;
+    // Calculate the UV coordinate of the current pixel.
+    const float2 UV = GetPixelUV(Pixel);
+    float3 RayOrigin = GetRayOrigin();
+    float3 RayDirection = GetRayDirection(UV);
+    float RayT = CubeIntersect(RayOrigin, RayDirection);
+
+    // Psuedo Stepping through Density Map
+    float3 OutColor = SceneColor[DispatchThreadId.xy];
+	if(RayT > 0)
+    {
+        uint NumSteps = 0;
+        float AccDensity = 0.0;
+        const float StepSize = 1.0;
+        RayT += StepSize;// just a little push to ensure were within the cube
+        for(NumSteps; CubeContains(RayOrigin + (RayDirection * RayT)); NumSteps++)
+        {
+            //Check if out of bounds
+            const float Density = SampleDensity(RayOrigin + (RayDirection * RayT));
+            
+            if(Density >= 0.5)
+            {
+                AccDensity += Density;
+            }
+
+            RayT += StepSize;
+        }
+
+        if(NumSteps) OutColor = float3(AccDensity / NumSteps, 0, AccDensity / NumSteps);
+    } 
+
+    Target[DispatchThreadId.xy] = OutColor;
 }

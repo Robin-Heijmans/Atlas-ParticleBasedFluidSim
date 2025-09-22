@@ -29,10 +29,30 @@ FFluidExtention::FFluidExtention(const FAutoRegister& AutoRegister) : FSceneView
 void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily) {
 
     // Default Params for now
-    FluidVolume.BoundsPosition = FVector3f(0.5,0,0.5);
-    FluidVolume.BoundsSize = FVector3f(1,1,1);
-}
+    FluidVolume.BoundsPosition = FVector3f(-288.779695,8.043881,122.825553);
+    FluidVolume.BoundsSize = FVector3f(56,56,56);
 
+
+    ENQUEUE_RENDER_COMMAND(ShBakeGeneration)(
+    [this](FRHICommandListImmediate& RHICmdList) {
+        FRDGBuilder GraphBuilder(RHICmdList);
+
+        FRHITextureCreateDesc Desc = FRHITextureCreateDesc::Create3D(TEXT("DensityMap"))
+                .SetExtent(512, 512)
+                .SetDepth(512)
+                .SetFormat(PF_A32B32G32R32F)
+                .SetFlags(ETextureCreateFlags::UAV | ETextureCreateFlags::ShaderResource)
+                .SetInitialState(ERHIAccess::SRVCompute);
+
+        DensityMap = RHICreateTexture(Desc);
+        const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("TanFluidShader_DensityMap")));
+        
+        FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
+        RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, DensityMapRef);
+
+        GraphBuilder.Execute();
+    });
+}
 
 void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FPostProcessingInputs& Inputs) {
 	// Dipatch Shader here
@@ -63,8 +83,7 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     Particles.Positions = GraphBuilder.CreateUAV(UAVBuffer);
     Particles.NumParticles = Positions.Num();
 
-    //TUniformBufferRef<FParticles> UB = TUniformBufferRef<FParticles>::CreateUniformBufferImmediate(Particles, EUniformBufferUsage::UniformBuffer_SingleDraw);
-    
+    const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("TanFluidShader_DensityMap")));
 
     // -- General Pipeline --
     // 1. Physics Simulation
@@ -75,9 +94,9 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     ParticleSimulation.Dispatch(GraphBuilder, GlobalShaderMap, Particles);
 
     // Render Prep
-    //RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, ParticleUB);
+    //RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, DensityMapRef);
 
     // Fluid March
-    FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, InView, SceneColor, FluidVolume);
+    FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, InView, SceneColor, FluidVolume, DensityMapRef);
 
 }

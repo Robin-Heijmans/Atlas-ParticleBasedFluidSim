@@ -60,14 +60,15 @@ void FParticleSimulationDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlo
         DispatchCount);
 }
 
-void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, TUniformBufferRef<FParticles>& Particles)
+void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRDGTextureRef DensityMapRef)
 {
     RDG_EVENT_SCOPE(GraphBuilder, "RenderPrep");
 
     Shaders::FRenderPrepShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FRenderPrepShader::FParameters>();
-    //PassParameters->Particles = Particles;
+    PassParameters->DensityMap = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(DensityMapRef));
+    PassParameters->DensityMapSize = DensityMapRef->GetRHI()->GetSizeXYZ().Size();
 
-    const FIntVector DispatchCount(X,Y,Z);
+    const FIntVector DispatchCount(64,64,64);
     TShaderMapRef<Shaders::FRenderPrepShader> ComputeShader(GlobalShaderMap);
 
     FComputeShaderUtils::AddPass(
@@ -78,13 +79,19 @@ void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShade
         DispatchCount);
 }
 
-
-void FFluidMarchDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FSceneView& InView, FRDGTexture* SceneColor, FFluidVolume& Volume)  
+void FFluidMarchDispatchParams::Dispatch(
+    FRDGBuilder& GraphBuilder, 
+    FGlobalShaderMap* GlobalShaderMap, 
+    const FSceneView& InView, 
+    FRDGTexture* SceneColor, 
+    FFluidVolume& Volume, 
+    FRDGTextureRef DensityMapRef)  
 {
     RDG_EVENT_SCOPE(GraphBuilder, "FluidMarch");
  
     Shaders::FFluidMarchShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMarchShader::FParameters>();
 
+    // Output Texture
     FRDGTextureDesc OutputDesc {};
     OutputDesc = SceneColor->Desc;
     OutputDesc.Reset();
@@ -95,7 +102,10 @@ void FFluidMarchDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShade
 
     const FRDGTextureRef OutputTexture = GraphBuilder.CreateTexture(OutputDesc, TEXT("TanFluidShader_Output"));
 
+    //DensityMap Input
     PassParameters->Target = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutputTexture));
+    PassParameters->DensityMap = GraphBuilder.CreateSRV(FRDGTextureSRVDesc(DensityMapRef));
+    PassParameters->DensityMapSize = DensityMapRef->GetRHI()->GetSizeXYZ().Size();
     PassParameters->Volume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(Volume, EUniformBufferUsage::UniformBuffer_SingleFrame);
     PassParameters->SceneColor = SceneColor;
     PassParameters->View = InView.ViewUniformBuffer;

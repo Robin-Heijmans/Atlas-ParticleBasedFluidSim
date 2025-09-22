@@ -35,6 +35,8 @@ private:
 	FRDGBufferRef RWBuffer;
 	TRefCountPtr<FRDGPooledBuffer> PooledBuffer;
 
+	FTextureRHIRef DensityMap;
+
 	// Uniform Buffers
 	FFluidVolume FluidVolume;
 };
