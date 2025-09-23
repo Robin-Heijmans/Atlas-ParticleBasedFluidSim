@@ -60,20 +60,28 @@ void FParticleSimulationDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlo
         DispatchCount);
 }
 
-void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FRDGTextureRef& DensityMapRef)
+void FRenderPrepDispatchParams::Dispatch(
+    FRDGBuilder& GraphBuilder, 
+    FGlobalShaderMap* GlobalShaderMap, 
+    const FRDGTextureRef& DensityMapRef,  
+    const FRDGBufferRef& PositionsRef)
 {
     RDG_EVENT_SCOPE(GraphBuilder, "RenderPrep");
 
     Shaders::FRenderPrepShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FRenderPrepShader::FParameters>();
     PassParameters->DensityMap = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(DensityMapRef));
-    PassParameters->DensityMapSize = DensityMapRef->GetRHI()->GetSizeXYZ().Size();
+    PassParameters->DensityMapSize = 128; // PLS PUT ME OUT OF MY MISERY
 
-    const FIntVector DispatchCount(64,64,64);
+    PassParameters->Positions = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(PositionsRef));
+    PassParameters->NumParticles = PositionsRef->GetRHI()->GetSize() / sizeof(FVector3f);
+
+    const FIntVector DispatchCount(2,128,128);
     TShaderMapRef<Shaders::FRenderPrepShader> ComputeShader(GlobalShaderMap);
 
     FComputeShaderUtils::AddPass(
         GraphBuilder,
         RDG_EVENT_NAME("Execute RenderPrep"),
+        ERDGPassFlags::AsyncCompute,
         ComputeShader,
         PassParameters,
         DispatchCount);
@@ -94,6 +102,7 @@ void FFluidMarchDispatchParams::Dispatch(
     // Output Texture
     FRDGTextureDesc OutputDesc {};
     OutputDesc = SceneColor->Desc;
+    //OutputDesc.Extent /= 4.0;
     OutputDesc.Reset();
     OutputDesc.Flags |= TexCreate_UAV;
     OutputDesc.Flags &= ~(TexCreate_RenderTargetable | TexCreate_FastVRAM);
@@ -111,17 +120,16 @@ void FFluidMarchDispatchParams::Dispatch(
     PassParameters->View = InView.ViewUniformBuffer;
 
 	const FIntPoint ViewSize = SceneColor->Desc.Extent;
-    const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, FComputeShaderUtils::kGolden2DGroupSize);
+    const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, FIntPoint(48,16));
     
     TShaderMapRef<Shaders::FFluidMarchShader> ComputeShader(GlobalShaderMap);
-
     FComputeShaderUtils::AddPass(
         GraphBuilder,
         RDG_EVENT_NAME("Execute TanComputeShader %dx%d", ViewSize.X, ViewSize.Y),
+        ERDGPassFlags::AsyncCompute,
         ComputeShader,
         PassParameters,
         DispatchCount);
 
     AddCopyTexturePass(GraphBuilder, OutputTexture, SceneColor);
-
 }

@@ -42,10 +42,11 @@ public class ShaderInterface : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
-            	"Renderer",
-            	"RenderCore",
-            	"RHI",
-            	"Projects"
+				"Renderer",
+				"RenderCore",
+				"RHI",
+				"Projects",
+				"ParticleBasedFluidSimulation"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
