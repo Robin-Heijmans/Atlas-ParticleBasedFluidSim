@@ -129,7 +129,6 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
 	if (TotalTime >= FixedTimeStep)
 	{
 		Simulation->StepSimulation(FixedTimeStep);
-        Particles = Simulation->GetParticles();
 		TotalTime = 0.0f;
 	}
 	

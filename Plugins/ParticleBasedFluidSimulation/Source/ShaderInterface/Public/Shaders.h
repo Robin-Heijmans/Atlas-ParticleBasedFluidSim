@@ -46,8 +46,44 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidMathParams, )
     SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float>, Densities)
     SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint3>, SpatialIndices)
     SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint>, SpatialOffsets)
+    
+    SHADER_PARAMETER(float, PressureAmplifier)
+    SHADER_PARAMETER(float, TargetDensity)
+    SHADER_PARAMETER(float, CollisionDampening)
+    SHADER_PARAMETER(float, SmoothingRadius)
+    SHADER_PARAMETER(float, ViscosityStrength)
+    SHADER_PARAMETER(float, DeltaTime)
+    SHADER_PARAMETER(float, Gravity)
+    SHADER_PARAMETER(uint32, NumParticles)
 
 END_SHADER_PARAMETER_STRUCT()
+    
+// -- .usf files --
+// PhysicsSim
+/*
+BEGIN_SHADER_PARAMETER_STRUCT(FParticleSimulationParams, )
+    //SHADER_PARAMETER_STRUCT_REF(FParticles, Particles)
+    // Buffers
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Positions)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, PredictedPositions)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Velocities)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float>, Densities)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint3>, SpatialIndices)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint>, SpatialOffsets)
+    
+    // Settings
+    SHADER_PARAMETER(float, PressureAmplifier)
+    SHADER_PARAMETER(float, TargetDensity)
+    SHADER_PARAMETER(float, CollisionDampening)
+    SHADER_PARAMETER(float, SmoothingRadius)
+    SHADER_PARAMETER(float, ViscosityStrength)
+    SHADER_PARAMETER(float, DeltaTime)
+    SHADER_PARAMETER(float, Gravity)
+    SHADER_PARAMETER(uint32, NumParticles)
+    //SHADER_PARAMETER(FVector3f, MaxBounds)
+    //SHADER_PARAMETER(FVector3f, MinBounds)
+END_SHADER_PARAMETER_STRUCT()
+*/
 
 // RenderPrep
 BEGIN_SHADER_PARAMETER_STRUCT(FRenderPrepParams, )
@@ -194,7 +230,85 @@ namespace Shaders
     	}
     };
 
+    
     class FFluidMathUpdateSpatialLookup : public FGlobalShader
+class FRenderPrepShader : public FGlobalShader
+{
+public:
+	DECLARE_GLOBAL_SHADER(FRenderPrepShader);
+	SHADER_USE_PARAMETER_STRUCT(FRenderPrepShader, FGlobalShader);
+
+	using FParameters = FRenderPrepParams;
+
+    // Basic shader initialization
+    static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+        return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+    }
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
+		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+	}
+};
+
+/*
+    //class FFluidMarchShader : public FGlobalShader
+    //{
+    //public:
+    //	DECLARE_GLOBAL_SHADER(FFluidMarchShader);
+    //	SHADER_USE_PARAMETER_STRUCT(FFluidMarchShader, FGlobalShader);
+//
+    //	using FParameters = FFluidMarchParams;
+//
+    //    // Basic shader initialization
+    //    static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+    //        return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+    //    }
+//
+    //	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+    //	{
+    //		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
+    //		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 32);
+    //		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+    //	}
+    //};
+
+} // namespace Shaders
+
+// SimulateParticles
+USTRUCT(BlueprintType)
+struct SHADERINTERFACE_API FParticleSimulationDispatchParams
+{	
+GENERATED_BODY()
+    public:
+    int X = 64;
+    int Y = 1;
+    int Z = 1;
+    Shaders::FParticleSimulationShader::FParameters* PassParameters;
+
+    // Particle buffers
+    FBufferRHIRef PositionRHI;
+    FBufferRHIRef VelocityRHI;
+    FRDGBufferRef PredictedPositionBuffer;
+    FRDGBufferRef DensityBuffer;
+    FRDGBufferRef SpatialIndicesBuffer;
+    FRDGBufferRef SpatialOffsetsBuffer;
+
+    // UAVs
+    FRDGBufferUAVRef PositionsUAV;
+    FRDGBufferUAVRef VelocitiesUAV;
+    FRDGBufferUAVRef PredictedPositionUAV;
+    FRDGBufferUAVRef DensityUAV;
+    FRDGBufferUAVRef SpatialIndicesUAV;
+    FRDGBufferUAVRef SpatialOffsetsUAV;
+
+    FParticleSimulationDispatchParams() = default;
+    FParticleSimulationDispatchParams(int x, int y, int z)
+        : X(x)
+        , Y(y)
+        , Z(z)
     {
     public:
     	DECLARE_GLOBAL_SHADER(FFluidMathUpdateSpatialLookup);
@@ -212,8 +326,9 @@ namespace Shaders
     		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
     		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
     		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
-    	}
+        }
     };
+*/
 
     class FFluidMathCalculateDensity : public FGlobalShader
     {

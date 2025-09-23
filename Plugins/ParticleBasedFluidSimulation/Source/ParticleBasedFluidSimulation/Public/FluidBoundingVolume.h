@@ -6,7 +6,6 @@
 #include "GameFramework/Actor.h"
 #include "FluidSimulationSystem.h"
 #include "Templates/UniquePtr.h"
-#include "Shaders.h"
 
 // Has to be last include in header
 #include "FluidBoundingVolume.generated.h"
