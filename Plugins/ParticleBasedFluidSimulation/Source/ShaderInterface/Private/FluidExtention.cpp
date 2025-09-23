@@ -80,6 +80,14 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
 
     // Physics Simulation
     //ParticleSimulation.Dispatch(GraphBuilder, GlobalShaderMap, Particles);
+    //FluidMath.Positions
+
+    //FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, MathParams);
+    //FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, MathParams);
+    //FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, MathParams);
+    //FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, MathParams);
+    //FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, MathParams);
+    //FluidMathDispatch::UpdatePositions(GraphBuilder, GlobalShaderMap, MathParams);
 
     // Render Prep
     //RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, DensityMapRef);

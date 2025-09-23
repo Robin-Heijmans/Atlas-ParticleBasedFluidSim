@@ -16,8 +16,6 @@ uint DensityMapSize;
 Texture2D<float3> SceneColor;
 RWTexture2D<float3> Target;
 
-ConstantBuffer<FFluidVolume> FluidVolume;
-
 float2 GetPixelUV(const uint2 Pixel) { return (float2(Pixel) + 0.5 - View.TemporalAAJitter.xy) * View.ViewSizeAndInvSize.zw; }
 
 float3 GetRayOrigin() { return View.WorldViewOriginHigh + View.WorldViewOriginLow; }
@@ -119,7 +117,7 @@ const float SampleDensity(const float3 RayPos)
     const float3 Density = DensityMap.SampleLevel(GlobalBilinearClampedSampler, UVW, 0);
     return Density.x;
 }
-*/
+
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void Compute(
 	uint3 DispatchThreadId : SV_DispatchThreadID,

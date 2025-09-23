@@ -27,9 +27,10 @@ public:
 
 private:
 	// Shader 'Dispatchers'
-	FParticleSimulationDispatchParams ParticleSimulation;
+	//FParticleSimulationDispatchParams ParticleSimulation;
 	FRenderPrepDispatchParams RenderPrep;
 	FFluidMarchDispatchParams FluidMarch;
+	FFluidMathParams FluidMath;
 
 	FTextureRHIRef DensityMap;
 

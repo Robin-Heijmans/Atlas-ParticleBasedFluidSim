@@ -1,6 +1,7 @@
 #include "/Engine/Private/Common.ush"
-#include "SpatialHash3D.ush"
-#include "SmoothingKernels.ush"
+
+#include "/Shaders/Compute/Headers/SpatialHash3D.ush"
+#include "/Shaders/Compute/Headers/SmoothingKernels.ush"
 
 static const int NumThreads = 64;
 

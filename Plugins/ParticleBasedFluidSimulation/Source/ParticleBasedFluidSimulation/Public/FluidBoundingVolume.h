@@ -54,7 +54,6 @@ public:
 	TUniquePtr<FFluidSimulationSystem> Simulation;
 	TArray<FParticle> Particles;
 	TArray<FVector3f> InitialPositions;
-	FParticleSimulationDispatchParams ParticleParams;
 private:
 	void InitializeParticles();
 	void UpdateVolumeBounds();

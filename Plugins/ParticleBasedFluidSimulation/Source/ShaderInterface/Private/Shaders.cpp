@@ -28,19 +28,28 @@ namespace Shaders
 
     // Implementations ... 
     
-    IMPLEMENT_GLOBAL_SHADER(FParticleSimulationShader,  "/Shaders/Compute/ParticleSim.usf", "Compute", SF_Compute);
-    IMPLEMENT_GLOBAL_SHADER(FRenderPrepShader,          "/Shaders/Compute/RenderPrep.usf", "Compute", SF_Compute);
-    IMPLEMENT_GLOBAL_SHADER(FFluidMarchShader,          "/Shaders/Compute/FluidMarch.usf", "Compute", SF_Compute);
+    //IMPLEMENT_GLOBAL_SHADER(FParticleSimulationShader,  "/Shaders/Compute/ParticleSim.usf", "Compute", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FRenderPrepShader,                  "/Shaders/Compute/RenderPrep.usf", "Compute", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMarchShader,                  "/Shaders/Compute/FluidMarch.usf", "Compute", SF_Compute);
+
+    // Fluid Math Kernels
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathExternalForces,           "/Shaders/Compute/FluidMath.usf", "ExternalForces", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathUpdateSpatialLookup,      "/Shaders/Compute/FluidMath.usf", "UpdateSpatialLookup", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathCalculateDensity,         "/Shaders/Compute/FluidMath.usf", "CalculateDensity", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathCalculatePressureForce,   "/Shaders/Compute/FluidMath.usf", "CalculatePressureForce", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathCalculateViscosityForce,  "/Shaders/Compute/FluidMath.usf", "CalculateViscosityForce", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathUpdatePositions,          "/Shaders/Compute/FluidMath.usf", "UpdatePositions", SF_Compute);
 
     // ... add new implemenations here
 }
 
 // Global Shader Buffers
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolume, "FluidVolume");
-IMPLEMENT_UNIFORM_BUFFER_STRUCT(FParticles, "FluidParticles");
+//IMPLEMENT_UNIFORM_BUFFER_STRUCT(FParticles, "FluidParticles");
 
 
 // Dispatch Functions ...
+/*
 void FParticleSimulationDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FParticles& Particles)
 {
     RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation");
@@ -58,6 +67,119 @@ void FParticleSimulationDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlo
         ComputeShader,
         PassParameters,
         DispatchCount);
+}
+*/
+
+namespace FluidMathDispatch
+{
+    void ExternalForces(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params) 
+    {
+        RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation ExternalForces");
+
+        using ShaderType = Shaders::FFluidMathExternalForces;
+        ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
+        *PassParameters = Params;
+        
+        const FIntVector DispatchCount(10,10,5);
+        TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
+
+        FComputeShaderUtils::AddPass(
+            GraphBuilder,
+            RDG_EVENT_NAME("Execute ExternalForces"), 
+            ComputeShader,
+            PassParameters,
+            DispatchCount);
+    }
+    void UpdateSpatialLookup(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params)
+    {
+        RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation UpdateSpatialLookup");
+
+        using ShaderType = Shaders::FFluidMathUpdateSpatialLookup;
+        ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
+        *PassParameters = Params;
+        
+        const FIntVector DispatchCount(10,10,5);
+        TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
+
+        FComputeShaderUtils::AddPass(
+            GraphBuilder,
+            RDG_EVENT_NAME("Execute UpdateSpatialLookup"), 
+            ComputeShader,
+            PassParameters,
+            DispatchCount);
+    }
+    void CalculateDensity(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params)
+    {
+        RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation CalculateDensity");
+
+        using ShaderType = Shaders::FFluidMathCalculateDensity;
+        ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
+        *PassParameters = Params;
+        
+        const FIntVector DispatchCount(10,10,5);
+        TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
+
+        FComputeShaderUtils::AddPass(
+            GraphBuilder,
+            RDG_EVENT_NAME("Execute CalculateDensity"), 
+            ComputeShader,
+            PassParameters,
+            DispatchCount);
+    }
+    void CalculatePressureForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params) 
+    {
+        RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation CalculatePressureForce");
+
+        using ShaderType = Shaders::FFluidMathCalculatePressureForce;
+        ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
+        *PassParameters = Params;
+        
+        const FIntVector DispatchCount(10,10,5);
+        TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
+
+        FComputeShaderUtils::AddPass(
+            GraphBuilder,
+            RDG_EVENT_NAME("Execute CalculatePressureForce"), 
+            ComputeShader,
+            PassParameters,
+            DispatchCount);
+    }
+    void CalculateViscosityForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params) 
+    {
+        RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation CalculateViscosityForce");
+
+        using ShaderType = Shaders::FFluidMathCalculateViscosityForce;
+        ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
+        *PassParameters = Params;
+        
+        const FIntVector DispatchCount(10,10,5);
+        TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
+
+        FComputeShaderUtils::AddPass(
+            GraphBuilder,
+            RDG_EVENT_NAME("Execute CalculateViscosityForce"), 
+            ComputeShader,
+            PassParameters,
+            DispatchCount);
+    }
+    void UpdatePositions(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params) 
+    {
+        RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation UpdatePositions");
+
+        using ShaderType = Shaders::FFluidMathUpdatePositions;
+        ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
+        *PassParameters = Params;
+        
+        const FIntVector DispatchCount(10,10,5);
+        TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
+
+        FComputeShaderUtils::AddPass(
+            GraphBuilder,
+            RDG_EVENT_NAME("Execute UpdatePositions"), 
+            ComputeShader,
+            PassParameters,
+            DispatchCount);
+    }
 }
 
 void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FRDGTextureRef& DensityMapRef)

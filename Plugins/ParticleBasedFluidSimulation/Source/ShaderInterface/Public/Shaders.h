@@ -30,19 +30,23 @@ BEGIN_UNIFORM_BUFFER_STRUCT(FFluidVolume, )
     SHADER_PARAMETER(FVector3f, BoundsSize)
 END_UNIFORM_BUFFER_STRUCT()
 
+/*
 BEGIN_UNIFORM_BUFFER_STRUCT(FParticles, )
     SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Positions)
     SHADER_PARAMETER(uint32, NumParticles)
 END_UNIFORM_BUFFER_STRUCT()
-    
-// -- .usf files --
-// PhysicsSim
-BEGIN_SHADER_PARAMETER_STRUCT(FParticleSimulationParams, )
-    //SHADER_PARAMETER_STRUCT_REF(FParticles, Particles)
+*/  
 
+// -- .usf files --
+// FluidMath
+BEGIN_SHADER_PARAMETER_STRUCT(FFluidMathParams, )
     SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Positions)
-    SHADER_PARAMETER(uint32, NumParticles)
-    
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, PredictedPositions)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Velocities)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float>, Densities)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint3>, SpatialIndices)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint>, SpatialOffsets)
+
 END_SHADER_PARAMETER_STRUCT()
 
 // RenderPrep
@@ -127,6 +131,7 @@ GENERATED_BODY()
 };
 
 // SimulateParticles
+/*
 USTRUCT(BlueprintType)
 struct SHADERINTERFACE_API FParticleSimulationDispatchParams
 {	
@@ -146,6 +151,17 @@ GENERATED_BODY()
 
     void Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FParticles& Particles);
 };
+*/
+
+namespace FluidMathDispatch
+{
+    void ExternalForces(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params);
+    void UpdateSpatialLookup(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params);
+    void CalculateDensity(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params);
+    void CalculatePressureForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params);
+    void CalculateViscosityForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params);
+    void UpdatePositions(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params);
+}
 
 
 namespace Shaders
@@ -157,13 +173,118 @@ namespace Shaders
     // ... using FParameters = F*ShaderName*ShaderParams
     // ---------
 
-    class FParticleSimulationShader : public FGlobalShader
+    class FFluidMathExternalForces : public FGlobalShader
     {
     public:
-    	DECLARE_GLOBAL_SHADER(FParticleSimulationShader);
-    	SHADER_USE_PARAMETER_STRUCT(FParticleSimulationShader, FGlobalShader);
+    	DECLARE_GLOBAL_SHADER(FFluidMathExternalForces);
+    	SHADER_USE_PARAMETER_STRUCT(FFluidMathExternalForces, FGlobalShader);
 
-    	using FParameters = FParticleSimulationParams;
+    	using FParameters = FFluidMathParams;
+
+        // Basic shader initialization
+        static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+            return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+        }
+
+    	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+    	{
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+    	}
+    };
+
+    class FFluidMathUpdateSpatialLookup : public FGlobalShader
+    {
+    public:
+    	DECLARE_GLOBAL_SHADER(FFluidMathUpdateSpatialLookup);
+    	SHADER_USE_PARAMETER_STRUCT(FFluidMathUpdateSpatialLookup, FGlobalShader);
+
+    	using FParameters = FFluidMathParams;
+
+        // Basic shader initialization
+        static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+            return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+        }
+
+    	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+    	{
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+    	}
+    };
+
+    class FFluidMathCalculateDensity : public FGlobalShader
+    {
+    public:
+    	DECLARE_GLOBAL_SHADER(FFluidMathCalculateDensity);
+    	SHADER_USE_PARAMETER_STRUCT(FFluidMathCalculateDensity, FGlobalShader);
+
+    	using FParameters = FFluidMathParams;
+
+        // Basic shader initialization
+        static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+            return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+        }
+
+    	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+    	{
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+    	}
+    };
+
+    class FFluidMathCalculatePressureForce : public FGlobalShader
+    {
+    public:
+    	DECLARE_GLOBAL_SHADER(FFluidMathCalculatePressureForce);
+    	SHADER_USE_PARAMETER_STRUCT(FFluidMathCalculatePressureForce, FGlobalShader);
+
+    	using FParameters = FFluidMathParams;
+
+        // Basic shader initialization
+        static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+            return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+        }
+
+    	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+    	{
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+    	}
+    };
+
+    class FFluidMathCalculateViscosityForce : public FGlobalShader
+    {
+    public:
+    	DECLARE_GLOBAL_SHADER(FFluidMathCalculateViscosityForce);
+    	SHADER_USE_PARAMETER_STRUCT(FFluidMathCalculateViscosityForce, FGlobalShader);
+
+    	using FParameters = FFluidMathParams;
+
+        // Basic shader initialization
+        static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+            return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+        }
+
+    	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+    	{
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+    	}
+    };
+        
+    class FFluidMathUpdatePositions : public FGlobalShader
+    {
+    public:
+    	DECLARE_GLOBAL_SHADER(FFluidMathUpdatePositions);
+    	SHADER_USE_PARAMETER_STRUCT(FFluidMathUpdatePositions, FGlobalShader);
+
+    	using FParameters = FFluidMathParams;
 
         // Basic shader initialization
         static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
