@@ -92,23 +92,21 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
     FluidVolume.BoundsPosition = FVector3f(BoundingVolume->GetActorLocation());
     FluidVolume.BoundsSize = FVector3f(BoundingVolume->Bounds->GetScaledBoxExtent());
 
+    // Update Positions
+    const uint32 NumElements = 500;
+    const uint32 BytesPerElement = sizeof(FVector3f);
+
+    Positions.Init(FVector3f::ZeroVector, NumElements);
+    for(int i = 0; i < NumElements; i++)
+    {
+        Positions[i] = FVector3f(BoundingVolume->Particles[i].Position + BoundingVolume->Bounds->GetUnscaledBoxExtent()) / FVector3f(BoundingVolume->Bounds->GetUnscaledBoxExtent() * 2.f);
+    }
+
     if(BoundingVolume->RenderPrep)
     {
         ENQUEUE_RENDER_COMMAND(GenDensityMap)(
-        [this, BoundingVolume](FRHICommandListImmediate& RHICmdList) {
+        [this](FRHICommandListImmediate& RHICmdList) {
             FRDGBuilder GraphBuilder(RHICmdList);
-            
-            // Update Positions
-            const uint32 NumElements = 500;
-            const uint32 BytesPerElement = sizeof(FVector3f);
-
-            TArray<FVector3f> Positions;
-            Positions.Init(FVector3f::ZeroVector, NumElements);
-            for(int i = 0; i < NumElements; i++)
-            {
-                Positions[i] = FVector3f(BoundingVolume->Particles[i].Position + BoundingVolume->Bounds->GetUnscaledBoxExtent()) / FVector3f(BoundingVolume->Bounds->GetUnscaledBoxExtent() * 2.f);
-            }
-
 
             const FRDGBufferRef ParticlePositionsRef = GraphBuilder.RegisterExternalBuffer(PooledPositions, TEXT("TanFluidShader_ParticlePositions"));
             GraphBuilder.QueueBufferUpload(ParticlePositionsRef, Positions.GetData(), BytesPerElement * NumElements, ERDGInitialDataFlags::None);

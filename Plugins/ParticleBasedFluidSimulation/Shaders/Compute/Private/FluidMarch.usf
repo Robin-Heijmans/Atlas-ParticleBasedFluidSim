@@ -150,18 +150,13 @@ void Compute(
     // Psuedo Stepping through Density Map
     uint NumSteps = 1;
     float3 AccDensity = float3(0,0,0);
-    const float StepSize = 0.1;
+    const float StepSize = 0.2;
     
     do
     {
         //Check if out of bounds
         const float3 Density = SampleDensity(RayOrigin + (RayDirection * RayT));
-        
-        if(Density.x >= 0.5)
-        {
-            AccDensity += Density;
-        }
-
+        AccDensity += Density;
         RayT += StepSize;
         NumSteps++;
     } while(CubeContains(RayOrigin + (RayDirection * RayT)));

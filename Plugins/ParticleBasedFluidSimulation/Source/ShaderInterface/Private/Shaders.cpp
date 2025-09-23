@@ -75,7 +75,7 @@ void FRenderPrepDispatchParams::Dispatch(
     PassParameters->Positions = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(PositionsRef));
     PassParameters->NumParticles = PositionsRef->GetRHI()->GetSize() / sizeof(FVector3f);
 
-    const FIntVector DispatchCount(16,16,16);
+    const FIntVector DispatchCount(2,128,128);
     TShaderMapRef<Shaders::FRenderPrepShader> ComputeShader(GlobalShaderMap);
 
     FComputeShaderUtils::AddPass(
@@ -102,6 +102,7 @@ void FFluidMarchDispatchParams::Dispatch(
     // Output Texture
     FRDGTextureDesc OutputDesc {};
     OutputDesc = SceneColor->Desc;
+    //OutputDesc.Extent /= 4.0;
     OutputDesc.Reset();
     OutputDesc.Flags |= TexCreate_UAV;
     OutputDesc.Flags &= ~(TexCreate_RenderTargetable | TexCreate_FastVRAM);
@@ -119,10 +120,9 @@ void FFluidMarchDispatchParams::Dispatch(
     PassParameters->View = InView.ViewUniformBuffer;
 
 	const FIntPoint ViewSize = SceneColor->Desc.Extent;
-    const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, FComputeShaderUtils::kGolden2DGroupSize);
+    const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, FIntPoint(48,16));
     
     TShaderMapRef<Shaders::FFluidMarchShader> ComputeShader(GlobalShaderMap);
-
     FComputeShaderUtils::AddPass(
         GraphBuilder,
         RDG_EVENT_NAME("Execute TanComputeShader %dx%d", ViewSize.X, ViewSize.Y),
@@ -132,5 +132,4 @@ void FFluidMarchDispatchParams::Dispatch(
         DispatchCount);
 
     AddCopyTexturePass(GraphBuilder, OutputTexture, SceneColor);
-
 }

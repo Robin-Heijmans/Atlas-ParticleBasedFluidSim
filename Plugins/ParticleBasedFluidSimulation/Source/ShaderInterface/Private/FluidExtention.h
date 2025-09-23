@@ -34,6 +34,7 @@ private:
 
 	FTextureRHIRef DensityMap;
 	TRefCountPtr<FRDGPooledBuffer> PooledPositions;
+    TArray<FVector3f> Positions;
 
 	// Uniform Buffers
 	FFluidVolume FluidVolume;
