@@ -1,0 +1,11 @@
+#ifndef PARTICLE_DATA
+#define PARTICLE_DATA
+
+
+RWStructuredBuffer<float3> Positions;
+uint NumParticles;
+
+
+
+
+#endif 

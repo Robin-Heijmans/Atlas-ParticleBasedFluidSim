@@ -3,17 +3,39 @@
 
 #include "/Shaders/Compute/Headers/Common.ush"
 
-Buffer<FParticles> FluidParticles;
+//ConstantBuffer<FParticles> FluidParticles;
+
+RWTexture3D<float3> DensityMap;
+uint DensityMapSize;
+
+float SampleWorley(float3 UVW)
+{
+    const float influecne = 0.5;
+    const float3 points[5] = 
+    {
+        float3(1.0, 1.0, 1.0),
+        float3(0.7, 0.2, 0.5),
+        float3(0.5, 0.7, 0.2),
+        float3(0.2, 0.5, 0.7),
+        float3(0.0, 0.0, 0.0)
+    };
+
+    float closest = 1e34f;
+    for(int i = 0; i < 5; i++)
+    {
+        float champion = length(points[i] - UVW);
+        if(champion < closest) closest = champion;
+    }
+    return 1.0 - closest;
+}
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void Compute(
 	uint3 DispatchThreadId : SV_DispatchThreadID,
 	uint GroupIndex : SV_GroupIndex )
 {
-    for(int i = 0; i < 16; i++)
-    {
-        FluidParticles.PositionX[i] -= 0.01;
-        FluidParticles.PositionY[i] -= 0.01;
-        FluidParticles.PositionZ[i] -= 0.01;
-    }
+    const float3 UVW = (float3(DispatchThreadId) + 0.5) / DensityMapSize * 2.0;
+    const float worley = SampleWorley(UVW);
+
+    DensityMap[DispatchThreadId] = float3(worley,worley,worley);
 }

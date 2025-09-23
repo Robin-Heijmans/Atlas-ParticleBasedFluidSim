@@ -6,6 +6,7 @@
 #include "SceneRendererInterface.h"
 #include "DataDrivenShaderPlatformInfo.h"
 #include "PostProcess/PostProcessMaterial.h"
+#include "SceneView.h"
 
 #include "Shaders.h"
 
@@ -30,7 +31,8 @@ private:
 	FRenderPrepDispatchParams RenderPrep;
 	FFluidMarchDispatchParams FluidMarch;
 
+	FTextureRHIRef DensityMap;
+
 	// Uniform Buffers
 	FFluidVolume FluidVolume;
-	FParticles FluidParticles;
 };

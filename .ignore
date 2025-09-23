@@ -1,0 +1,11 @@
+/.git
+/.github
+/.vs
+/.vscode
+/Content
+/DerivedDataCache
+/Intermediate
+/Saved
+/Plugins/ParticleBasedFluidSimulation/Content
+/Plugins/ParticleBasedFluidSimulation/Intermediate
+/Plugins/ParticleBasedFluidSimulation/Shaders

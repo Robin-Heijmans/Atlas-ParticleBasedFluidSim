@@ -11,8 +11,7 @@
 #include "SceneView.h"
 #include "Engine/World.h"
 
-#include "RHI.h"
-#include "RenderResource.h"
+#include "Shaders.h"
 
 // Sets default values
 AFluidBoundingVolume::AFluidBoundingVolume()
