@@ -130,47 +130,6 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
 	if (TotalTime >= FixedTimeStep)
 	{
 		Simulation->StepSimulation(FixedTimeStep);
-        Particles = Simulation->GetParticles();
-        ENQUEUE_RENDER_COMMAND(DispatchParticleSim)(
-            [this](FRHICommandListImmediate& RHICmdList)
-            {
-                FRDGBuilder GraphBuilder(RHICmdList);
-
-                // Prepare pass parameters with your persistent UAVs/SRVs
-                ParticleParams.CreateBuffers(GraphBuilder, InitialPositions);
-
-                int NumParticles = ParticleParams.PassParameters->NumParticles;
-                FRDGBufferDesc Desc = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), NumParticles);
-                FRDGBufferRef Buffer = GraphBuilder.CreateBuffer(Desc, TEXT("Predicted Positions"));
-                TArray<FVector3f> Positions; 
-                Positions.Init(FVector3f(0,0,0), NumParticles);
-                GraphBuilder.QueueBufferUpload(Buffer, Positions.GetData(), NumParticles * sizeof(FVector3f));
-                FRDGBufferUAVRef UAV = GraphBuilder.CreateUAV(Buffer);
-                ParticleParams.PassParameters->PredictedPositions = UAV;
-
-                // Run your simulation dispatch
-                ParticleParams.Dispatch(GraphBuilder, GetGlobalShaderMap(GMaxRHIFeatureLevel));
-
-                GraphBuilder.AddPass(
-                    RDG_EVENT_NAME("ReadbackPredictedPositions"),
-                    ERDGPassFlags::NeverCull,
-                    [PredictedBuffer = Buffer, NumParticles](FRHICommandListImmediate& RHICmdList)
-                    {
-                        FRHIGPUBufferReadback Readback(TEXT("PredictedPositionsReadback"));
-                        Readback.EnqueueCopy(RHICmdList, PredictedBuffer->GetRHI(), sizeof(FVector3f) * NumParticles);
-
-                        if (Readback.IsReady()) {
-                        FVector3f* Data = (FVector3f*)Readback.Lock(NumParticles * sizeof(FVector3f));
-                        GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green,
-                                FString::Printf(TEXT("First particle: X=%f Y=%f Z=%f"), Data[0].X, Data[0].Y, Data[0].Z));
-                        Readback.Unlock();
-                        }
-                    }
-                );
-                GraphBuilder.Execute();
-            }
-        );
-        GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Red, FString::Printf(TEXT("First particle: X=%f Y=%f Z=%f"), InitialPositions[0].X, InitialPositions[0].Y, InitialPositions[0].Z));
 		TotalTime = 0.0f;
 	}
 	

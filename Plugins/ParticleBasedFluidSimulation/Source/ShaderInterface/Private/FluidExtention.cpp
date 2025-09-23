@@ -55,8 +55,8 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     TArray<FVector3f> Positions; 
     Positions.Init(FVector3f(1,-1,1), 16);
 
-    //ParticleSimulation.CreateBuffers(GraphBuilder, Positions);
-    //ParticleSimulation.Dispatch(GraphBuilder, GlobalShaderMap);
+    ParticleSimulation.CreateBuffers(GraphBuilder, Positions);
+    ParticleSimulation.Dispatch(GraphBuilder, GlobalShaderMap);
 
     // Render Prep
     //RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, FluidParticles);

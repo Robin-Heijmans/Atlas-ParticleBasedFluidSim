@@ -47,19 +47,19 @@ BEGIN_SHADER_PARAMETER_STRUCT(FParticleSimulationParams, )
     // Buffers
     SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Positions)
     SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, PredictedPositions)
-    //SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Velocities)
-    //SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float>, Densities)
-    //SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint3>, SpatialIndices)
-    //SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint>, SpatialOffsets)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Velocities)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float>, Densities)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint3>, SpatialIndices)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint>, SpatialOffsets)
     
     // Settings
-    //SHADER_PARAMETER(float, PressureAmplifier)
-    //SHADER_PARAMETER(float, TargetDensity)
-    //SHADER_PARAMETER(float, CollisionDampening)
-    //SHADER_PARAMETER(float, SmoothingRadius)
-    //SHADER_PARAMETER(float, ViscosityStrength)
-    //SHADER_PARAMETER(float, DeltaTime)
-    //SHADER_PARAMETER(float, Gravity)
+    SHADER_PARAMETER(float, PressureAmplifier)
+    SHADER_PARAMETER(float, TargetDensity)
+    SHADER_PARAMETER(float, CollisionDampening)
+    SHADER_PARAMETER(float, SmoothingRadius)
+    SHADER_PARAMETER(float, ViscosityStrength)
+    SHADER_PARAMETER(float, DeltaTime)
+    SHADER_PARAMETER(float, Gravity)
     SHADER_PARAMETER(uint32, NumParticles)
     //SHADER_PARAMETER(FVector3f, MaxBounds)
     //SHADER_PARAMETER(FVector3f, MinBounds)
@@ -221,20 +221,20 @@ GENERATED_BODY()
     Shaders::FParticleSimulationShader::FParameters* PassParameters;
 
     // Particle buffers
-    FRDGBufferRef PositionBuffer;
-    //FRDGBufferRef VelocityBuffer;
-    //FRDGBufferRef PredictedPositionBuffer;
-    //FRDGBufferRef DensityBuffer;
-    //FRDGBufferRef SpatialIndicesBuffer;
-    //FRDGBufferRef SpatialOffsetsBuffer;
+    FBufferRHIRef PositionRHI;
+    FBufferRHIRef VelocityRHI;
+    FRDGBufferRef PredictedPositionBuffer;
+    FRDGBufferRef DensityBuffer;
+    FRDGBufferRef SpatialIndicesBuffer;
+    FRDGBufferRef SpatialOffsetsBuffer;
 
     // UAVs
     FRDGBufferUAVRef PositionsUAV;
-    //FRDGBufferUAVRef VelocitiesUAV;
-    //FRDGBufferUAVRef PredictedPositionUAV;
-    //FRDGBufferUAVRef DensityUAV;
-    //FRDGBufferUAVRef SpatialIndicesUAV;
-    //FRDGBufferUAVRef SpatialOffsetsUAV;
+    FRDGBufferUAVRef VelocitiesUAV;
+    FRDGBufferUAVRef PredictedPositionUAV;
+    FRDGBufferUAVRef DensityUAV;
+    FRDGBufferUAVRef SpatialIndicesUAV;
+    FRDGBufferUAVRef SpatialOffsetsUAV;
 
     FParticleSimulationDispatchParams() = default;
     FParticleSimulationDispatchParams(int x, int y, int z)

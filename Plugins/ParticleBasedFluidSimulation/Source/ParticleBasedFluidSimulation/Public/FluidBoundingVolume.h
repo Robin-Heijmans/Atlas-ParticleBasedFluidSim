@@ -6,7 +6,6 @@
 #include "GameFramework/Actor.h"
 #include "FluidSimulationSystem.h"
 #include "Templates/UniquePtr.h"
-#include "Shaders.h"
 
 // Has to be last include in header
 #include "FluidBoundingVolume.generated.h"
@@ -54,7 +53,6 @@ public:
 	TUniquePtr<FFluidSimulationSystem> Simulation;
 	TArray<FParticle> Particles;
 	TArray<FVector3f> InitialPositions;
-	FParticleSimulationDispatchParams ParticleParams;
 private:
 	void InitializeParticles();
 	void UpdateVolumeBounds();
