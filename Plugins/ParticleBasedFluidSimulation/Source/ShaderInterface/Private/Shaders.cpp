@@ -57,25 +57,33 @@ void FParticleSimulationDispatchParams::CreateBuffers(FRDGBuilder& GraphBuilder,
 
     
 
-    if (!PositionRHI|| !VelocityRHI) {
-        FRHIResourceCreateInfo Info(TEXT("ParticlePositions"));
-        PositionRHI = RHICreateStructuredBuffer(sizeof(FVector3f), sizeof(FVector3f) * NumParticles, static_cast<uint32>(BUF_UnorderedAccess | BUF_ShaderResource), Info);
-        FMemory::Memcpy(PositionRHI, Positions.GetData(), sizeof(FVector3f) * NumParticles);
-
-        FRHIResourceCreateInfo Info(TEXT("ParticleVelocities"));
-        VelocityRHI = RHICreateStructuredBuffer(sizeof(FVector3f), sizeof(FVector3f) * NumParticles, static_cast<uint32>(BUF_UnorderedAccess | BUF_ShaderResource), Info);
-    }
-
-    FRDGBufferDesc Desc = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), NumParticles);
-    TRefCountPtr<FRDGPooledBuffer> PooledBuffer = new FRDGPooledBuffer(PositionRHI, Desc, NumParticles, TEXT("ParticlePositions"));
-    FRDGBufferRef PositionBuffer = GraphBuilder.RegisterExternalBuffer(PooledBuffer, TEXT("ParticlePositions"));
-    PositionsUAV = GraphBuilder.CreateUAV(PositionBuffer);
-
-    TRefCountPtr<FRDGPooledBuffer> PooledBuffer = new FRDGPooledBuffer(VelocityRHI, Desc, NumParticles, TEXT("ParticlePositions"));
-    FRDGBufferRef VelocityBuffer = GraphBuilder.RegisterExternalBuffer(PooledBuffer, TEXT("ParticlePositions"));
-    VelocitiesUAV = GraphBuilder.CreateUAV(VelocityBuffer);
+    //if (!PositionRHI|| !VelocityRHI) {
+    //    FRHIResourceCreateInfo Info(TEXT("ParticlePositions"));
+    //    PositionRHI = RHICreateStructuredBuffer(sizeof(FVector3f), sizeof(FVector3f) * NumParticles, static_cast<uint32>(BUF_UnorderedAccess | BUF_ShaderResource), Info);
+    //    FMemory::Memcpy(PositionRHI, Positions.GetData(), sizeof(FVector3f) * NumParticles);
+//
+    //    FRHIResourceCreateInfo Info(TEXT("ParticleVelocities"));
+    //    VelocityRHI = RHICreateStructuredBuffer(sizeof(FVector3f), sizeof(FVector3f) * NumParticles, static_cast<uint32>(BUF_UnorderedAccess | BUF_ShaderResource), Info);
+    //}
+//
+    //FRDGBufferDesc Desc = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), NumParticles);
+    //TRefCountPtr<FRDGPooledBuffer> PooledBuffer = new FRDGPooledBuffer(PositionRHI, Desc, NumParticles, TEXT("ParticlePositions"));
+    //FRDGBufferRef PositionBuffer = GraphBuilder.RegisterExternalBuffer(PooledBuffer, TEXT("ParticlePositions"));
+    //PositionsUAV = GraphBuilder.CreateUAV(PositionBuffer);
+//
+    //TRefCountPtr<FRDGPooledBuffer> PooledBuffer = new FRDGPooledBuffer(VelocityRHI, Desc, NumParticles, TEXT("ParticlePositions"));
+    //FRDGBufferRef VelocityBuffer = GraphBuilder.RegisterExternalBuffer(PooledBuffer, TEXT("ParticlePositions"));
+    //VelocitiesUAV = GraphBuilder.CreateUAV(VelocityBuffer);
 
     TTuple<FRDGBufferRef, FRDGBufferUAVRef> Buff;
+
+    Buff = CreateStructuredBuffer(sizeof(FVector3f), TEXT("Positions"), Positions.GetData());
+    PositionBuffer = Buff.Get<0>();
+    PositionsUAV = Buff.Get<1>();
+
+    Buff = CreateStructuredBuffer(sizeof(FVector3f), TEXT("Velocities"));
+    VelocityBuffer = Buff.Get<0>();
+    VelocitiesUAV = Buff.Get<1>();
 
     Buff = CreateStructuredBuffer(sizeof(FVector3f), TEXT("PredictedPositions"));
     PredictedPositionBuffer = Buff.Get<0>();

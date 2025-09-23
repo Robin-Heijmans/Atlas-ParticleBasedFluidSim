@@ -14,7 +14,7 @@
 namespace {
 	TAutoConsoleVariable<int32> CVarShaderOn(
 		TEXT("r.Fluid"),
-		1,
+		0,
 		TEXT("Enable Fluid Rendering \n")
 		TEXT(" 0: OFF;")
 		TEXT(" 1: ON."),

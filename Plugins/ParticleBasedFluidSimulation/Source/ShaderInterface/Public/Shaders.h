@@ -221,8 +221,8 @@ GENERATED_BODY()
     Shaders::FParticleSimulationShader::FParameters* PassParameters;
 
     // Particle buffers
-    FBufferRHIRef PositionRHI;
-    FBufferRHIRef VelocityRHI;
+    FRDGBufferRef PositionBuffer;
+    FRDGBufferRef VelocityBuffer;
     FRDGBufferRef PredictedPositionBuffer;
     FRDGBufferRef DensityBuffer;
     FRDGBufferRef SpatialIndicesBuffer;
