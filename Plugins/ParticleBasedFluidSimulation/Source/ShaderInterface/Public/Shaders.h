@@ -65,6 +65,18 @@ BEGIN_SHADER_PARAMETER_STRUCT(FParticleSimulationParams, )
     //SHADER_PARAMETER(FVector3f, MinBounds)
 END_SHADER_PARAMETER_STRUCT()
 
+//Bitonic sort
+BEGIN_SHADER_PARAMETER_STRUCT(FBitonicSortParams, )
+    // Buffers
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint3>, OriginalIndices)
+
+    // Settings / constants
+    SHADER_PARAMETER(uint32, NumEntries)
+    SHADER_PARAMETER(uint32, GroupWidth)
+    SHADER_PARAMETER(uint32, GroupHeight)
+    SHADER_PARAMETER(uint32, StepIndex)
+END_SHADER_PARAMETER_STRUCT()
+
 // RenderPrep
 BEGIN_SHADER_PARAMETER_STRUCT(FRenderPrepParams, )
     SHADER_PARAMETER_STRUCT_REF(FParticles, Particles)
@@ -151,6 +163,27 @@ namespace Shaders
     	SHADER_USE_PARAMETER_STRUCT(FParticleSimulationShader, FGlobalShader);
 
     	using FParameters = FParticleSimulationParams;
+
+        // Basic shader initialization
+        static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+            return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+        }
+
+    	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+    	{
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+    	}
+    };
+
+    class FBitonicSortShader : public FGlobalShader
+    {
+    public:
+    	DECLARE_GLOBAL_SHADER(FBitonicSortShader);
+    	SHADER_USE_PARAMETER_STRUCT(FBitonicSortShader, FGlobalShader);
+
+    	using FParameters = FBitonicSortParams;
 
         // Basic shader initialization
         static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {

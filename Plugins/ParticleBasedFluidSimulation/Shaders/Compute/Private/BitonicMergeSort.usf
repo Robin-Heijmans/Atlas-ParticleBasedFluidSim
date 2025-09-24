@@ -3,14 +3,7 @@
 
 static const int NumThreads = 128;
 
-struct Entry
-{
-	uint originalIndex;
-	uint hash;
-	uint key;
-};
-
-RWStructuredBuffer<Entry> Entries;
+RWStructuredBuffer<uint3> Entries; //uint3(index, hash, key)
 const uint numEntries;
 const uint groupWidth;
 const uint groupHeight;
@@ -29,13 +22,13 @@ void Sort (uint3 id : SV_DispatchThreadID)
 	// Exit if out of bounds (for non-power of 2 input sizes)
 	if (indexRight >= numEntries) return;
 
-	uint valueLeft = Entries[indexLeft].key;
-	uint valueRight = Entries[indexRight].key;
+	uint valueLeft = Entries[indexLeft].z;
+	uint valueRight = Entries[indexRight].z;
 
 	// Swap entries if value is descending
 	if (valueLeft > valueRight)
 	{
-		Entry temp = Entries[indexLeft];
+		uint3 temp = Entries[indexLeft];
 		Entries[indexLeft] = Entries[indexRight];
 		Entries[indexRight] = temp;
 	}
@@ -51,8 +44,8 @@ void CalculateOffsets(uint3 id : SV_DispatchThreadID)
 	uint i = id.x;
 	uint null = numEntries;
 
-	uint key = Entries[i].key;
-	uint keyPrev = i == 0 ? null : Entries[i - 1].key;
+	uint key = Entries[i].z;
+	uint keyPrev = i == 0 ? null : Entries[i - 1].z;
 
 	if (key != keyPrev)
 	{
