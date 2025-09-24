@@ -12,6 +12,7 @@
 #include "RHIGPUReadback.h"
 #include "MeshPassUtils.h"
 #include "MaterialShader.h"
+#include "../../ParticleBasedFluidSimulation/Public/GPUBitonicMergeSort.h"
 
 // ---------
 // This file contains
