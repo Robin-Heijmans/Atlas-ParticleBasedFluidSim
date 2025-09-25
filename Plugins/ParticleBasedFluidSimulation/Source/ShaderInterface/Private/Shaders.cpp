@@ -12,7 +12,6 @@
 #include "RHIGPUReadback.h"
 #include "MeshPassUtils.h"
 #include "MaterialShader.h"
-#include "../../ParticleBasedFluidSimulation/Public/GPUBitonicMergeSort.h"
 
 
 
@@ -36,6 +35,8 @@ namespace Shaders
     // Fluid Math Kernels
     IMPLEMENT_GLOBAL_SHADER(FFluidMathExternalForces,           "/Shaders/Compute/FluidMath.usf", "ExternalForces", SF_Compute);
     IMPLEMENT_GLOBAL_SHADER(FFluidMathUpdateSpatialLookup,      "/Shaders/Compute/FluidMath.usf", "UpdateSpatialLookup", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathSortSpatialLookup,        "/Shaders/Compute/BitonicMergeSort.usf", "Sort", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathCalculateOffsets,         "/Shaders/Compute/BitonicMergeSort.usf", "CalculateOffsets", SF_Compute);
     IMPLEMENT_GLOBAL_SHADER(FFluidMathCalculateDensity,         "/Shaders/Compute/FluidMath.usf", "CalculateDensity", SF_Compute);
     IMPLEMENT_GLOBAL_SHADER(FFluidMathCalculatePressureForce,   "/Shaders/Compute/FluidMath.usf", "CalculatePressureForce", SF_Compute);
     IMPLEMENT_GLOBAL_SHADER(FFluidMathCalculateViscosityForce,  "/Shaders/Compute/FluidMath.usf", "CalculateViscosityForce", SF_Compute);
@@ -74,17 +75,71 @@ namespace FluidMathDispatch
         RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation UpdateSpatialLookup");
 
         using ShaderType = Shaders::FFluidMathUpdateSpatialLookup;
-        ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
+        ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathUpdateSpatialLookup::FParameters>();
         *PassParameters = Params;
-        
+
         const FIntVector DispatchCount(10,10,5);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
-
+        
         FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute UpdateSpatialLookup"), 
             ComputeShader,
             PassParameters,
+            DispatchCount);
+    }
+    void SortAndCalculateOffsets(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds)
+    {
+        RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation UpdateSpatialLookup");
+
+        using SorthaderType = Shaders::FFluidMathSortSpatialLookup;
+        SorthaderType::FParameters* PassParametersSort = GraphBuilder.AllocParameters<Shaders::FFluidMathSortSpatialLookup::FParameters>();
+        
+        PassParametersSort->Entries = Params.SpatialIndices;
+        PassParametersSort->Offsets = Params.SpatialOffsets;
+        uint32 bufferCount = Params.NumParticles;
+        PassParametersSort->numEntries = bufferCount;
+
+        const FIntVector DispatchCount(10,10,5);
+        TShaderMapRef<SorthaderType> SortComputeShader(GlobalShaderMap);
+
+        int numStages = static_cast<int>(FMath::Log2(static_cast<float>(FMath::RoundUpToPowerOfTwo(bufferCount))));
+
+        for (int stageIndex = 0; stageIndex < numStages; stageIndex++)
+        {
+            for (int stepIndex = 0; stepIndex < stageIndex + 1; stepIndex++)
+            {
+                // Calculate some pattern stuff
+                int groupWidth = 1 << (stageIndex - stepIndex);
+                int groupHeight = 2 * groupWidth - 1;
+                PassParametersSort->groupWidth = groupWidth;
+                PassParametersSort->groupHeight = groupHeight;
+                PassParametersSort->stepIndex = stepIndex;
+                // Run the sorting step on the GPU
+                FComputeShaderUtils::AddPass(
+                    GraphBuilder,
+                    RDG_EVENT_NAME("Sort spatial lookup table"), 
+                    SortComputeShader,
+                    PassParametersSort,
+                    DispatchCount);
+                //ComputeHelper.Dispatch(sortCompute, FMath::RoundUpToPowerOfTwo(indexBuffer.count) / 2);
+            }
+        }
+        using OffsetShaderType = Shaders::FFluidMathCalculateOffsets;
+        TShaderMapRef<OffsetShaderType> OffsetComputeShader(GlobalShaderMap);
+        OffsetShaderType::FParameters* PassParametersOffset = GraphBuilder.AllocParameters<Shaders::FFluidMathSortSpatialLookup::FParameters>();
+        PassParametersOffset->Entries = Params.SpatialIndices;
+        PassParametersOffset->Offsets = Params.SpatialOffsets;
+        PassParametersOffset->numEntries = bufferCount;
+        PassParametersOffset->groupWidth = 0;
+        PassParametersOffset->groupHeight = 0;
+        PassParametersOffset->stepIndex = 0;
+
+        FComputeShaderUtils::AddPass(
+            GraphBuilder,
+            RDG_EVENT_NAME("Execute UpdateSpatialLookup"), 
+            OffsetComputeShader,
+            PassParametersOffset,
             DispatchCount);
     }
     void CalculateDensity(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds)

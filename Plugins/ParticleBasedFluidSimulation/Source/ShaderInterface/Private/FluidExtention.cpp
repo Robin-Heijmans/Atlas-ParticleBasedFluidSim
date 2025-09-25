@@ -147,6 +147,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
          FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath, FluidBoundsLocal);
         FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath, FluidBoundsLocal);
+        FluidMathDispatch::SortAndCalculateOffsets(GraphBuilder, GlobalShaderMap, FluidMath, FluidBoundsLocal);
         FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath,FluidBoundsLocal);
         FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath, FluidBoundsLocal);
         FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath, FluidBoundsLocal);

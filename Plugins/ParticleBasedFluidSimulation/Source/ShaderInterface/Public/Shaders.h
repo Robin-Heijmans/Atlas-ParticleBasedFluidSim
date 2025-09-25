@@ -52,7 +52,7 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidMathParams, )
     SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, PredictedPositions)
     SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Velocities)
     SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float>, Densities)
-    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint3>, SpatialIndices)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint3>, SpatialIndices) //uint3(index, hash, key)
     SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint>, SpatialOffsets)
     
     SHADER_PARAMETER(float, PressureAmplifier)
@@ -65,7 +65,19 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidMathParams, )
     SHADER_PARAMETER(uint32, NumParticles)
 
 END_SHADER_PARAMETER_STRUCT()
-    
+
+BEGIN_SHADER_PARAMETER_STRUCT(FFluidGPUSortParams, )
+
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint3>, Entries) //uint3(index, hash, key)
+    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint>, Offsets)
+
+    SHADER_PARAMETER(int, numEntries)
+    SHADER_PARAMETER(int, groupWidth)
+    SHADER_PARAMETER(int, groupHeight)
+    SHADER_PARAMETER(int, stepIndex)
+
+END_SHADER_PARAMETER_STRUCT()
+
 // -- .usf files --
 // PhysicsSim
 /*
@@ -205,6 +217,7 @@ namespace FluidMathDispatch
 {
     void ExternalForces(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds);
     void UpdateSpatialLookup(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds);
+    void SortAndCalculateOffsets(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds);
     void CalculateDensity(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds);
     void CalculatePressureForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds);
     void CalculateViscosityForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds);
@@ -325,7 +338,49 @@ namespace Shaders
     		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
     	}
     };
-        
+
+    class FFluidMathSortSpatialLookup : public FGlobalShader
+    {
+    public:
+    	DECLARE_GLOBAL_SHADER(FFluidMathSortSpatialLookup);
+    	SHADER_USE_PARAMETER_STRUCT(FFluidMathSortSpatialLookup, FGlobalShader);
+
+    	using FParameters = FFluidGPUSortParams;
+
+        // Basic shader initialization
+        static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+            return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+        }
+
+    	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+    	{
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+    	}
+    };
+      
+    class FFluidMathCalculateOffsets : public FGlobalShader
+    {
+    public:
+    	DECLARE_GLOBAL_SHADER(FFluidMathCalculateOffsets);
+    	SHADER_USE_PARAMETER_STRUCT(FFluidMathCalculateOffsets, FGlobalShader);
+
+    	using FParameters = FFluidGPUSortParams;
+
+        // Basic shader initialization
+        static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+            return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+        }
+
+    	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+    	{
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+    	}
+    };
+
     class FFluidMathUpdatePositions : public FGlobalShader
     {
     public:

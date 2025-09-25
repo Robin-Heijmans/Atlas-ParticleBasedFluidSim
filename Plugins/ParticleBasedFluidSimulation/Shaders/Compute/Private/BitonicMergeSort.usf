@@ -1,9 +1,11 @@
 // From Sebastian Lague github: https://github.com/SebLague/Fluid-Sim/blob/Episode-01/Assets/Scripts/Compute%20Helpers/GPU%20Sort/Resources/BitonicMergeSort.compute
 // Compute shader used to sort the spatial lookup table
+#include "/Engine/Private/Common.ush"
 
 static const int NumThreads = 128;
 
 RWStructuredBuffer<uint3> Entries; //uint3(index, hash, key)
+RWStructuredBuffer<uint> Offsets;
 const uint numEntries;
 const uint groupWidth;
 const uint groupHeight;
@@ -33,8 +35,6 @@ void Sort (uint3 id : SV_DispatchThreadID)
 		Entries[indexRight] = temp;
 	}
 }
-
-RWStructuredBuffer<uint> Offsets;
 
 [numthreads(NumThreads, 1, 1)]
 void CalculateOffsets(uint3 id : SV_DispatchThreadID)
