@@ -52,11 +52,12 @@ public:
 
 	TUniquePtr<FFluidSimulationSystem> Simulation;
 	TArray<FParticle> Particles;
-	TArray<FVector3f> InitialPositions;
+	TArray<FVector> MeshPositions;
     bool RenderPrep = true;
 private:
 	void InitializeParticles();
 	void UpdateVolumeBounds();
+	void UpdateMaterials();
 	void UpdateInstances();
 	FLinearColor VelocityToColor(const float& Speed);
 
@@ -67,6 +68,8 @@ private:
 	UStaticMesh* DefaultSphereMesh;
 	const float SphereRadius = 1.0f;
 	const float FixedTimeStep = 1.f/60.f;
+	const int SetPositionsCount = 60;
 	float TotalTime = 0.0f;
+	int FrameCount = 0;
 	bool IsInitialized = false;
 };
