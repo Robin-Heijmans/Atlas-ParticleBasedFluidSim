@@ -11,8 +11,6 @@
 #include "SceneView.h"
 #include "Engine/World.h"
 
-#include "Shaders.h"
-
 // Sets default values
 AFluidBoundingVolume::AFluidBoundingVolume()
 {
@@ -131,6 +129,7 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
 		Simulation->StepSimulation(FixedTimeStep);
         Particles = Simulation->GetParticles();
 		TotalTime = 0.0f;
+        RenderPrep = true;
 	}
 	
 	UpdateInstances();

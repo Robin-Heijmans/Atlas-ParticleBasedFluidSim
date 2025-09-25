@@ -1,15 +1,20 @@
 #include "FluidExtention.h"
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-#include "SceneView.h"
 #include "Engine/TextureRenderTarget2D.h"
+#include "EngineUtils.h"
+#include "SceneView.h"
 #include "PostProcess/PostProcessInputs.h"
+#include "Misc/Optional.h"
+#include "GameFramework/Actor.h"
+#include "Components/BoxComponent.h"	
+#include "RHICommandList.h"
 
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetRenderingLibrary.h"
 #include "UnifiedBuffer.h"
 
+#include "FluidBoundingVolume.h"
 #include "ComputeLibrary.h"
 
 namespace 
@@ -90,8 +95,8 @@ FFluidExtention::FFluidExtention(const FAutoRegister& AutoRegister) : FSceneView
 
         //Density Map UwU
         FRHITextureCreateDesc Desc = FRHITextureCreateDesc::Create3D(TEXT("DensityMap"))
-                .SetExtent(512, 512)
-                .SetDepth(512)
+                .SetExtent(128, 128)
+                .SetDepth(128)
                 .SetFormat(PF_A32B32G32R32F)
                 .SetFlags(ETextureCreateFlags::UAV | ETextureCreateFlags::ShaderResource)
                 .SetInitialState(ERHIAccess::SRVCompute);
@@ -102,6 +107,7 @@ FFluidExtention::FFluidExtention(const FAutoRegister& AutoRegister) : FSceneView
         FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
         //RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, DensityMapRef, PositionsRef);
 
+        //GraphBuilder.QueueBufferExtraction(ParticlePositionsRef, &PooledPositions);
         GraphBuilder.Execute();
     });
 }
@@ -151,6 +157,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
 
 void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FPostProcessingInputs& Inputs) 
 {
+
 	// Dipatch Shader here
     if (CVarShaderOn.GetValueOnRenderThread() == 0) return; 
 

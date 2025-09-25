@@ -26,7 +26,7 @@ protected:
 	virtual void OnConstruction(const FTransform& Transform) override;
 
 public:	
-	UPROPERTY(VisibleAnywhere, Category = "Bounds")
+	UPROPERTY(EditAnywhere, Category = "Bounds")
 	class UBoxComponent* Bounds;
 
 	UPROPERTY(VisibleAnywhere, Category = "Particles")
@@ -53,6 +53,7 @@ public:
 	TUniquePtr<FFluidSimulationSystem> Simulation;
 	TArray<FParticle> Particles;
 	TArray<FVector3f> InitialPositions;
+    bool RenderPrep = true;
 private:
 	void InitializeParticles();
 	void UpdateVolumeBounds();

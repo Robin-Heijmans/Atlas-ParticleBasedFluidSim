@@ -111,11 +111,11 @@ bool CubeContains(const float3 RayPos)
 		RayPos.z <= (FluidVolume.BoundsPosition + FluidVolume.BoundsSize).z;
 }
 
-const float SampleDensity(const float3 RayPos)
+const float3 SampleDensity(const float3 RayPos)
 {
     const float3 UVW = (RayPos - FluidVolume.BoundsPosition) / FluidVolume.BoundsSize * 0.5 + 0.5;
     const float3 Density = DensityMap.SampleLevel(GlobalBilinearClampedSampler, UVW, 0);
-    return Density.x;
+    return Density;
 }
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
@@ -133,31 +133,35 @@ void Compute(
     const float2 UV = GetPixelUV(Pixel);
     float3 RayOrigin = GetRayOrigin();
     float3 RayDirection = GetRayDirection(UV);
-    float RayT = CubeIntersect(RayOrigin, RayDirection);
+    float RayT = 0.1;
+
+    // Advance ray if not in volume
+    if(!CubeContains(RayOrigin))
+    {
+        RayT = CubeIntersect(RayOrigin, RayDirection);
+        if(RayT <= 0.0) 
+        {
+            Target[DispatchThreadId.xy] = SceneColor[DispatchThreadId.xy];
+            return;
+        }
+    };
 
     // Psuedo Stepping through Density Map
-    float3 OutColor = SceneColor[DispatchThreadId.xy];
-	if(RayT > 0)
+    uint NumSteps = 1;
+    float3 AccDensity = float3(0,0,0);
+    const float StepSize = 0.2;
+    
+    do
     {
-        uint NumSteps = 0;
-        float AccDensity = 0.0;
-        const float StepSize = 1.0;
-        RayT += StepSize;// just a little push to ensure were within the cube
-        for(NumSteps; CubeContains(RayOrigin + (RayDirection * RayT)); NumSteps++)
-        {
-            //Check if out of bounds
-            const float Density = SampleDensity(RayOrigin + (RayDirection * RayT));
-            
-            if(Density >= 0.5)
-            {
-                AccDensity += Density;
-            }
+        //Check if out of bounds
+        const float3 Density = SampleDensity(RayOrigin + (RayDirection * RayT));
+        AccDensity += Density;
+        RayT += StepSize;
+        NumSteps++;
+    } while(CubeContains(RayOrigin + (RayDirection * RayT)));
 
-            RayT += StepSize;
-        }
-
-        if(NumSteps) OutColor = float3(AccDensity / NumSteps, 0, AccDensity / NumSteps);
-    } 
+    float3 OutColor = AccDensity / float3(NumSteps,NumSteps,NumSteps);
+    //OutColor += SceneColor[DispatchThreadId.xy];
 
     Target[DispatchThreadId.xy] = OutColor;
 }
