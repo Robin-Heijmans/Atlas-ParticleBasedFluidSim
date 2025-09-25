@@ -52,7 +52,7 @@ IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolumeLocal, "Bounds");
 
 namespace FluidMathDispatch
 {
-    void ExternalForces(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds) 
+    void ExternalForces(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params) 
     {
         RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation ExternalForces");
 
@@ -70,7 +70,7 @@ namespace FluidMathDispatch
             PassParameters,
             DispatchCount);
     }
-    void UpdateSpatialLookup(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds)
+    void UpdateSpatialLookup(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params)
     {
         RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation UpdateSpatialLookup");
 
@@ -88,7 +88,7 @@ namespace FluidMathDispatch
             PassParameters,
             DispatchCount);
     }
-    void SortAndCalculateOffsets(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds)
+    void SortAndCalculateOffsets(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params)
     {
         RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation UpdateSpatialLookup");
 
@@ -142,7 +142,7 @@ namespace FluidMathDispatch
             PassParametersOffset,
             DispatchCount);
     }
-    void CalculateDensity(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds)
+    void CalculateDensity(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params)
     {
         RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation CalculateDensity");
 
@@ -160,7 +160,7 @@ namespace FluidMathDispatch
             PassParameters,
             DispatchCount);
     }
-    void CalculatePressureForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds) 
+    void CalculatePressureForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params) 
     {
         RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation CalculatePressureForce");
 
@@ -178,7 +178,7 @@ namespace FluidMathDispatch
             PassParameters,
             DispatchCount);
     }
-    void CalculateViscosityForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds) 
+    void CalculateViscosityForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params) 
     {
         RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation CalculateViscosityForce");
 
@@ -196,7 +196,7 @@ namespace FluidMathDispatch
             PassParameters,
             DispatchCount);
     }
-    void UpdatePositions(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds) 
+    void UpdatePositions(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params) 
     {
         RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation UpdatePositions");
 

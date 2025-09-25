@@ -32,21 +32,8 @@ private:
 	FFluidMarchDispatchParams FluidMarch;
 	FFluidMathParams FluidMath;
 
-	struct FParticleBuffers
-	{		
-		TRefCountPtr<FRDGPooledBuffer> Positions;
-		TRefCountPtr<FRDGPooledBuffer> PredictedPositions;
-		TRefCountPtr<FRDGPooledBuffer> Velocities;
-		TRefCountPtr<FRDGPooledBuffer> Densities;
-		TRefCountPtr<FRDGPooledBuffer> SpatialIndices;
-		TRefCountPtr<FRDGPooledBuffer> SpatialOffsets;
-	} ParticleBuffers;
-
 	FTextureRHIRef DensityMap;
-	TRefCountPtr<FRDGPooledBuffer> PooledPositions;
-    TArray<FVector3f> Positions;
 
 	// Uniform Buffers
 	FFluidVolume FluidVolume;
-	FFluidVolumeLocal FluidBoundsLocal;
 };
