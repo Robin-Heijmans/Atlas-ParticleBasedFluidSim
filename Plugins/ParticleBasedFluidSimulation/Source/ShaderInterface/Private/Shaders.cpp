@@ -57,23 +57,7 @@ namespace FluidMathDispatch
 
         using ShaderType = Shaders::FFluidMathExternalForces;
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
-        PassParameters->Volume = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(Bounds, EUniformBufferUsage::UniformBuffer_SingleFrame);
-
-       PassParameters->Positions = Params.Positions;
-        PassParameters->PredictedPositions = Params.PredictedPositions;
-        PassParameters->Velocities = Params.Velocities;
-        PassParameters->Densities= Params.Densities;
-        PassParameters->SpatialIndices = Params.SpatialIndices;
-        PassParameters->SpatialOffsets = Params.SpatialOffsets;
-
-        PassParameters->PressureAmplifier = Params.PressureAmplifier;
-        PassParameters->TargetDensity= Params.TargetDensity;
-        PassParameters->CollisionDampening= Params.CollisionDampening;
-        PassParameters->SmoothingRadius= Params.SmoothingRadius;
-        PassParameters->ViscosityStrength= Params.ViscosityStrength;
-        PassParameters->DeltaTime= Params.DeltaTime;
-        PassParameters->Gravity= Params.Gravity;
-        PassParameters->NumParticles= Params.NumParticles;
+        *PassParameters = Params;
         
         const FIntVector DispatchCount(10,10,5);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
@@ -91,23 +75,7 @@ namespace FluidMathDispatch
 
         using ShaderType = Shaders::FFluidMathUpdateSpatialLookup;
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
-        PassParameters->Volume = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(Bounds, EUniformBufferUsage::UniformBuffer_SingleFrame);
-
-       PassParameters->Positions = Params.Positions;
-        PassParameters->PredictedPositions = Params.PredictedPositions;
-        PassParameters->Velocities = Params.Velocities;
-        PassParameters->Densities= Params.Densities;
-        PassParameters->SpatialIndices = Params.SpatialIndices;
-        PassParameters->SpatialOffsets = Params.SpatialOffsets;
-
-        PassParameters->PressureAmplifier = Params.PressureAmplifier;
-        PassParameters->TargetDensity= Params.TargetDensity;
-        PassParameters->CollisionDampening= Params.CollisionDampening;
-        PassParameters->SmoothingRadius= Params.SmoothingRadius;
-        PassParameters->ViscosityStrength= Params.ViscosityStrength;
-        PassParameters->DeltaTime= Params.DeltaTime;
-        PassParameters->Gravity= Params.Gravity;
-        PassParameters->NumParticles= Params.NumParticles;
+        *PassParameters = Params;
         
         const FIntVector DispatchCount(10,10,5);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
@@ -125,23 +93,7 @@ namespace FluidMathDispatch
 
         using ShaderType = Shaders::FFluidMathCalculateDensity;
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
-        PassParameters->Volume = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(Bounds, EUniformBufferUsage::UniformBuffer_SingleFrame);
-
-       PassParameters->Positions = Params.Positions;
-        PassParameters->PredictedPositions = Params.PredictedPositions;
-        PassParameters->Velocities = Params.Velocities;
-        PassParameters->Densities= Params.Densities;
-        PassParameters->SpatialIndices = Params.SpatialIndices;
-        PassParameters->SpatialOffsets = Params.SpatialOffsets;
-
-        PassParameters->PressureAmplifier = Params.PressureAmplifier;
-        PassParameters->TargetDensity= Params.TargetDensity;
-        PassParameters->CollisionDampening= Params.CollisionDampening;
-        PassParameters->SmoothingRadius= Params.SmoothingRadius;
-        PassParameters->ViscosityStrength= Params.ViscosityStrength;
-        PassParameters->DeltaTime= Params.DeltaTime;
-        PassParameters->Gravity= Params.Gravity;
-        PassParameters->NumParticles= Params.NumParticles;
+        *PassParameters = Params;
         
         const FIntVector DispatchCount(10,10,5);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
@@ -159,23 +111,7 @@ namespace FluidMathDispatch
 
         using ShaderType = Shaders::FFluidMathCalculatePressureForce;
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
-        PassParameters->Volume = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(Bounds, EUniformBufferUsage::UniformBuffer_SingleFrame);
-
-         PassParameters->Positions = Params.Positions;
-        PassParameters->PredictedPositions = Params.PredictedPositions;
-        PassParameters->Velocities = Params.Velocities;
-        PassParameters->Densities= Params.Densities;
-        PassParameters->SpatialIndices = Params.SpatialIndices;
-        PassParameters->SpatialOffsets = Params.SpatialOffsets;
-
-        PassParameters->PressureAmplifier = Params.PressureAmplifier;
-        PassParameters->TargetDensity= Params.TargetDensity;
-        PassParameters->CollisionDampening= Params.CollisionDampening;
-        PassParameters->SmoothingRadius= Params.SmoothingRadius;
-        PassParameters->ViscosityStrength= Params.ViscosityStrength;
-        PassParameters->DeltaTime= Params.DeltaTime;
-        PassParameters->Gravity= Params.Gravity;
-        PassParameters->NumParticles= Params.NumParticles;
+        *PassParameters = Params;
         
         const FIntVector DispatchCount(10,10,5);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
@@ -193,23 +129,7 @@ namespace FluidMathDispatch
 
         using ShaderType = Shaders::FFluidMathCalculateViscosityForce;
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
-        PassParameters->Volume = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(Bounds, EUniformBufferUsage::UniformBuffer_SingleFrame);
-
-       PassParameters->Positions = Params.Positions;
-        PassParameters->PredictedPositions = Params.PredictedPositions;
-        PassParameters->Velocities = Params.Velocities;
-        PassParameters->Densities= Params.Densities;
-        PassParameters->SpatialIndices = Params.SpatialIndices;
-        PassParameters->SpatialOffsets = Params.SpatialOffsets;
-
-        PassParameters->PressureAmplifier = Params.PressureAmplifier;
-        PassParameters->TargetDensity= Params.TargetDensity;
-        PassParameters->CollisionDampening= Params.CollisionDampening;
-        PassParameters->SmoothingRadius= Params.SmoothingRadius;
-        PassParameters->ViscosityStrength= Params.ViscosityStrength;
-        PassParameters->DeltaTime= Params.DeltaTime;
-        PassParameters->Gravity= Params.Gravity;
-        PassParameters->NumParticles= Params.NumParticles;
+        *PassParameters = Params;
         
         const FIntVector DispatchCount(10,10,5);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
@@ -227,24 +147,7 @@ namespace FluidMathDispatch
 
         using ShaderType = Shaders::FFluidMathUpdatePositions;
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
-        
-        PassParameters->Volume = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(Bounds, EUniformBufferUsage::UniformBuffer_SingleFrame);
-
-        PassParameters->Positions = Params.Positions;
-        PassParameters->PredictedPositions = Params.PredictedPositions;
-        PassParameters->Velocities = Params.Velocities;
-        PassParameters->Densities= Params.Densities;
-        PassParameters->SpatialIndices = Params.SpatialIndices;
-        PassParameters->SpatialOffsets = Params.SpatialOffsets;
-
-        PassParameters->PressureAmplifier = Params.PressureAmplifier;
-        PassParameters->TargetDensity= Params.TargetDensity;
-        PassParameters->CollisionDampening= Params.CollisionDampening;
-        PassParameters->SmoothingRadius= Params.SmoothingRadius;
-        PassParameters->ViscosityStrength= Params.ViscosityStrength;
-        PassParameters->DeltaTime= Params.DeltaTime;
-        PassParameters->Gravity= Params.Gravity;
-        PassParameters->NumParticles= Params.NumParticles;
+        *PassParameters = Params;
 
         const FIntVector DispatchCount(10,10,5);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);

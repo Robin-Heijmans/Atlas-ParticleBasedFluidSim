@@ -127,6 +127,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         const FRDGBufferRef SpatialIndicesRef       = GraphBuilder.RegisterExternalBuffer(ParticleBuffers.SpatialIndices    ,   TEXT("TanFluid SpatialIndices"));
         const FRDGBufferRef SpatialOffsetsRef       = GraphBuilder.RegisterExternalBuffer(ParticleBuffers.SpatialOffsets    ,   TEXT("TanFluid SpatialOffsets"));
         
+        FluidMath.Volume = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(FluidBoundsLocal, EUniformBufferUsage::UniformBuffer_SingleFrame);
         FluidMath.Positions = GraphBuilder.CreateUAV(PositionsRef);
         FluidMath.PredictedPositions = GraphBuilder.CreateUAV(PredictedPositionsRef);
         FluidMath.Velocities = GraphBuilder.CreateUAV(VelocitiesRef);
@@ -144,7 +145,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         FluidMath.ViscosityStrength = 1.f;
 
         FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
-        FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath, FluidBoundsLocal);
+         FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath, FluidBoundsLocal);
         FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath, FluidBoundsLocal);
         FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath,FluidBoundsLocal);
         FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath, FluidBoundsLocal);
