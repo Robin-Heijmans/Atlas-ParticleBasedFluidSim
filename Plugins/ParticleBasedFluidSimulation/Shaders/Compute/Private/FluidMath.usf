@@ -3,7 +3,15 @@
 #include "/Shaders/Compute/Headers/SpatialHash3D.ush"
 #include "/Shaders/Compute/Headers/SmoothingKernels.ush"
 
-static const int NumThreads = 64;
+
+struct FFluidVolumeLocal {
+    // Volume Data
+    float3 MinBounds;  // Min Bounds
+    float3 MaxBounds;      // Max Bounds
+    
+};
+
+ConstantBuffer<FFluidVolumeLocal> Bounds;
 
 // Buffers
 RWStructuredBuffer<float3> Positions;
@@ -14,8 +22,8 @@ RWStructuredBuffer<uint3> SpatialIndices; //uint3(index, hash, key)
 RWStructuredBuffer<uint> SpatialOffsets;
 
 // Settings
-cbuffer Params
-{
+//cbuffer Params
+//{
     float PressureAmplifier;
     float TargetDensity;
     float CollisionDampening;
@@ -24,9 +32,9 @@ cbuffer Params
     float DeltaTime;
     float Gravity;
     uint NumParticles;
-    float3 MaxBounds;
-    float3 MinBounds;
-};
+//};
+
+static const int NumThreads = 64;
 
 float ConvertDensityToPressure(float Density) {
     return (Density - TargetDensity) * PressureAmplifier;
@@ -34,16 +42,16 @@ float ConvertDensityToPressure(float Density) {
 
 void ResolveCollisions(uint ParticleIndex) {
     float3 LocalPos = Positions[ParticleIndex];
-    if (LocalPos.x <= MinBounds.x || LocalPos.x >= MaxBounds.x) {
-        Positions[ParticleIndex].x = clamp(LocalPos.x, MinBounds.x, MaxBounds.x);
+    if (LocalPos.x <= Bounds.MinBounds.x || LocalPos.x >= Bounds.MaxBounds.x) {
+        Positions[ParticleIndex].x = clamp(LocalPos.x, Bounds.MinBounds.x, Bounds.MaxBounds.x);
         Velocities[ParticleIndex].x *= -1.f * CollisionDampening;
     }
-    if (LocalPos.y <= MinBounds.y || LocalPos.y >= MaxBounds.y) {
-        Positions[ParticleIndex].y = clamp(LocalPos.y, MinBounds.y, MaxBounds.y);
+    if (LocalPos.y <= Bounds.MinBounds.y || LocalPos.y >= Bounds.MaxBounds.y) {
+        Positions[ParticleIndex].y = clamp(LocalPos.y, Bounds.MinBounds.y, Bounds.MaxBounds.y);
         Velocities[ParticleIndex].y *= -1.f * CollisionDampening;
     }
-    if (LocalPos.z <= MinBounds.z || LocalPos.z >= MaxBounds.z) {
-        Positions[ParticleIndex].z = clamp(LocalPos.z, MinBounds.z, MaxBounds.z);
+    if (LocalPos.z <= Bounds.MinBounds.z || LocalPos.z >= Bounds.MaxBounds.z) {
+        Positions[ParticleIndex].z = clamp(LocalPos.z, Bounds.MinBounds.z, Bounds.MaxBounds.z);
         Velocities[ParticleIndex].z *= -1.f * CollisionDampening;
     }
 }

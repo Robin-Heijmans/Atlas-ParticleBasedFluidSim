@@ -46,128 +46,34 @@ namespace Shaders
 
 // Global Shader Buffers
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolume, "FluidVolume");
+IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolumeLocal, "Bounds");
 //IMPLEMENT_UNIFORM_BUFFER_STRUCT(FParticles, "FluidParticles");
-
-/*
-void FParticleSimulationDispatchParams::CreateBuffers(FRDGBuilder& GraphBuilder, const TArray<FVector3f>& Positions)
-{
-    int NumParticles = Positions.Num();
-    
-    auto CreateStructuredBuffer = [&](int ElementSize, const TCHAR* Name, const void* InitialData = nullptr)
-    {
-        FRDGBufferDesc Desc = FRDGBufferDesc::CreateStructuredDesc(ElementSize, NumParticles);
-        FRDGBufferRef Buffer = GraphBuilder.CreateBuffer(Desc, Name);
-
-        if (InitialData)
-        {
-            GraphBuilder.QueueBufferUpload(Buffer, InitialData, NumParticles * ElementSize);
-        }
-
-        FRDGBufferUAVRef UAV = GraphBuilder.CreateUAV(Buffer);
-        return TTuple<FRDGBufferRef, FRDGBufferUAVRef>(Buffer, UAV);
-    };
-
-    
-
-    //if (!PositionRHI|| !VelocityRHI) {
-    //    FRHIResourceCreateInfo Info(TEXT("ParticlePositions"));
-    //    PositionRHI = RHICreateStructuredBuffer(sizeof(FVector3f), sizeof(FVector3f) * NumParticles, static_cast<uint32>(BUF_UnorderedAccess | BUF_ShaderResource), Info);
-    //    FMemory::Memcpy(PositionRHI, Positions.GetData(), sizeof(FVector3f) * NumParticles);
-//
-    //    FRHIResourceCreateInfo Info(TEXT("ParticleVelocities"));
-    //    VelocityRHI = RHICreateStructuredBuffer(sizeof(FVector3f), sizeof(FVector3f) * NumParticles, static_cast<uint32>(BUF_UnorderedAccess | BUF_ShaderResource), Info);
-    //}
-//
-    //FRDGBufferDesc Desc = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), NumParticles);
-    //TRefCountPtr<FRDGPooledBuffer> PooledBuffer = new FRDGPooledBuffer(PositionRHI, Desc, NumParticles, TEXT("ParticlePositions"));
-    //FRDGBufferRef PositionBuffer = GraphBuilder.RegisterExternalBuffer(PooledBuffer, TEXT("ParticlePositions"));
-    //PositionsUAV = GraphBuilder.CreateUAV(PositionBuffer);
-//
-    //TRefCountPtr<FRDGPooledBuffer> PooledBuffer = new FRDGPooledBuffer(VelocityRHI, Desc, NumParticles, TEXT("ParticlePositions"));
-    //FRDGBufferRef VelocityBuffer = GraphBuilder.RegisterExternalBuffer(PooledBuffer, TEXT("ParticlePositions"));
-    //VelocitiesUAV = GraphBuilder.CreateUAV(VelocityBuffer);
-
-    TTuple<FRDGBufferRef, FRDGBufferUAVRef> Buff;
-
-    Buff = CreateStructuredBuffer(sizeof(FVector3f), TEXT("Positions"), Positions.GetData());
-    PositionBuffer = Buff.Get<0>();
-    PositionsUAV = Buff.Get<1>();
-
-    Buff = CreateStructuredBuffer(sizeof(FVector3f), TEXT("Velocities"));
-    VelocityBuffer = Buff.Get<0>();
-    VelocitiesUAV = Buff.Get<1>();
-
-    Buff = CreateStructuredBuffer(sizeof(FVector3f), TEXT("PredictedPositions"));
-    PredictedPositionBuffer = Buff.Get<0>();
-    PredictedPositionUAV = Buff.Get<1>();
-
-    Buff = CreateStructuredBuffer(sizeof(float), TEXT("Densities"));
-    DensityBuffer = Buff.Get<0>();
-    DensityUAV = Buff.Get<1>();
-
-    Buff = CreateStructuredBuffer(sizeof(FVector), TEXT("SpatialIndices"));
-    SpatialIndicesBuffer = Buff.Get<0>();
-    SpatialIndicesUAV = Buff.Get<1>();
-
-    Buff = CreateStructuredBuffer(sizeof(int), TEXT("SpatialOffsets"));
-    SpatialOffsetsBuffer = Buff.Get<0>();
-    SpatialOffsetsUAV = Buff.Get<1>();
-
-    BindBuffers(GraphBuilder, NumParticles);
-}
-
-void FParticleSimulationDispatchParams::BindBuffers(FRDGBuilder& GraphBuilder, const int& NumParticles) 
-{
-    PassParameters = GraphBuilder.AllocParameters<Shaders::FParticleSimulationShader::FParameters>();
-    PassParameters->Positions = PositionsUAV;
-    PassParameters->PredictedPositions = PredictedPositionUAV;
-    PassParameters->Velocities = VelocitiesUAV;
-    PassParameters->Densities = DensityUAV;
-    PassParameters->SpatialIndices = SpatialIndicesUAV;
-    PassParameters->SpatialOffsets = SpatialOffsetsUAV;
-
-    PassParameters->CollisionDampening = 0.6f;
-    PassParameters->DeltaTime = 1.f/60.f;
-    PassParameters->Gravity = -98.1f;
-    PassParameters->NumParticles = NumParticles;
-    PassParameters->PressureAmplifier = 100.f;
-    PassParameters->SmoothingRadius = 4.f;
-    PassParameters->TargetDensity = 3.f;
-    PassParameters->ViscosityStrength = 1.f;
-}
-*/
-
-// Dispatch Functions ...
-/*
-void FParticleSimulationDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FParticles& Particles)
-{
-    RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation");
-
-    Shaders::FParticleSimulationShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FParticleSimulationShader::FParameters>();
-    PassParameters->Positions = Particles.Positions;
-    PassParameters->NumParticles = Particles.NumParticles;
-    
-    const FIntVector DispatchCount(X,Y,Z);
-    TShaderMapRef<Shaders::FParticleSimulationShader> ComputeShader(GlobalShaderMap);
-
-    FComputeShaderUtils::AddPass(
-        GraphBuilder,
-        RDG_EVENT_NAME("Execute ParticleSimulation"), 
-        ComputeShader,
-        PassParameters,
-        DispatchCount);//,ERDGPassFlags::Compute | ERDGPassFlags::NeverCull);
-}       
-*/
 
 namespace FluidMathDispatch
 {
-    void ExternalForces(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params) 
+    void ExternalForces(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds) 
     {
         RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation ExternalForces");
 
         using ShaderType = Shaders::FFluidMathExternalForces;
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
-        *PassParameters = Params;
+        PassParameters->Volume = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(Bounds, EUniformBufferUsage::UniformBuffer_SingleFrame);
+
+       PassParameters->Positions = Params.Positions;
+        PassParameters->PredictedPositions = Params.PredictedPositions;
+        PassParameters->Velocities = Params.Velocities;
+        PassParameters->Densities= Params.Densities;
+        PassParameters->SpatialIndices = Params.SpatialIndices;
+        PassParameters->SpatialOffsets = Params.SpatialOffsets;
+
+        PassParameters->PressureAmplifier = Params.PressureAmplifier;
+        PassParameters->TargetDensity= Params.TargetDensity;
+        PassParameters->CollisionDampening= Params.CollisionDampening;
+        PassParameters->SmoothingRadius= Params.SmoothingRadius;
+        PassParameters->ViscosityStrength= Params.ViscosityStrength;
+        PassParameters->DeltaTime= Params.DeltaTime;
+        PassParameters->Gravity= Params.Gravity;
+        PassParameters->NumParticles= Params.NumParticles;
         
         const FIntVector DispatchCount(10,10,5);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
@@ -179,13 +85,29 @@ namespace FluidMathDispatch
             PassParameters,
             DispatchCount);
     }
-    void UpdateSpatialLookup(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params)
+    void UpdateSpatialLookup(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds)
     {
         RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation UpdateSpatialLookup");
 
         using ShaderType = Shaders::FFluidMathUpdateSpatialLookup;
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
-        *PassParameters = Params;
+        PassParameters->Volume = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(Bounds, EUniformBufferUsage::UniformBuffer_SingleFrame);
+
+       PassParameters->Positions = Params.Positions;
+        PassParameters->PredictedPositions = Params.PredictedPositions;
+        PassParameters->Velocities = Params.Velocities;
+        PassParameters->Densities= Params.Densities;
+        PassParameters->SpatialIndices = Params.SpatialIndices;
+        PassParameters->SpatialOffsets = Params.SpatialOffsets;
+
+        PassParameters->PressureAmplifier = Params.PressureAmplifier;
+        PassParameters->TargetDensity= Params.TargetDensity;
+        PassParameters->CollisionDampening= Params.CollisionDampening;
+        PassParameters->SmoothingRadius= Params.SmoothingRadius;
+        PassParameters->ViscosityStrength= Params.ViscosityStrength;
+        PassParameters->DeltaTime= Params.DeltaTime;
+        PassParameters->Gravity= Params.Gravity;
+        PassParameters->NumParticles= Params.NumParticles;
         
         const FIntVector DispatchCount(10,10,5);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
@@ -197,13 +119,29 @@ namespace FluidMathDispatch
             PassParameters,
             DispatchCount);
     }
-    void CalculateDensity(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params)
+    void CalculateDensity(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds)
     {
         RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation CalculateDensity");
 
         using ShaderType = Shaders::FFluidMathCalculateDensity;
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
-        *PassParameters = Params;
+        PassParameters->Volume = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(Bounds, EUniformBufferUsage::UniformBuffer_SingleFrame);
+
+       PassParameters->Positions = Params.Positions;
+        PassParameters->PredictedPositions = Params.PredictedPositions;
+        PassParameters->Velocities = Params.Velocities;
+        PassParameters->Densities= Params.Densities;
+        PassParameters->SpatialIndices = Params.SpatialIndices;
+        PassParameters->SpatialOffsets = Params.SpatialOffsets;
+
+        PassParameters->PressureAmplifier = Params.PressureAmplifier;
+        PassParameters->TargetDensity= Params.TargetDensity;
+        PassParameters->CollisionDampening= Params.CollisionDampening;
+        PassParameters->SmoothingRadius= Params.SmoothingRadius;
+        PassParameters->ViscosityStrength= Params.ViscosityStrength;
+        PassParameters->DeltaTime= Params.DeltaTime;
+        PassParameters->Gravity= Params.Gravity;
+        PassParameters->NumParticles= Params.NumParticles;
         
         const FIntVector DispatchCount(10,10,5);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
@@ -215,13 +153,29 @@ namespace FluidMathDispatch
             PassParameters,
             DispatchCount);
     }
-    void CalculatePressureForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params) 
+    void CalculatePressureForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds) 
     {
         RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation CalculatePressureForce");
 
         using ShaderType = Shaders::FFluidMathCalculatePressureForce;
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
-        *PassParameters = Params;
+        PassParameters->Volume = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(Bounds, EUniformBufferUsage::UniformBuffer_SingleFrame);
+
+         PassParameters->Positions = Params.Positions;
+        PassParameters->PredictedPositions = Params.PredictedPositions;
+        PassParameters->Velocities = Params.Velocities;
+        PassParameters->Densities= Params.Densities;
+        PassParameters->SpatialIndices = Params.SpatialIndices;
+        PassParameters->SpatialOffsets = Params.SpatialOffsets;
+
+        PassParameters->PressureAmplifier = Params.PressureAmplifier;
+        PassParameters->TargetDensity= Params.TargetDensity;
+        PassParameters->CollisionDampening= Params.CollisionDampening;
+        PassParameters->SmoothingRadius= Params.SmoothingRadius;
+        PassParameters->ViscosityStrength= Params.ViscosityStrength;
+        PassParameters->DeltaTime= Params.DeltaTime;
+        PassParameters->Gravity= Params.Gravity;
+        PassParameters->NumParticles= Params.NumParticles;
         
         const FIntVector DispatchCount(10,10,5);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
@@ -233,13 +187,29 @@ namespace FluidMathDispatch
             PassParameters,
             DispatchCount);
     }
-    void CalculateViscosityForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params) 
+    void CalculateViscosityForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds) 
     {
         RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation CalculateViscosityForce");
 
         using ShaderType = Shaders::FFluidMathCalculateViscosityForce;
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
-        *PassParameters = Params;
+        PassParameters->Volume = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(Bounds, EUniformBufferUsage::UniformBuffer_SingleFrame);
+
+       PassParameters->Positions = Params.Positions;
+        PassParameters->PredictedPositions = Params.PredictedPositions;
+        PassParameters->Velocities = Params.Velocities;
+        PassParameters->Densities= Params.Densities;
+        PassParameters->SpatialIndices = Params.SpatialIndices;
+        PassParameters->SpatialOffsets = Params.SpatialOffsets;
+
+        PassParameters->PressureAmplifier = Params.PressureAmplifier;
+        PassParameters->TargetDensity= Params.TargetDensity;
+        PassParameters->CollisionDampening= Params.CollisionDampening;
+        PassParameters->SmoothingRadius= Params.SmoothingRadius;
+        PassParameters->ViscosityStrength= Params.ViscosityStrength;
+        PassParameters->DeltaTime= Params.DeltaTime;
+        PassParameters->Gravity= Params.Gravity;
+        PassParameters->NumParticles= Params.NumParticles;
         
         const FIntVector DispatchCount(10,10,5);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
@@ -251,14 +221,31 @@ namespace FluidMathDispatch
             PassParameters,
             DispatchCount);
     }
-    void UpdatePositions(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params) 
+    void UpdatePositions(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params, FFluidVolumeLocal& Bounds) 
     {
         RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation UpdatePositions");
 
         using ShaderType = Shaders::FFluidMathUpdatePositions;
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
-        *PassParameters = Params;
         
+        PassParameters->Volume = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(Bounds, EUniformBufferUsage::UniformBuffer_SingleFrame);
+
+        PassParameters->Positions = Params.Positions;
+        PassParameters->PredictedPositions = Params.PredictedPositions;
+        PassParameters->Velocities = Params.Velocities;
+        PassParameters->Densities= Params.Densities;
+        PassParameters->SpatialIndices = Params.SpatialIndices;
+        PassParameters->SpatialOffsets = Params.SpatialOffsets;
+
+        PassParameters->PressureAmplifier = Params.PressureAmplifier;
+        PassParameters->TargetDensity= Params.TargetDensity;
+        PassParameters->CollisionDampening= Params.CollisionDampening;
+        PassParameters->SmoothingRadius= Params.SmoothingRadius;
+        PassParameters->ViscosityStrength= Params.ViscosityStrength;
+        PassParameters->DeltaTime= Params.DeltaTime;
+        PassParameters->Gravity= Params.Gravity;
+        PassParameters->NumParticles= Params.NumParticles;
+
         const FIntVector DispatchCount(10,10,5);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
 
@@ -271,20 +258,28 @@ namespace FluidMathDispatch
     }
 }
 
-void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, const FRDGTextureRef& DensityMapRef)
+void FRenderPrepDispatchParams::Dispatch(
+    FRDGBuilder& GraphBuilder, 
+    FGlobalShaderMap* GlobalShaderMap, 
+    const FRDGTextureRef& DensityMapRef,  
+    const FRDGBufferRef& PositionsRef)
 {
     RDG_EVENT_SCOPE(GraphBuilder, "RenderPrep");
 
     Shaders::FRenderPrepShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FRenderPrepShader::FParameters>();
     PassParameters->DensityMap = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(DensityMapRef));
-    PassParameters->DensityMapSize = DensityMapRef->GetRHI()->GetSizeXYZ().Size();
+    PassParameters->DensityMapSize = 128; // PLS PUT ME OUT OF MY MISERY
 
-    const FIntVector DispatchCount(64,64,64);
+    PassParameters->Positions = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(PositionsRef));
+    PassParameters->NumParticles = PositionsRef->GetRHI()->GetSize() / sizeof(FVector3f);
+
+    const FIntVector DispatchCount(2,128,128);
     TShaderMapRef<Shaders::FRenderPrepShader> ComputeShader(GlobalShaderMap);
 
     FComputeShaderUtils::AddPass(
         GraphBuilder,
         RDG_EVENT_NAME("Execute RenderPrep"),
+        ERDGPassFlags::AsyncCompute,
         ComputeShader,
         PassParameters,
         DispatchCount);
