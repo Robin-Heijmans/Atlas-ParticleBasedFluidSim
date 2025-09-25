@@ -1,6 +1,9 @@
 #include "GPUBitonicMergeSort.h"
 #include "RenderGraphUtils.h"
 
+
+// OUOU STINKYYYYYY !!!!!!!!!!!1111!!!!!!!1111111!111!!!1!elf!!!!
+/*
 namespace Shaders {
     IMPLEMENT_GLOBAL_SHADER(FBitonicSortShader, "/Shaders/Compute/BitonicMergeSort.usf", "Sort", SF_Compute);
 }
@@ -59,3 +62,4 @@ void FGPUBitonicSearchSort::SortAndCalculateOffsets(FRDGBuilder& GraphBuilder, F
         DispatchCount);
     
 }
+        */

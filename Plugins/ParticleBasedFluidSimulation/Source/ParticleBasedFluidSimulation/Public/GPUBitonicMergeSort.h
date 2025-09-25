@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "Shaders.h"
 
+//OIIAAIAIA
+/*
 class FGPUBitonicSearchSort
 {
 public:
@@ -12,4 +14,4 @@ public:
     void SortAndCalculateOffsets(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, Shaders::FBitonicSortShader::FParameters* PassParameters);
 private:
 
-};
+};*/
