@@ -10,7 +10,7 @@ RWStructuredBuffer<float3> Positions;
 RWStructuredBuffer<float3> PredictedPositions;
 RWStructuredBuffer<float3> Velocities;
 RWStructuredBuffer<float> Densities;
-RWStructuredBuffer<uint3> SpatialIndices;
+RWStructuredBuffer<uint3> SpatialIndices; //uint3(index, hash, key)
 RWStructuredBuffer<uint> SpatialOffsets;
 
 // Settings
