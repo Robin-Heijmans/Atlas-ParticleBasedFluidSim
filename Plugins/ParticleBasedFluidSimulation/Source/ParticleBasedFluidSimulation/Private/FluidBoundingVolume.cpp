@@ -44,7 +44,8 @@ void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
     UpdateVolumeBounds();
     if (!IsInitialized) {
         InitializeParticles();
-        UpdateInstances();
+        UpdateInstances(true);
+        UpdateMaterials();
     }
 }
 
@@ -134,7 +135,7 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
 		Simulation->StepSimulation(FixedTimeStep);
         Particles = Simulation->GetParticles();
 		TotalTime = 0.0f;
-        UpdateInstances();
+        UpdateInstances(false);
         UpdateMaterials();
         FrameCount++;
 	}
@@ -159,11 +160,16 @@ void AFluidBoundingVolume::UpdateMaterials()
     }
 }
 
-void AFluidBoundingVolume::UpdateInstances() {
+void AFluidBoundingVolume::UpdateInstances(const bool AllInstances) {
     if (!DefaultSphereMesh || Particles.Num() == 0) return;
-    int numParticlesToUpdate = FMath::CeilToInt(static_cast<float>(Particles.Num()) / SetPositionsCount);
-    int32 startIndex = FrameCount * numParticlesToUpdate;
-    int32 endIndex = startIndex + numParticlesToUpdate;
+    int32 startIndex = 0;
+    int32 endIndex = Particles.Num();
+    if (!AllInstances) {
+        int numParticlesToUpdate = FMath::CeilToInt(static_cast<float>(Particles.Num()) / SetPositionsCount);
+        startIndex = FrameCount * numParticlesToUpdate;
+        endIndex = startIndex + numParticlesToUpdate;
+    }
+    
     for (int32 i = startIndex; i < endIndex; i++) {
         if (i >= Particles.Num()) break;
         const FParticle& particle = Particles[i];
@@ -211,7 +217,8 @@ void AFluidBoundingVolume::PostEditChangeProperty(FPropertyChangedEvent& Propert
         PropertyName == GET_MEMBER_NAME_CHECKED(AFluidBoundingVolume, NumParticlesZ))
     {
         InitializeParticles();
-        UpdateInstances();
+        UpdateInstances(true);
+        UpdateMaterials();
     }
     // Update simulation only when values are changed in editor
     Simulation->ApplySettings(Settings);

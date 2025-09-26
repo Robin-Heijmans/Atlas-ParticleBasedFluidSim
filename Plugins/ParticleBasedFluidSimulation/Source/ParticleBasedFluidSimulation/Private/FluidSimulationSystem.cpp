@@ -30,20 +30,23 @@ void FFluidSimulationSystem::StepSimulation(float DeltaTime) {
 
     UpdateSpatialLookup(SmoothingRadius);
 
-    for (auto& particle : Particles) { 
-        particle.Density = CalculateDensity(particle.PredictedPosition);
+    for (int i = 0; i < Particles.Num(); i++) {
+        Particles[i].Density = CalculateDensity(Particles[i].PredictedPosition, i);
     }
+    GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, (FString::Printf(TEXT("Particle[0] Density: %f"), Particles[0].Density)));
 
     for (int i = 0; i < Particles.Num(); i++) {
         FVector PressureForce = CalculatePressureForce(Particles[i].PredictedPosition, i);
         FVector PressureAcceleration = -PressureForce / Particles[i].Density;
         Particles[i].Velocity += PressureAcceleration * DeltaTime;
     }
+    GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Red, (FString::Printf(TEXT("Particle[0] Velocity after pressure forces: X=%f Y=%f Z=%f"), Particles[0].Velocity.X, Particles[0].Velocity.Y, Particles[0].Velocity.Z)));
 
     for (int i = 0; i < Particles.Num(); i++) {
         FVector ViscosityForce = CalculateViscosityForce(Particles[i].PredictedPosition, i);
         Particles[i].Velocity += ViscosityForce * DeltaTime;
     }
+    GEngine->AddOnScreenDebugMessage(2, 5.f, FColor::Blue, (FString::Printf(TEXT("Particle[0] Velocity after viscosity forces: X=%f Y=%f Z=%f"), Particles[0].Velocity.X, Particles[0].Velocity.Y, Particles[0].Velocity.Z)));
 
     for (auto& particle : Particles) {
         particle.Position += particle.Velocity * DeltaTime;
@@ -94,7 +97,7 @@ void FFluidSimulationSystem::UpdateSpatialLookup(const float& Radius) {
 }
 
 float FFluidSimulationSystem::ConvertDensityToPressure(const float& Density) {
-    float DensityError = Density - TargetDensity;
+    float DensityError = FMath::Min(Density - TargetDensity, 0.0f);
     return DensityError * PressureAmplifier;
 }
 
@@ -122,7 +125,7 @@ float FFluidSimulationSystem::SmoothingKernelViscosity(const float& Distance, co
     return Value * Value * Value * Volume;
 }
 
-float FFluidSimulationSystem::CalculateDensity(const FVector& Position) {
+float FFluidSimulationSystem::CalculateDensity(const FVector& Position, const int Index) {
     float Density = 0.0f;
 
     FIntVector CentreCoords = PositionToCellCoords(Position, SmoothingRadius);
@@ -132,6 +135,7 @@ float FFluidSimulationSystem::CalculateDensity(const FVector& Position) {
         for (uint32 i = StartIndex; i < TableSize; i++) {
             if (SpatialLookup[i].Key != Key) break;
             int ParticleIndex = SpatialLookup[i].ParticleIndex;
+            //if (ParticleIndex == Index) continue;
             FVector Offset = Particles[ParticleIndex].PredictedPosition - Position;
             float SqrDistance = FVector::DotProduct(Offset, Offset);
             if (SqrDistance < (SmoothingRadius * SmoothingRadius)) {

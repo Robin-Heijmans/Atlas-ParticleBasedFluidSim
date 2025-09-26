@@ -48,7 +48,7 @@ private:
     float SmoothingKernel(const float& Distance, const float& Radius);
     float SmoothingKernelDerivative(const float& Distance, const float& Radius);
     float SmoothingKernelViscosity(const float& Distance, const float& Radius);
-    float CalculateDensity(const FVector& Position);
+    float CalculateDensity(const FVector& Position, const int Index);
     FVector CalculatePressureForce(const FVector& Position, const int Index);
     FVector CalculateViscosityForce(const FVector& Position, const int Index);
     FIntVector PositionToCellCoords(const FVector& Position, const float& Radius);

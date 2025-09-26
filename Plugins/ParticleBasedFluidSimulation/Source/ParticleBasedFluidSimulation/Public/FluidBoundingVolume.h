@@ -59,7 +59,7 @@ private:
 	void InitializeParticles();
 	void UpdateVolumeBounds();
 	void UpdateMaterials();
-	void UpdateInstances();
+	void UpdateInstances(const bool AllInstances);
 	FLinearColor VelocityToColor(const float& Speed);
 
 	#if WITH_EDITOR
