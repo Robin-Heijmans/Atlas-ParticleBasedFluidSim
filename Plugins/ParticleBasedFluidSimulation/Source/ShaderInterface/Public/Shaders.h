@@ -47,13 +47,6 @@ BEGIN_UNIFORM_BUFFER_STRUCT(FFluidVolumeLocal, )
     SHADER_PARAMETER(FVector3f, MaxBounds)
 END_UNIFORM_BUFFER_STRUCT()
 
-/*
-BEGIN_UNIFORM_BUFFER_STRUCT(FParticles, )
-    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Positions)
-    SHADER_PARAMETER(uint32, NumParticles)
-END_UNIFORM_BUFFER_STRUCT()
-*/  
-
 // -- .usf files --
 // FluidMath
 BEGIN_SHADER_PARAMETER_STRUCT(FFluidMathParams, )
@@ -91,31 +84,6 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidGPUSortParams, )
 END_SHADER_PARAMETER_STRUCT()
 
 // -- .usf files --
-// PhysicsSim
-/*
-BEGIN_SHADER_PARAMETER_STRUCT(FParticleSimulationParams, )
-    //SHADER_PARAMETER_STRUCT_REF(FParticles, Particles)
-    // Buffers
-    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Positions)
-    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, PredictedPositions)
-    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Velocities)
-    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float>, Densities)
-    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint3>, SpatialIndices)
-    SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<uint>, SpatialOffsets)
-    
-    // Settings
-    SHADER_PARAMETER(float, PressureAmplifier)
-    SHADER_PARAMETER(float, TargetDensity)
-    SHADER_PARAMETER(float, CollisionDampening)
-    SHADER_PARAMETER(float, SmoothingRadius)
-    SHADER_PARAMETER(float, ViscosityStrength)
-    SHADER_PARAMETER(float, DeltaTime)
-    SHADER_PARAMETER(float, Gravity)
-    SHADER_PARAMETER(uint32, NumParticles)
-    //SHADER_PARAMETER(FVector3f, MaxBounds)
-    //SHADER_PARAMETER(FVector3f, MinBounds)
-END_SHADER_PARAMETER_STRUCT()
-*/
 
 // RenderPrep
 BEGIN_SHADER_PARAMETER_STRUCT(FRenderPrepParams, )
@@ -196,34 +164,9 @@ GENERATED_BODY()
     {
     }    
     
-    void Dispatch(FRDGBuilder& GraphBuilder, 
-        FGlobalShaderMap* GlobalShaderMap, 
-       const FRDGTextureRef& DensityMap,
-       const FRDGBufferRef& PositionsRef);
+    void Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRenderPrepParams Params);
 };
 
-// SimulateParticles
-/*
-USTRUCT(BlueprintType)
-struct SHADERINTERFACE_API FParticleSimulationDispatchParams
-{	
-GENERATED_BODY()
-    public:
-    int X = 1;
-    int Y = 1;
-    int Z = 1;
-
-    FParticleSimulationDispatchParams() = default;
-    FParticleSimulationDispatchParams(int x, int y, int z)
-        : X(x)
-        , Y(y)
-        , Z(z)
-    {
-    }
-
-    void Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FParticles& Particles);
-};
-*/
 
 namespace FluidMathDispatch
 {

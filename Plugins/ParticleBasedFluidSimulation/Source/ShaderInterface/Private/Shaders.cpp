@@ -216,20 +216,12 @@ namespace FluidMathDispatch
     }
 }
 
-void FRenderPrepDispatchParams::Dispatch(
-    FRDGBuilder& GraphBuilder, 
-    FGlobalShaderMap* GlobalShaderMap, 
-    const FRDGTextureRef& DensityMapRef,  
-    const FRDGBufferRef& PositionsRef)
+void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRenderPrepParams Params)
 {
     RDG_EVENT_SCOPE(GraphBuilder, "RenderPrep");
 
     Shaders::FRenderPrepShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FRenderPrepShader::FParameters>();
-    PassParameters->DensityMap = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(DensityMapRef));
-    PassParameters->DensityMapSize = 128; // PLS PUT ME OUT OF MY MISERY
-
-    PassParameters->Positions = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(PositionsRef));
-    PassParameters->NumParticles = PositionsRef->GetRHI()->GetSize() / sizeof(FVector3f);
+    *PassParameters = Params;
 
     const FIntVector DispatchCount(2,128,128);
     TShaderMapRef<Shaders::FRenderPrepShader> ComputeShader(GlobalShaderMap);
@@ -237,7 +229,7 @@ void FRenderPrepDispatchParams::Dispatch(
     FComputeShaderUtils::AddPass(
         GraphBuilder,
         RDG_EVENT_NAME("Execute RenderPrep"),
-        ERDGPassFlags::AsyncCompute,
+        ERDGPassFlags::Compute,
         ComputeShader,
         PassParameters,
         DispatchCount);
@@ -282,7 +274,7 @@ void FFluidMarchDispatchParams::Dispatch(
     FComputeShaderUtils::AddPass(
         GraphBuilder,
         RDG_EVENT_NAME("Execute TanComputeShader %dx%d", ViewSize.X, ViewSize.Y),
-        ERDGPassFlags::AsyncCompute,
+        ERDGPassFlags::Compute,
         ComputeShader,
         PassParameters,
         DispatchCount);

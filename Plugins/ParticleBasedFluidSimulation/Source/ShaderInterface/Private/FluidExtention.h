@@ -8,6 +8,7 @@
 #include "PostProcess/PostProcessMaterial.h"
 #include "SceneView.h"
 
+#include "ParticleLibrary.h"
 #include "Shaders.h"
 
 class FFluidExtention : public FSceneViewExtensionBase 

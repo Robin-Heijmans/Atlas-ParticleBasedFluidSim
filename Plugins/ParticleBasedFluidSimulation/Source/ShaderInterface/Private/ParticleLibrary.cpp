@@ -1,47 +1,65 @@
 #include "ParticleLibrary.h"
+#include "Shaders.h"
+
+#include "PixelShaderUtils.h"
+#include "MeshPassProcessor.inl"
+#include "StaticMeshResources.h"
+#include "DynamicMeshBuilder.h"
+#include "RenderGraphResources.h"
+#include "GlobalShader.h"
+#include "UnifiedBuffer.h"
+#include "CanvasTypes.h"
+#include "MeshDrawShaderBindings.h"
+#include "RHIGPUReadback.h"
+#include "MeshPassUtils.h"
+#include "MaterialShader.h"
+#include "CoreMinimal.h"
+#include "Shader.h"
+#include "RHI.h"
+#include "GlobalShader.h"
+#include "RenderGraphUtils.h"
 
 
-
-
-
-UParticleBuffers::UParticleBuffers( 
-    const uint32 NumParticles,
-    const FFluidVolumeLocal& VolumeBounds
+void UParticleBuffers::Initialize( 
+    uint32 _NumParticles,
+    FFluidVolumeLocal VolumeBounds
 )
 {
-    ENQUEUE_RENDER_COMMAND(GenDensityMap)(
-    [this](FRHICommandListImmediate& RHICmdList) {
+    NumParticles = _NumParticles;
+
+    ENQUEUE_RENDER_COMMAND(ParticleBufferInit)(
+    [this, _NumParticles, VolumeBounds](FRHICommandListImmediate& RHICmdList) {
         FRDGBuilder GraphBuilder(RHICmdList);
-        {
-            // Create External Particle Buffers | make them persistent :3
-            FRDGBufferDesc PositionsDesc            = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), 500);
-            FRDGBufferDesc PredictedPositionsDesc   = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), 500);
-            FRDGBufferDesc VelocitiesDesc           = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), 500);
-            FRDGBufferDesc DensitiesDesc            = FRDGBufferDesc::CreateStructuredDesc(sizeof(float), 500);
-            FRDGBufferDesc SpatialIndicesDesc       = FRDGBufferDesc::CreateStructuredDesc(sizeof(FUintVector3), 500);
-            FRDGBufferDesc SpatialOffsetsDesc       = FRDGBufferDesc::CreateStructuredDesc(sizeof(uint32), 500);
 
-            FRDGBufferRef PositionsRef            = GraphBuilder.CreateBuffer(PositionsDesc,             TEXT("TanFluid Positions"));
-            FRDGBufferRef PredictedPositionsRef   = GraphBuilder.CreateBuffer(PredictedPositionsDesc,    TEXT("TanFluid PredictedPositions"));
-            FRDGBufferRef VelocitiesRef           = GraphBuilder.CreateBuffer(VelocitiesDesc,            TEXT("TanFluid Velocities"));
-            FRDGBufferRef DensitiesRef            = GraphBuilder.CreateBuffer(DensitiesDesc,             TEXT("TanFluid Densities"));
-            FRDGBufferRef SpatialIndicesRef       = GraphBuilder.CreateBuffer(SpatialIndicesDesc,        TEXT("TanFluid SpatialIndices"));
-            FRDGBufferRef SpatialOffsetsRef       = GraphBuilder.CreateBuffer(SpatialOffsetsDesc,        TEXT("TanFluid SpatialOffsets"));
+        UE_LOG(LogTemp, Warning, TEXT("NUM PARTICLES: %d"), _NumParticles);
+        // Create External Particle Buffers | make them persistent :3
+        FRDGBufferDesc PositionsDesc            = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), _NumParticles);
+        FRDGBufferDesc PredictedPositionsDesc   = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), _NumParticles);
+        FRDGBufferDesc VelocitiesDesc           = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), _NumParticles);
+        FRDGBufferDesc DensitiesDesc            = FRDGBufferDesc::CreateStructuredDesc(sizeof(float), _NumParticles);
+        FRDGBufferDesc SpatialIndicesDesc       = FRDGBufferDesc::CreateStructuredDesc(sizeof(FUintVector3), _NumParticles);
+        FRDGBufferDesc SpatialOffsetsDesc       = FRDGBufferDesc::CreateStructuredDesc(sizeof(uint32), _NumParticles);
 
-            Positions             = GraphBuilder.ConvertToExternalBuffer(PositionsRef         );
-            PredictedPositions    = GraphBuilder.ConvertToExternalBuffer(PredictedPositionsRef);
-            Velocities            = GraphBuilder.ConvertToExternalBuffer(VelocitiesRef        );
-            Densities             = GraphBuilder.ConvertToExternalBuffer(DensitiesRef         );
-            SpatialIndices        = GraphBuilder.ConvertToExternalBuffer(SpatialIndicesRef    );
-            SpatialOffsets        = GraphBuilder.ConvertToExternalBuffer(SpatialOffsetsRef    );
-        }
+        FRDGBufferRef TmpPositionsRef            = GraphBuilder.CreateBuffer(PositionsDesc,             TEXT("Atlas Positions"));
+        FRDGBufferRef TmpPredictedPositionsRef   = GraphBuilder.CreateBuffer(PredictedPositionsDesc,    TEXT("Atlas PredictedPositions"));
+        FRDGBufferRef TmpVelocitiesRef           = GraphBuilder.CreateBuffer(VelocitiesDesc,            TEXT("Atlas Velocities"));
+        FRDGBufferRef TmpDensitiesRef            = GraphBuilder.CreateBuffer(DensitiesDesc,             TEXT("Atlas Densities"));
+        FRDGBufferRef TmpSpatialIndicesRef       = GraphBuilder.CreateBuffer(SpatialIndicesDesc,        TEXT("Atlas SpatialIndices"));
+        FRDGBufferRef TmpSpatialOffsetsRef       = GraphBuilder.CreateBuffer(SpatialOffsetsDesc,        TEXT("Atlas SpatialOffsets"));
 
-        const FRDGBufferRef PositionsRef            = GraphBuilder.RegisterExternalBuffer(Positions         ,   TEXT("TanFluid Positions"));
-        const FRDGBufferRef PredictedPositionsRef   = GraphBuilder.RegisterExternalBuffer(PredictedPositions,   TEXT("TanFluid PredictedPositions"));
-        const FRDGBufferRef VelocitiesRef           = GraphBuilder.RegisterExternalBuffer(Velocities        ,   TEXT("TanFluid Velocities"));
-        const FRDGBufferRef DensitiesRef            = GraphBuilder.RegisterExternalBuffer(Densities         ,   TEXT("TanFluid Densities"));
-        const FRDGBufferRef SpatialIndicesRef       = GraphBuilder.RegisterExternalBuffer(SpatialIndices    ,   TEXT("TanFluid SpatialIndices"));
-        const FRDGBufferRef SpatialOffsetsRef       = GraphBuilder.RegisterExternalBuffer(SpatialOffsets    ,   TEXT("TanFluid SpatialOffsets"));
+        Positions             = GraphBuilder.ConvertToExternalBuffer(TmpPositionsRef         );
+        PredictedPositions    = GraphBuilder.ConvertToExternalBuffer(TmpPredictedPositionsRef);
+        Velocities            = GraphBuilder.ConvertToExternalBuffer(TmpVelocitiesRef        );
+        Densities             = GraphBuilder.ConvertToExternalBuffer(TmpDensitiesRef         );
+        SpatialIndices        = GraphBuilder.ConvertToExternalBuffer(TmpSpatialIndicesRef    );
+        SpatialOffsets        = GraphBuilder.ConvertToExternalBuffer(TmpSpatialOffsetsRef    );
+
+        PositionsRef            = GraphBuilder.RegisterExternalBuffer(Positions         ,   TEXT("Atlas Positions"));
+        PredictedPositionsRef   = GraphBuilder.RegisterExternalBuffer(PredictedPositions,   TEXT("Atlas PredictedPositions"));
+        VelocitiesRef           = GraphBuilder.RegisterExternalBuffer(Velocities        ,   TEXT("Atlas Velocities"));
+        DensitiesRef            = GraphBuilder.RegisterExternalBuffer(Densities         ,   TEXT("Atlas Densities"));
+        SpatialIndicesRef       = GraphBuilder.RegisterExternalBuffer(SpatialIndices    ,   TEXT("Atlas SpatialIndices"));
+        SpatialOffsetsRef       = GraphBuilder.RegisterExternalBuffer(SpatialOffsets    ,   TEXT("Atlas SpatialOffsets"));
         
         // Upload Default Values
         TArray<FVector3f> _positions;
@@ -51,12 +69,12 @@ UParticleBuffers::UParticleBuffers(
         TArray<FUintVector3> _spatialindicies;
         TArray<uint32> _spatialoffsets;
 
-        _positions.Init(FVector3f(1,1,1), 500);
-        _preditctedpositions.Init(FVector3f(1,1,1), 500);
-        _velocities.Init(FVector3f(1,1,1), 500);
-        _densities.Init(float(1), 500);
-        _spatialindicies.Init(FUintVector3(1,1,1), 500);
-        _spatialoffsets.Init(uint32(1), 500);
+        _positions.Init(FVector3f(1,1,1), _NumParticles);
+        _preditctedpositions.Init(FVector3f(1,1,1), _NumParticles);
+        _velocities.Init(FVector3f(1,1,1), _NumParticles);
+        _densities.Init(float(1), _NumParticles);
+        _spatialindicies.Init(FUintVector3(1,1,1), _NumParticles);
+        _spatialoffsets.Init(uint32(1), _NumParticles);
 
         GraphBuilder.QueueBufferUpload(PositionsRef, _positions.GetData(), _positions.NumBytes());
         GraphBuilder.QueueBufferUpload(PredictedPositionsRef,_preditctedpositions.GetData(), _preditctedpositions.NumBytes());
@@ -65,9 +83,14 @@ UParticleBuffers::UParticleBuffers(
         GraphBuilder.QueueBufferUpload(SpatialIndicesRef,_spatialindicies.GetData(), _spatialindicies.NumBytes());
         GraphBuilder.QueueBufferUpload(SpatialOffsetsRef,_spatialoffsets.GetData(), _spatialoffsets.NumBytes());
 
-        FluidBoundsLocal.MinBounds = FVector3f(-32,-32,-32);
-        FluidBoundsLocal.MaxBounds = FVector3f(32,32,32);
+        FluidBoundsLocal.MinBounds = VolumeBounds.MinBounds;
+        FluidBoundsLocal.MaxBounds = VolumeBounds.MaxBounds;
+
+        GraphBuilder.Execute();
+        UE_LOG(LogTemp, Warning, TEXT("finisheesd particles init"));
     });
+
+    bInitialized = true;
 }
 
 UParticleBuffers::~UParticleBuffers()
@@ -87,12 +110,12 @@ void UParticleBuffers::Register(FRDGBuilder& GraphBuilder)
 
  void UParticleBuffers::CreateUAVs(
     FRDGBuilder& GraphBuilder,
-    FRDGBufferUAV* OutPositions, 
-    FRDGBufferUAV* OutPredictedPositions, 
-    FRDGBufferUAV* OutVelocities, 
-    FRDGBufferUAV* OutDensities, 
-    FRDGBufferUAV* OutSpatialIndices, 
-    FRDGBufferUAV* OutSpatialOffsets
+    FRDGBufferUAV*& OutPositions, 
+    FRDGBufferUAV*& OutPredictedPositions, 
+    FRDGBufferUAV*& OutVelocities, 
+    FRDGBufferUAV*& OutDensities, 
+    FRDGBufferUAV*& OutSpatialIndices, 
+    FRDGBufferUAV*& OutSpatialOffsets
 )
 {
     OutPositions = GraphBuilder.CreateUAV(PositionsRef);
@@ -105,27 +128,21 @@ void UParticleBuffers::Register(FRDGBuilder& GraphBuilder)
 
  void UParticleBuffers::CreateSRVs(
     FRDGBuilder& GraphBuilder,
-    FRDGBufferSRV* OutPositions, 
-    FRDGBufferSRV* OutPredictedPositions, 
-    FRDGBufferSRV* OutVelocities, 
-    FRDGBufferSRV* OutDensities, 
-    FRDGBufferSRV* OutSpatialIndices, 
-    FRDGBufferSRV* OutSpatialOffsets
+    FRDGBufferSRV*& OutPositions
 )
 {
     OutPositions = GraphBuilder.CreateSRV(PositionsRef);
-    OutPredictedPositions = GraphBuilder.CreateSRV(PredictedPositionsRef);
-    OutVelocities = GraphBuilder.CreateSRV(VelocitiesRef);
-    OutDensities = GraphBuilder.CreateSRV(DensitiesRef);
-    OutSpatialIndices = GraphBuilder.CreateSRV(SpatialIndicesRef);
-    OutSpatialOffsets = GraphBuilder.CreateSRV(SpatialOffsetsRef);
+    //OutPredictedPositions = GraphBuilder.CreateSRV(PredictedPositionsRef);
+    //OutVelocities = GraphBuilder.CreateSRV(VelocitiesRef);
+    //OutDensities = GraphBuilder.CreateSRV(DensitiesRef);
+    //OutSpatialIndices = GraphBuilder.CreateSRV(SpatialIndicesRef);
+    //OutSpatialOffsets = GraphBuilder.CreateSRV(SpatialOffsetsRef);
 }
 
 FFluidMathParams UParticleBuffers::GetParticleParameters(FRDGBuilder& GraphBuilder)
 {
     FFluidMathParams FluidMath;
 
-    Register(GraphBuilder);
     CreateUAVs(
         GraphBuilder,
         FluidMath.Positions, 
@@ -147,4 +164,12 @@ FFluidMathParams UParticleBuffers::GetParticleParameters(FRDGBuilder& GraphBuild
     FluidMath.ViscosityStrength = 1.f;
 
     return FluidMath;
+}
+
+FRDGBufferSRVRef UParticleBuffers::GetRenderPrepParameters(FRDGBuilder& GraphBuilder)
+{
+    // Might want to expand this if we need more params in Renderprep
+    FRDGBufferSRVRef SRV;
+    CreateSRVs(GraphBuilder, SRV);
+    return SRV;
 }

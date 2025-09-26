@@ -53,7 +53,7 @@ public:
 	TUniquePtr<FFluidSimulationSystem> Simulation;
 	TArray<FParticle> Particles;
 	TArray<FVector3f> InitialPositions;
-    bool RenderPrep = true;
+    bool HasParticles = false;
 private:
 	void InitializeParticles();
 	void UpdateVolumeBounds();
