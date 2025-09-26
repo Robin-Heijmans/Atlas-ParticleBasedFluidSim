@@ -53,6 +53,7 @@ public:
 	TUniquePtr<FFluidSimulationSystem> Simulation;
 	TArray<FParticle> Particles;
 	TArray<FVector3f> InitialPositions;
+    bool HasParticles = false;
 	TArray<FVector> MeshPositions;
 private:
 	void InitializeParticles();
