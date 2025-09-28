@@ -18,6 +18,8 @@
 
 #include "FluidBoundingVolume.h"
 
+constexpr uint32 DensityMapSize(256);
+
 namespace 
 {
 	TAutoConsoleVariable<int32> CVarRendering(
@@ -50,10 +52,10 @@ FFluidExtention::FFluidExtention(const FAutoRegister& AutoRegister) : FSceneView
         FRDGBuilder GraphBuilder(RHICmdList);
 
         //Density Map UwU
-        FRHITextureCreateDesc Desc = FRHITextureCreateDesc::Create3D(TEXT("DensityMap"))
-                .SetExtent(128, 128)
-                .SetDepth(128)
-                .SetFormat(PF_A32B32G32R32F)
+        FRHITextureCreateDesc Desc = FRHITextureCreateDesc::Create3D(TEXT("Atlas DensityMap"))
+                .SetExtent(DensityMapSize, DensityMapSize)
+                .SetDepth(DensityMapSize)
+                .SetFormat(PF_R32_FLOAT)
                 .SetFlags(ETextureCreateFlags::UAV | ETextureCreateFlags::ShaderResource)
                 .SetInitialState(ERHIAccess::SRVCompute);
 
@@ -61,23 +63,26 @@ FFluidExtention::FFluidExtention(const FAutoRegister& AutoRegister) : FSceneView
         
         const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("Atlas DensityMap")));
         FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
-        //RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, DensityMapRef, PositionsRef);
-
-        //GraphBuilder.QueueBufferExtraction(ParticlePositionsRef, &PooledPositions);
         GraphBuilder.Execute();
     });
 }
 
 void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily) 
 {
-    if (CVarSimulation.GetValueOnRenderThread() == 0) return; 
-
     // Check for new volumes, that need particles
-    UWorld* World = ViewFamily.Scene->GetWorld();
+    UWorld* World = ViewFamily.Scene->GetWorld(); 
     if(World == nullptr) return;
-    bool Wait = false;
+    
+    FFluidVolumeLocal VolumeBounds;
     for (TActorIterator<AFluidBoundingVolume> FluidVolumes(World); FluidVolumes; ++FluidVolumes)
     {
+        // Update Scale continously
+        FVector Extent = FluidVolumes->Bounds->GetScaledBoxExtent();
+        FVector WorldScale = FluidVolumes->Bounds->GetComponentScale();
+        VolumeBounds.MinBounds = FVector3f(-Extent / WorldScale);
+        VolumeBounds.MaxBounds = FVector3f(Extent / WorldScale);
+
+        // Initialize ParticleBuffers
         if(!FluidVolumes->HasParticles)
         {   
             const uint32 NumParticles = FluidVolumes->NumParticlesX * FluidVolumes->NumParticlesY * FluidVolumes->NumParticlesZ;
@@ -93,12 +98,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
             ParticleBuffers->AttachToComponent(FluidVolumes->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
 
             // Allocate Particle Buffer
-
-            FFluidVolumeLocal VolumeBounds; 
-            VolumeBounds.MaxBounds = FVector3f(FluidVolumes->Bounds->GetScaledBoxExtent());
-            VolumeBounds.MinBounds = FVector3f(0,0,0);
-
-            ParticleBuffers->Initialize(NumParticles, VolumeBounds);
+            ParticleBuffers->Initialize(NumParticles, VolumeBounds, *FluidVolumes);
             FluidVolumes->HasParticles = true;
             return;
         }
@@ -107,40 +107,57 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
     for (TObjectIterator<UParticleBuffers> ParticleBuffers; ParticleBuffers; ++ParticleBuffers)
     {
         if(!ParticleBuffers->bInitialized) continue;
-        
-        ENQUEUE_RENDER_COMMAND(ParticleSimulation)(
-        [this, ParticleBuffers](FRHICommandListImmediate& RHICmdList) {
-            FRDGBuilder GraphBuilder(RHICmdList);
-            
-            ParticleBuffers->Register(GraphBuilder);
-            
-            FFluidMathParams FluidMath = ParticleBuffers->GetParticleParameters(GraphBuilder);
 
-            FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
-            FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath);
-            FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath);
-            FluidMathDispatch::SortAndCalculateOffsets(GraphBuilder, GlobalShaderMap, FluidMath);
-            FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath);
-            FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
-            FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
-            FluidMathDispatch::UpdatePositions(GraphBuilder, GlobalShaderMap, FluidMath);
-
-            // Render Prep
-            FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("Atlas DensityMap")));
-            FRDGBufferSRVRef PositionsRef = ParticleBuffers->GetRenderPrepParameters(GraphBuilder);
-
-            FRenderPrepParams RenderPrepParams;
-            RenderPrepParams.DensityMap = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(DensityMapRef));
-            RenderPrepParams.Positions = PositionsRef;
-
-            RenderPrepParams.DensityMapSize = 128; // PLS PUT ME OUT OF MY MISERY
-            RenderPrepParams.NumParticles = ParticleBuffers->NumParticles;
-
-            RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, RenderPrepParams);
+        // Particle Simlation
+        if (CVarSimulation.GetValueOnRenderThread() == 1) 
+        {
+            ENQUEUE_RENDER_COMMAND(ParticleSimulation)(
+            [this, ParticleBuffers, VolumeBounds](FRHICommandListImmediate& RHICmdList) {
+                FRDGBuilder GraphBuilder(RHICmdList);
+                ParticleBuffers->Register(GraphBuilder);
+                ParticleBuffers->UpdateVolumeBounds(VolumeBounds);
                 
-            GraphBuilder.Execute();
-        });
+                FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
 
+                FFluidMathParams FluidMath = ParticleBuffers->GetParticleParameters(GraphBuilder);
+
+                FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::SortAndCalculateOffsets(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::UpdatePositions(GraphBuilder, GlobalShaderMap, FluidMath);
+
+                GraphBuilder.Execute();
+            });
+        }
+
+        // Density Map Generation
+        if(CVarRendering.GetValueOnRenderThread() == 1)
+        {
+            ENQUEUE_RENDER_COMMAND(GenerateDensityMap)(
+            [this, ParticleBuffers, VolumeBounds](FRHICommandListImmediate& RHICmdList) {
+                FRDGBuilder GraphBuilder(RHICmdList);
+                
+                ParticleBuffers->Register(GraphBuilder);
+                ParticleBuffers->UpdateVolumeBounds(VolumeBounds);
+                FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
+
+                // Render Prep
+                FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("Atlas DensityMap")));
+
+                FRenderPrepParams RenderPrepParams = ParticleBuffers->GetRenderPrepParameters(GraphBuilder);
+                RenderPrepParams.FluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
+        
+                RenderPrepParams.DensityMap = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(DensityMapRef));
+                RenderPrepParams.DensityMapSize = FUintVector3(DensityMapSize); // PLS PUT ME OUT OF MY MISERY
+
+                RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, RenderPrepParams);
+                    
+                GraphBuilder.Execute();
+            });
+        }
     }
 }
 

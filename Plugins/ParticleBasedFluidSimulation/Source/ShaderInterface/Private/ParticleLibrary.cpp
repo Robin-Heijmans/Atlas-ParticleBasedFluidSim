@@ -19,26 +19,29 @@
 #include "GlobalShader.h"
 #include "RenderGraphUtils.h"
 
+#include "FluidBoundingVolume.h"
 
 void UParticleBuffers::Initialize( 
-    uint32 _NumParticles,
-    FFluidVolumeLocal VolumeBounds
+    uint32 NumParticles,
+    FFluidVolumeLocal VolumeBounds,
+    const AFluidBoundingVolume* Volume
 )
 {
-    NumParticles = _NumParticles;
+    SimulationSettings.NumParticles = NumParticles;
+    SimulationSettings.DeltaTime = 0;
 
     ENQUEUE_RENDER_COMMAND(ParticleBufferInit)(
-    [this, _NumParticles, VolumeBounds](FRHICommandListImmediate& RHICmdList) {
+    [this, NumParticles, VolumeBounds, Volume](FRHICommandListImmediate& RHICmdList) {
         FRDGBuilder GraphBuilder(RHICmdList);
 
-        UE_LOG(LogTemp, Warning, TEXT("NUM PARTICLES: %d"), _NumParticles);
+        UE_LOG(LogTemp, Warning, TEXT("NUM PARTICLES: %d"), NumParticles);
         // Create External Particle Buffers | make them persistent :3
-        FRDGBufferDesc PositionsDesc            = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), _NumParticles);
-        FRDGBufferDesc PredictedPositionsDesc   = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), _NumParticles);
-        FRDGBufferDesc VelocitiesDesc           = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), _NumParticles);
-        FRDGBufferDesc DensitiesDesc            = FRDGBufferDesc::CreateStructuredDesc(sizeof(float), _NumParticles);
-        FRDGBufferDesc SpatialIndicesDesc       = FRDGBufferDesc::CreateStructuredDesc(sizeof(FUintVector3), _NumParticles);
-        FRDGBufferDesc SpatialOffsetsDesc       = FRDGBufferDesc::CreateStructuredDesc(sizeof(uint32), _NumParticles);
+        FRDGBufferDesc PositionsDesc            = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), NumParticles);
+        FRDGBufferDesc PredictedPositionsDesc   = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), NumParticles);
+        FRDGBufferDesc VelocitiesDesc           = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f), NumParticles);
+        FRDGBufferDesc DensitiesDesc            = FRDGBufferDesc::CreateStructuredDesc(sizeof(float), NumParticles);
+        FRDGBufferDesc SpatialIndicesDesc       = FRDGBufferDesc::CreateStructuredDesc(sizeof(FUintVector3), NumParticles);
+        FRDGBufferDesc SpatialOffsetsDesc       = FRDGBufferDesc::CreateStructuredDesc(sizeof(uint32), NumParticles);
 
         FRDGBufferRef TmpPositionsRef            = GraphBuilder.CreateBuffer(PositionsDesc,             TEXT("Atlas Positions"));
         FRDGBufferRef TmpPredictedPositionsRef   = GraphBuilder.CreateBuffer(PredictedPositionsDesc,    TEXT("Atlas PredictedPositions"));
@@ -69,13 +72,21 @@ void UParticleBuffers::Initialize(
         TArray<FUintVector3> _spatialindicies;
         TArray<uint32> _spatialoffsets;
 
-        _positions.Init(FVector3f(1,1,1), _NumParticles);
-        _preditctedpositions.Init(FVector3f(1,1,1), _NumParticles);
-        _velocities.Init(FVector3f(1,1,1), _NumParticles);
-        _densities.Init(float(1), _NumParticles);
-        _spatialindicies.Init(FUintVector3(1,1,1), _NumParticles);
-        _spatialoffsets.Init(uint32(1), _NumParticles);
+        _positions.Init(FVector3f(1,1,1), NumParticles);
+        _preditctedpositions.Init(FVector3f(1,1,1), NumParticles);
+        _velocities.Init(FVector3f(1,1,1), NumParticles);
+        _densities.Init(float(1), NumParticles);
+        _spatialindicies.Init(FUintVector3(0,0,0), NumParticles);
+        _spatialoffsets.Init(uint32(0), NumParticles);
 
+        for (uint32 i = 0; i < NumParticles; i++)
+        {
+            _positions[i] = FVector3f(Volume->Simulation->GetParticles()[i].Position);
+            _preditctedpositions[i] = FVector3f(Volume->Simulation->GetParticles()[i].PredictedPosition);
+            _velocities[i] = FVector3f(Volume->Simulation->GetParticles()[i].Velocity);
+            _densities[i] = Volume->Simulation->GetParticles()[i].Density;
+        }
+    
         GraphBuilder.QueueBufferUpload(PositionsRef, _positions.GetData(), _positions.NumBytes());
         GraphBuilder.QueueBufferUpload(PredictedPositionsRef,_preditctedpositions.GetData(), _preditctedpositions.NumBytes());
         GraphBuilder.QueueBufferUpload(VelocitiesRef,_velocities.GetData(), _velocities.NumBytes());
@@ -108,6 +119,12 @@ void UParticleBuffers::Register(FRDGBuilder& GraphBuilder)
     SpatialOffsetsRef       = GraphBuilder.RegisterExternalBuffer(SpatialOffsets, TEXT("Atlas SpatialOffsets"));  
 }
 
+void UParticleBuffers::UpdateVolumeBounds(const FFluidVolumeLocal& Volume)
+{
+    FluidBoundsLocal.MinBounds = Volume.MinBounds;
+    FluidBoundsLocal.MaxBounds = Volume.MaxBounds;
+}
+
  void UParticleBuffers::CreateUAVs(
     FRDGBuilder& GraphBuilder,
     FRDGBufferUAV*& OutPositions, 
@@ -128,15 +145,18 @@ void UParticleBuffers::Register(FRDGBuilder& GraphBuilder)
 
  void UParticleBuffers::CreateSRVs(
     FRDGBuilder& GraphBuilder,
-    FRDGBufferSRV*& OutPositions
+    FRDGBufferSRV*& OutPositions,
+    FRDGBufferSRV*& OutPredictedPositions,
+    FRDGBufferSRV*& OutSpatialIndices, 
+    FRDGBufferSRV*& OutSpatialOffsets
 )
 {
     OutPositions = GraphBuilder.CreateSRV(PositionsRef);
-    //OutPredictedPositions = GraphBuilder.CreateSRV(PredictedPositionsRef);
+    OutPredictedPositions = GraphBuilder.CreateSRV(PredictedPositionsRef);
     //OutVelocities = GraphBuilder.CreateSRV(VelocitiesRef);
     //OutDensities = GraphBuilder.CreateSRV(DensitiesRef);
-    //OutSpatialIndices = GraphBuilder.CreateSRV(SpatialIndicesRef);
-    //OutSpatialOffsets = GraphBuilder.CreateSRV(SpatialOffsetsRef);
+    OutSpatialIndices = GraphBuilder.CreateSRV(SpatialIndicesRef);
+    OutSpatialOffsets = GraphBuilder.CreateSRV(SpatialOffsetsRef);
 }
 
 FFluidMathParams UParticleBuffers::GetParticleParameters(FRDGBuilder& GraphBuilder)
@@ -154,22 +174,26 @@ FFluidMathParams UParticleBuffers::GetParticleParameters(FRDGBuilder& GraphBuild
     );
     FluidMath.Volume = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(FluidBoundsLocal, EUniformBufferUsage::UniformBuffer_SingleFrame);  
 
-    FluidMath.CollisionDampening = 0.6f;
-    FluidMath.DeltaTime = 1.f/60.f;
-    FluidMath.Gravity = -98.1f;
-    FluidMath.NumParticles = 500;
-    FluidMath.PressureAmplifier = 100.f;
-    FluidMath.SmoothingRadius = 4.f;
-    FluidMath.TargetDensity = 3.f;
-    FluidMath.ViscosityStrength = 1.f;
+    FluidMath.CollisionDampening    = SimulationSettings.CollisionDampening    ;
+    FluidMath.DeltaTime             = SimulationSettings.DeltaTime             ;
+    FluidMath.Gravity               = SimulationSettings.Gravity               ;
+    FluidMath.NumParticles          = SimulationSettings.NumParticles          ;
+    FluidMath.PressureAmplifier     = SimulationSettings.PressureAmplifier     ;
+    FluidMath.SmoothingRadius       = SimulationSettings.SmoothingRadius       ;
+    FluidMath.TargetDensity         = SimulationSettings.TargetDensity         ;
+    FluidMath.ViscosityStrength     = SimulationSettings.ViscosityStrength     ;
 
     return FluidMath;
 }
 
-FRDGBufferSRVRef UParticleBuffers::GetRenderPrepParameters(FRDGBuilder& GraphBuilder)
+FRenderPrepParams UParticleBuffers::GetRenderPrepParameters(FRDGBuilder& GraphBuilder)
 {
+    FRenderPrepParams RenderPrep;
+    
     // Might want to expand this if we need more params in Renderprep
-    FRDGBufferSRVRef SRV;
-    CreateSRVs(GraphBuilder, SRV);
-    return SRV;
+    CreateSRVs(GraphBuilder, RenderPrep.Positions, RenderPrep.PredictedPositions, RenderPrep.SpatialIndices, RenderPrep.SpatialOffsets);
+    RenderPrep.Bounds = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(FluidBoundsLocal, EUniformBufferUsage::UniformBuffer_SingleFrame);  
+    RenderPrep.NumParticles = SimulationSettings.NumParticles;
+
+    return RenderPrep;
 }

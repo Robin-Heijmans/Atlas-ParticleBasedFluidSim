@@ -50,7 +50,6 @@ END_UNIFORM_BUFFER_STRUCT()
 // -- .usf files --
 // FluidMath
 BEGIN_SHADER_PARAMETER_STRUCT(FFluidMathParams, )
-
     SHADER_PARAMETER_STRUCT_REF(FFluidVolumeLocal, Volume)
 
     SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Positions)
@@ -87,11 +86,17 @@ END_SHADER_PARAMETER_STRUCT()
 
 // RenderPrep
 BEGIN_SHADER_PARAMETER_STRUCT(FRenderPrepParams, )
+    SHADER_PARAMETER_STRUCT_REF(FFluidVolume, FluidVolume)
+    SHADER_PARAMETER_STRUCT_REF(FFluidVolumeLocal, Bounds)
+
     SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<float3>, Positions)
+    SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<float3>, PredictedPositions)
+    SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<uint3>, SpatialIndices) //uint3(index, hash, key)
+    SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<uint>, SpatialOffsets)
     SHADER_PARAMETER(uint32, NumParticles)
 
-    SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture3D<float3>, DensityMap)
-    SHADER_PARAMETER(uint32, DensityMapSize)
+    SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture3D<float>, DensityMap)
+    SHADER_PARAMETER(FUintVector3, DensityMapSize)
 
 END_SHADER_PARAMETER_STRUCT()
 
@@ -204,8 +209,8 @@ namespace Shaders
 
     	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
     	{
-    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
-    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
     		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
     	}
     };
@@ -225,8 +230,8 @@ namespace Shaders
 
     	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
     	{
-    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
-    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
     		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
     	}
     };
@@ -246,8 +251,8 @@ namespace Shaders
 
     	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
     	{
-    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
-    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
     		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
     	}
     };
@@ -267,8 +272,8 @@ namespace Shaders
 
     	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
     	{
-    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
-    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
     		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
     	}
     };
@@ -288,8 +293,8 @@ namespace Shaders
 
     	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
     	{
-    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
-    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
     		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
     	}
     };
@@ -309,8 +314,8 @@ namespace Shaders
 
     	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
     	{
-    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
-    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
     		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
     	}
     };
@@ -330,8 +335,8 @@ namespace Shaders
 
     	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
     	{
-    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
-    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
     		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
     	}
     };
@@ -351,8 +356,8 @@ namespace Shaders
 
     	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
     	{
-    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
-    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
     		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
     	}
     };
@@ -372,9 +377,9 @@ namespace Shaders
 
     	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
     	{
-    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 64);
-    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
-    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 8);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 8);
     	}
     };
 

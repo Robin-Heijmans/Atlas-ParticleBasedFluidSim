@@ -10,7 +10,7 @@ struct FFluidVolume {
 
 ConstantBuffer<FFluidVolume> FluidVolume;
 
-Texture3D<float3> DensityMap;
+Texture3D<float> DensityMap;
 uint DensityMapSize;
 
 Texture2D<float3> SceneColor;
@@ -111,10 +111,10 @@ bool CubeContains(const float3 RayPos)
 		RayPos.z <= (FluidVolume.BoundsPosition + FluidVolume.BoundsSize).z;
 }
 
-const float3 SampleDensity(const float3 RayPos)
+const float SampleDensity(const float3 RayPos)
 {
     const float3 UVW = (RayPos - FluidVolume.BoundsPosition) / FluidVolume.BoundsSize * 0.5 + 0.5;
-    const float3 Density = DensityMap.SampleLevel(GlobalBilinearClampedSampler, UVW, 0);
+    const float Density = DensityMap.SampleLevel(GlobalBilinearClampedSampler, UVW, 0);
     return Density;
 }
 
@@ -148,20 +148,23 @@ void Compute(
 
     // Psuedo Stepping through Density Map
     uint NumSteps = 1;
-    float3 AccDensity = float3(0,0,0);
+    float AccDensity = 0;
     const float StepSize = 0.2;
     
     do
     {
         //Check if out of bounds
-        const float3 Density = SampleDensity(RayOrigin + (RayDirection * RayT));
-        AccDensity += Density;
+        const float Density = SampleDensity(RayOrigin + (RayDirection * RayT));
+        if(Density > 0.0)
+        {
+            AccDensity += Density;
+            NumSteps++;
+        }
         RayT += StepSize;
-        NumSteps++;
     } while(CubeContains(RayOrigin + (RayDirection * RayT)));
 
-    float3 OutColor = AccDensity / float3(NumSteps,NumSteps,NumSteps);
-    //OutColor += SceneColor[DispatchThreadId.xy];
+    float3 OutColor = AccDensity / NumSteps;
+    OutColor += SceneColor[DispatchThreadId.xy];
 
     Target[DispatchThreadId.xy] = OutColor;
 }

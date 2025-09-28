@@ -23,15 +23,27 @@ public:
 	UParticleBuffers() = default;
 	~UParticleBuffers();
 
-	void Initialize(uint32 NumParticles, FFluidVolumeLocal VolumeBounds);
+	void Initialize(uint32 NumParticles, FFluidVolumeLocal VolumeBounds, const class AFluidBoundingVolume* Volume);
 	
 	// Call this at thw beginning of the frame
 	void Register(FRDGBuilder& GraphBuilder);
+	void UpdateVolumeBounds(const FFluidVolumeLocal& Volume);
 
 	FFluidMathParams GetParticleParameters(FRDGBuilder& GraphBuilder);
-	FRDGBufferSRVRef GetRenderPrepParameters(FRDGBuilder& GraphBuilder);
+	// DensityMap left blanc
+	FRenderPrepParams GetRenderPrepParameters(FRDGBuilder& GraphBuilder);
 
-	uint32 NumParticles = 0;
+	struct FSimulationSettings
+	{
+    	float CollisionDampening = 0.6f;
+    	float DeltaTime = 1.f/60.f;
+    	float Gravity = -98.1f;
+    	float NumParticles = 0;
+    	float PressureAmplifier = 100.f;
+    	float SmoothingRadius = 4.f;
+    	float TargetDensity = 3.f;
+    	float ViscosityStrength = 1.f;
+	} SimulationSettings;
 	bool bInitialized = false;
 private:
 	void CreateUAVs( 
@@ -46,7 +58,10 @@ private:
 
 	void CreateSRVs(
 		FRDGBuilder& GraphBuilder,
-		FRDGBufferSRV*& OutPositions
+		FRDGBufferSRV*& OutPositions,
+    	FRDGBufferSRV*& OutPredictedPositions,
+		FRDGBufferSRV*& OutSpatialIndices, 
+		FRDGBufferSRV*& OutSpatialOffsets
 	);
 
 	// Persistent through frames
@@ -66,4 +81,5 @@ private:
 	FRDGBufferRef SpatialOffsetsRef = nullptr;
 
 	FFluidVolumeLocal FluidBoundsLocal;
+	
 };

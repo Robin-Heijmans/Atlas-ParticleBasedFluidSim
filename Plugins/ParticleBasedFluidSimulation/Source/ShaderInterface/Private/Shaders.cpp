@@ -60,12 +60,13 @@ namespace FluidMathDispatch
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
         *PassParameters = Params;
         
-        const FIntVector DispatchCount(10,10,5);
+        const FIntVector DispatchCount(FMath::DivideAndRoundUp(Params.NumParticles, uint32(64)), 1, 1);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
 
         FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute ExternalForces"), 
+            ERDGPassFlags::Compute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -78,12 +79,13 @@ namespace FluidMathDispatch
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathUpdateSpatialLookup::FParameters>();
         *PassParameters = Params;
 
-        const FIntVector DispatchCount(10,10,5);
+        const FIntVector DispatchCount(FMath::DivideAndRoundUp(Params.NumParticles, uint32(64)), 1, 1);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
         
         FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute UpdateSpatialLookup"), 
+            ERDGPassFlags::Compute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -100,7 +102,7 @@ namespace FluidMathDispatch
         uint32 bufferCount = Params.NumParticles;
         PassParametersSort->numEntries = bufferCount;
 
-        const FIntVector DispatchCount(10,10,5);
+        const FIntVector DispatchCount(FMath::DivideAndRoundUp(Params.NumParticles, uint32(64)), 1, 1);
         TShaderMapRef<SorthaderType> SortComputeShader(GlobalShaderMap);
 
         int numStages = static_cast<int>(FMath::Log2(static_cast<float>(FMath::RoundUpToPowerOfTwo(bufferCount))));
@@ -138,6 +140,7 @@ namespace FluidMathDispatch
         FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute UpdateSpatialLookup"), 
+            ERDGPassFlags::Compute,
             OffsetComputeShader,
             PassParametersOffset,
             DispatchCount);
@@ -150,12 +153,13 @@ namespace FluidMathDispatch
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
         *PassParameters = Params;
         
-        const FIntVector DispatchCount(10,10,5);
+        const FIntVector DispatchCount(FMath::DivideAndRoundUp(Params.NumParticles, uint32(64)), 1, 1);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
 
         FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute CalculateDensity"), 
+            ERDGPassFlags::Compute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -168,12 +172,13 @@ namespace FluidMathDispatch
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
         *PassParameters = Params;
         
-        const FIntVector DispatchCount(10,10,5);
+        const FIntVector DispatchCount(FMath::DivideAndRoundUp(Params.NumParticles, uint32(64)), 1, 1);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
 
         FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute CalculatePressureForce"), 
+            ERDGPassFlags::Compute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -186,12 +191,13 @@ namespace FluidMathDispatch
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
         *PassParameters = Params;
         
-        const FIntVector DispatchCount(10,10,5);
+        const FIntVector DispatchCount(FMath::DivideAndRoundUp(Params.NumParticles, uint32(64)), 1, 1);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
 
         FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute CalculateViscosityForce"), 
+            ERDGPassFlags::Compute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -204,12 +210,13 @@ namespace FluidMathDispatch
         ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
         *PassParameters = Params;
 
-        const FIntVector DispatchCount(10,10,5);
+        const FIntVector DispatchCount(FMath::DivideAndRoundUp(Params.NumParticles, uint32(64)), 1, 1);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
 
         FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute UpdatePositions"), 
+            ERDGPassFlags::Compute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -218,12 +225,12 @@ namespace FluidMathDispatch
 
 void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRenderPrepParams Params)
 {
-    RDG_EVENT_SCOPE(GraphBuilder, "RenderPrep");
+    RDG_EVENT_SCOPE(GraphBuilder, "Atlas RenderPrep");
 
     Shaders::FRenderPrepShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FRenderPrepShader::FParameters>();
     *PassParameters = Params;
 
-    const FIntVector DispatchCount(2,128,128);
+    const FIntVector DispatchCount(32,32,32);
     TShaderMapRef<Shaders::FRenderPrepShader> ComputeShader(GlobalShaderMap);
 
     FComputeShaderUtils::AddPass(
