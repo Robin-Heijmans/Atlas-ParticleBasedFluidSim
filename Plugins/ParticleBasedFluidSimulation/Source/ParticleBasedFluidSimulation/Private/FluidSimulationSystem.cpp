@@ -97,7 +97,7 @@ void FFluidSimulationSystem::UpdateSpatialLookup(const float& Radius) {
 }
 
 float FFluidSimulationSystem::ConvertDensityToPressure(const float& Density) {
-    float DensityError = FMath::Min(Density - TargetDensity, 0.0f);
+    float DensityError = Density - TargetDensity;
     return DensityError * PressureAmplifier;
 }
 
@@ -164,7 +164,7 @@ FVector FFluidSimulationSystem::CalculatePressureForce(const FVector& Position, 
                 float Distance = FMath::Sqrt(SqrDistance);
                 FVector Direction = Distance == 0 ? FVector::UpVector : Offset / Distance;
                 float Slope = SmoothingKernelDerivative(Distance, SmoothingRadius);
-                float Density = Particles[ParticleIndex].Density;
+                float Density = FMath::Min(Particles[ParticleIndex].Density, 1.0f);
                 float SharedPressure = CalculateSharedPressure(Density, Particles[Index].Density);
                 PressureForce += SharedPressure * Direction * Slope * Particles[ParticleIndex].Mass / Density;
             }
