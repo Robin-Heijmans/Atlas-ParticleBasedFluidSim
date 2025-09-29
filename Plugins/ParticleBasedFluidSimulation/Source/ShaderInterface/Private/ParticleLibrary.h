@@ -22,7 +22,7 @@ public:
 	UParticleBuffers() = default;
 	~UParticleBuffers();
 
-	void Initialize(uint32 NumParticles, TUniformBufferRef<FFluidVolumeLocal> VolumeBounds, const class AFluidBoundingVolume* Volume);
+	void Initialize(TUniformBufferRef<FFluidVolumeLocal> VolumeBounds, const class AFluidBoundingVolume* Volume);
 	
 	// Call this at thw beginning of the frame
 	void Register(FRDGBuilder& GraphBuilder);
@@ -36,11 +36,11 @@ public:
     	float CollisionDampening = 0.6f;
     	float DeltaTime = 1.f/60.f;
     	float Gravity = -98.1f;
-    	float NumParticles = 0;
     	float PressureAmplifier = 100.f;
     	float SmoothingRadius = 4.f;
     	float TargetDensity = 3.f;
     	float ViscosityStrength = 1.f;
+    	uint32 NumParticles = 0;
 	} SimulationSettings;
 	bool bInitialized = false;
 private:
@@ -78,4 +78,10 @@ private:
 	FRDGBufferRef SpatialIndicesRef = nullptr;
 	FRDGBufferRef SpatialOffsetsRef = nullptr;
 	
+	TArray<FVector3f> _positions;
+	TArray<FVector3f> _preditctedpositions;
+	TArray<FVector3f> _velocities;
+	TArray<float> _densities;
+	TArray<FUintVector3> _spatialindicies;
+	TArray<uint32> _spatialoffsets;
 };

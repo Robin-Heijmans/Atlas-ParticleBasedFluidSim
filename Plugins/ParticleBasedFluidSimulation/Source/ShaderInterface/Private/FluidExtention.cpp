@@ -113,7 +113,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
             ParticleBuffers->AttachToComponent(FluidVolumes->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
 
             // Allocate Particle Buffer
-            ParticleBuffers->Initialize(NumParticles, UBFluidBounds, *FluidVolumes);
+            ParticleBuffers->Initialize(UBFluidBounds, *FluidVolumes);
             ParticleBuffers->SimulationSettings.DeltaTime = FixedTimeStep;
             FluidVolumes->HasParticles = true;
             return;
