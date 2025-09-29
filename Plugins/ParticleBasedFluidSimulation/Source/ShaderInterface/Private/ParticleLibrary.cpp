@@ -26,8 +26,6 @@ void UParticleBuffers::Initialize(
     const AFluidBoundingVolume* Volume
 )
 {
-    SimulationSettings.DeltaTime = 0;
-
     ENQUEUE_RENDER_COMMAND(ParticleBufferInit)(
     [this, VolumeBounds, Volume](FRHICommandListImmediate& RHICmdList) {
         FRDGBuilder GraphBuilder(RHICmdList);
@@ -64,27 +62,29 @@ void UParticleBuffers::Initialize(
         SpatialOffsetsRef       = GraphBuilder.RegisterExternalBuffer(SpatialOffsets    ,   TEXT("Atlas SpatialOffsets"));
         
         // Particle Buffer Parameters
-
-        _positions.Init(FVector3f(420),           SimulationSettings.NumParticles);
-        _preditctedpositions.Init(FVector3f(420), SimulationSettings.NumParticles);
-        _velocities.Init(FVector3f(420),          SimulationSettings.NumParticles);
-        _densities.Init(float(420),               SimulationSettings.NumParticles);
-        _spatialindicies.Init(FUintVector3(420),  SimulationSettings.NumParticles);
-        _spatialoffsets.Init(uint32(420),         SimulationSettings.NumParticles);
+        TArray<FVector3f> _positions;
+        TArray<FVector3f> _preditctedpositions;
+        TArray<FVector3f> _velocities;
+        TArray<float> _densities;
+        TArray<FUintVector3> _spatialindicies;
+        TArray<uint32> _spatialoffsets;
 
         // Upload Initial Vlaues
-        for (int32 i = 0; i < Volume->Simulation->GetParticles().Num(); i++)
+        uint32 i = 0;
+        for (const FParticle& Particle : Volume->Simulation->GetParticles())
         {
-            const FParticle& Particle = Volume->Simulation->GetParticles()[i];
-
-            _positions[i] = FVector3f(Particle.Position);
-            _preditctedpositions[i] = FVector3f(Particle.PredictedPosition);
-            _velocities[i] = FVector3f(Particle.Velocity);
-            _densities[i] = Particle.Density;
+            //UE_LOG(LogTemp, Warning, TEXT("Particle Position %d: %f,%f,%f"), i, Particle.Position.X, Particle.Position.Y, Particle.Position.Z);
+            
+            _positions.Add(FVector3f(Particle.Position));
+            _preditctedpositions.Add(FVector3f(Particle.PredictedPosition));
+            _velocities.Add(FVector3f(Particle.Velocity));
+            _densities.Add(Particle.Density);
+            _spatialindicies.Add(FUintVector3(420));
+            _spatialoffsets.Add(uint32(420));
         }
     
         GraphBuilder.QueueBufferUpload(PositionsRef, _positions.GetData(), _positions.NumBytes());
-        GraphBuilder.QueueBufferUpload(PredictedPositionsRef,_preditctedpositions.GetData(), _preditctedpositions.NumBytes());
+        GraphBuilder.QueueBufferUpload(PredictedPositionsRef,_positions.GetData(), _positions.NumBytes());
         GraphBuilder.QueueBufferUpload(VelocitiesRef,_velocities.GetData(), _velocities.NumBytes());
         GraphBuilder.QueueBufferUpload(DensitiesRef,_densities.GetData(), _densities.NumBytes());
         GraphBuilder.QueueBufferUpload(SpatialIndicesRef,_spatialindicies.GetData(), _spatialindicies.NumBytes());
@@ -112,6 +112,13 @@ void UParticleBuffers::Initialize(
 UParticleBuffers::~UParticleBuffers()
 {
     // DELETE THE BUFFERS IF POSSIBLE PLEASE !!!!!!!!!!!111!!!11Elf!!!
+    if(Positions)           Positions->Release();
+	if(PredictedPositions)  PredictedPositions->Release();
+	if(Velocities)          Velocities->Release();
+	if(Densities)           Densities->Release();
+	if(SpatialIndices)      SpatialIndices->Release();
+	if(SpatialOffsets)      SpatialOffsets->Release();
+    bInitialized = false;
 }
 
 void UParticleBuffers::Register(FRDGBuilder& GraphBuilder)

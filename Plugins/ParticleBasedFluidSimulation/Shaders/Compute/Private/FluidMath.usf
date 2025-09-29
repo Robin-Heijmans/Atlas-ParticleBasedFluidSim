@@ -62,7 +62,7 @@ void ExternalForces (uint3 id : SV_DispatchThreadID) {
 
     Velocities[id.x] += float3(0, 0, Gravity) * DeltaTime;
 
-    PredictedPositions[id.x] = Positions[id.x] + Velocities[id.x] * 1 / 120.0; // Fixed LookAheadTimeStep
+    PredictedPositions[id.x] = Positions[id.x] + Velocities[id.x] * 1.0 / 120.0; // Fixed LookAheadTimeStep
 }
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]

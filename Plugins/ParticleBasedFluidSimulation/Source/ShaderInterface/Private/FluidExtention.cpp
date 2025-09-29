@@ -100,12 +100,24 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         // Initialize ParticleBuffers
         if(!FluidVolumes->HasParticles)
         {   
+            TArray<USceneComponent*> Children;
+            FluidVolumes->GetRootComponent()->GetChildrenComponents(true, Children);
+            for(USceneComponent* Child : Children)
+            {
+                UParticleBuffers* ParticleBuffers = nullptr;
+                ParticleBuffers = reinterpret_cast<UParticleBuffers*>(Child);
+                if(ParticleBuffers != nullptr)
+                {
+                    ParticleBuffers->UnregisterComponent(); // Not working
+                }
+            }
+
             const uint32 NumParticles = FluidVolumes->NumParticlesX * FluidVolumes->NumParticlesY * FluidVolumes->NumParticlesZ;
             if(NumParticles > 5000 || NumParticles == 0)     
             {
                 UE_LOG(LogTemp, Warning, TEXT("Illegal NumParticles: %d"), NumParticles);
                 continue;
-            }           
+            }
 
 	        UParticleBuffers* ParticleBuffers = NewObject<UParticleBuffers>(*FluidVolumes,UParticleBuffers::StaticClass(), TEXT("Particle Buffers"));
 
@@ -125,32 +137,29 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         if(!ParticleBuffers->bInitialized) continue;
 
         // Particle Simlation
-        if (CVarSimulation.GetValueOnRenderThread() == 1) 
-        {   
-            while(TotalTime > FixedTimeStep)
-            {
-                ENQUEUE_RENDER_COMMAND(ParticleSimulation)(
-                [this, ParticleBuffers](FRHICommandListImmediate& RHICmdList) {
-                    FRDGBuilder GraphBuilder(RHICmdList);
-                    ParticleBuffers->Register(GraphBuilder);
-                    
-                    FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
+        if(TotalTime > FixedTimeStep)
+        {
+            ENQUEUE_RENDER_COMMAND(ParticleSimulation)(
+            [this, ParticleBuffers](FRHICommandListImmediate& RHICmdList) {
+                FRDGBuilder GraphBuilder(RHICmdList);
+                ParticleBuffers->Register(GraphBuilder);
+                
+                FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
 
-                    FFluidMathParams FluidMath = ParticleBuffers->GetParticleParameters(GraphBuilder);
-                    FluidMath.FluidBounds = UBFluidBounds;
+                FFluidMathParams FluidMath = ParticleBuffers->GetParticleParameters(GraphBuilder);
+                FluidMath.FluidBounds = UBFluidBounds;
 
-                    FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath);
-                    FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath);
-                    FluidMathDispatch::SortAndCalculateOffsets(GraphBuilder, GlobalShaderMap, FluidMath);
-                    FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath);
-                    FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
-                    FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
-                    FluidMathDispatch::UpdatePositions(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::SortAndCalculateOffsets(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::UpdatePositions(GraphBuilder, GlobalShaderMap, FluidMath);
 
-                    GraphBuilder.Execute();
-                });      
-                TotalTime -= FixedTimeStep;
-            }
+                GraphBuilder.Execute();
+            });      
+            TotalTime = 0.f;
         }
 
         // Density Map Generation

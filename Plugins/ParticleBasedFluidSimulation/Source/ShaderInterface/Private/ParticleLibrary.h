@@ -78,10 +78,4 @@ private:
 	FRDGBufferRef SpatialIndicesRef = nullptr;
 	FRDGBufferRef SpatialOffsetsRef = nullptr;
 	
-	TArray<FVector3f> _positions;
-	TArray<FVector3f> _preditctedpositions;
-	TArray<FVector3f> _velocities;
-	TArray<float> _densities;
-	TArray<FUintVector3> _spatialindicies;
-	TArray<uint32> _spatialoffsets;
 };
