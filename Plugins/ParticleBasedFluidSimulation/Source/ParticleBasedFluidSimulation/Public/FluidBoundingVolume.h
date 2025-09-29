@@ -41,6 +41,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
     int NumParticlesZ = 5;
 
+    UFUNCTION(CallInEditor, Category = "Particles")
+    void GenerateParticleBuffers();
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fluid system")
     float MaxSpeedGradient = 30.f;
 
@@ -53,8 +56,8 @@ public:
 	TUniquePtr<FFluidSimulationSystem> Simulation;
 	TArray<FParticle> Particles;
 	TArray<FVector3f> InitialPositions;
-    bool HasParticles = false;
 	TArray<FVector> MeshPositions;
+    bool HasParticles = true;
 private:
 	void InitializeParticles();
 	void UpdateVolumeBounds();

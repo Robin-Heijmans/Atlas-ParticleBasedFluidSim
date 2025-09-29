@@ -72,7 +72,15 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
     // Check for new volumes, that need particles
     UWorld* World = ViewFamily.Scene->GetWorld(); 
     if(World == nullptr) return;
-    
+    #if WITH_EDITOR
+        if(World->IsPlayInEditor()) 
+        {
+            TotalTime += World->GetDeltaSeconds();
+        }
+    #else
+        TotalTime += World->GetDeltaSeconds();
+    #endif
+
     FFluidVolumeLocal VolumeBounds;
     for (TActorIterator<AFluidBoundingVolume> FluidVolumes(World); FluidVolumes; ++FluidVolumes)
     {
@@ -99,6 +107,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
 
             // Allocate Particle Buffer
             ParticleBuffers->Initialize(NumParticles, VolumeBounds, *FluidVolumes);
+            ParticleBuffers->SimulationSettings.DeltaTime = FixedTimeStep;
             FluidVolumes->HasParticles = true;
             return;
         }
@@ -110,27 +119,31 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
 
         // Particle Simlation
         if (CVarSimulation.GetValueOnRenderThread() == 1) 
-        {
-            ENQUEUE_RENDER_COMMAND(ParticleSimulation)(
-            [this, ParticleBuffers, VolumeBounds](FRHICommandListImmediate& RHICmdList) {
-                FRDGBuilder GraphBuilder(RHICmdList);
-                ParticleBuffers->Register(GraphBuilder);
-                ParticleBuffers->UpdateVolumeBounds(VolumeBounds);
-                
-                FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
+        {   
+            while(TotalTime > FixedTimeStep)
+            {
+                ENQUEUE_RENDER_COMMAND(ParticleSimulation)(
+                [this, ParticleBuffers, VolumeBounds](FRHICommandListImmediate& RHICmdList) {
+                    FRDGBuilder GraphBuilder(RHICmdList);
+                    ParticleBuffers->Register(GraphBuilder);
+                    ParticleBuffers->UpdateVolumeBounds(VolumeBounds);
+                    
+                    FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
 
-                FFluidMathParams FluidMath = ParticleBuffers->GetParticleParameters(GraphBuilder);
+                    FFluidMathParams FluidMath = ParticleBuffers->GetParticleParameters(GraphBuilder);
 
-                FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath);
-                FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath);
-                FluidMathDispatch::SortAndCalculateOffsets(GraphBuilder, GlobalShaderMap, FluidMath);
-                FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath);
-                FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
-                FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
-                FluidMathDispatch::UpdatePositions(GraphBuilder, GlobalShaderMap, FluidMath);
+                    FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath);
+                    FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath);
+                    FluidMathDispatch::SortAndCalculateOffsets(GraphBuilder, GlobalShaderMap, FluidMath);
+                    FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath);
+                    FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
+                    FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
+                    FluidMathDispatch::UpdatePositions(GraphBuilder, GlobalShaderMap, FluidMath);
 
-                GraphBuilder.Execute();
-            });
+                    GraphBuilder.Execute();
+                });      
+                TotalTime -= FixedTimeStep;
+            }
         }
 
         // Density Map Generation

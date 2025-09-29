@@ -49,6 +49,11 @@ void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
     }
 }
 
+void AFluidBoundingVolume::GenerateParticleBuffers()
+{
+    HasParticles = false;
+}
+
 void AFluidBoundingVolume::InitializeParticles()
 {
     Particles.Empty();
@@ -128,7 +133,6 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
     if (FrameCount > SetPositionsCount) FrameCount = 0;
-
 
 	if (TotalTime >= FixedTimeStep)
 	{

@@ -37,4 +37,7 @@ private:
 
 	// Uniform Buffers
 	FFluidVolume FluidVolume;
+
+	float TotalTime = 0.0f;
+    const float FixedTimeStep = 1.f / 60.f;
 };
