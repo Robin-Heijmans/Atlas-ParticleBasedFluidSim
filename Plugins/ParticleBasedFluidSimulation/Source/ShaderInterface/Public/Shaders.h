@@ -50,7 +50,7 @@ END_UNIFORM_BUFFER_STRUCT()
 // -- .usf files --
 // FluidMath
 BEGIN_SHADER_PARAMETER_STRUCT(FFluidMathParams, )
-    SHADER_PARAMETER_STRUCT_REF(FFluidVolumeLocal, Volume)
+    SHADER_PARAMETER_STRUCT_REF(FFluidVolumeLocal, FluidBounds)
 
     SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, Positions)
     SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<float3>, PredictedPositions)
@@ -87,7 +87,7 @@ END_SHADER_PARAMETER_STRUCT()
 // RenderPrep
 BEGIN_SHADER_PARAMETER_STRUCT(FRenderPrepParams, )
     SHADER_PARAMETER_STRUCT_REF(FFluidVolume, FluidVolume)
-    SHADER_PARAMETER_STRUCT_REF(FFluidVolumeLocal, Bounds)
+    SHADER_PARAMETER_STRUCT_REF(FFluidVolumeLocal, FluidBounds)
 
     SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<float3>, Positions)
     SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<float3>, PredictedPositions)
@@ -102,11 +102,12 @@ END_SHADER_PARAMETER_STRUCT()
 
 // FluidMarch
 BEGIN_SHADER_PARAMETER_STRUCT(FFluidMarchParams, )
-    SHADER_PARAMETER_STRUCT_REF(FFluidVolume, Volume)
+    SHADER_PARAMETER_STRUCT_REF(FFluidVolume, FluidVolume)
+    SHADER_PARAMETER_STRUCT_REF(FFluidVolumeLocal, FluidBounds)
     SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
     
     SHADER_PARAMETER_RDG_TEXTURE_SRV(RWTexture3D<float3>, DensityMap)
-    SHADER_PARAMETER(uint32, DensityMapSize)
+    SHADER_PARAMETER(FUintVector3, DensityMapSize)
 
     SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SceneColor)
     SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float3>, Target)
@@ -147,7 +148,8 @@ public:
         FGlobalShaderMap* GlobalShaderMap, 
         const FSceneView& InView, 
         FRDGTexture* SceneColor, 
-        FFluidVolume& Volume, 
+        TUniformBufferRef<FFluidVolume> Volume, 
+        TUniformBufferRef<FFluidVolumeLocal> Bounds, 
         const FRDGTextureRef& DensityMap);
 };
 

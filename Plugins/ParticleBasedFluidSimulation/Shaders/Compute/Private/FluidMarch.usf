@@ -8,10 +8,17 @@ struct FFluidVolume {
     
 };
 
+struct FFluidVolumeLocal {
+    // Volume Data
+    float3 MinBounds;  // Min Bounds
+    float3 MaxBounds;  // Max Bounds    
+};
+
 ConstantBuffer<FFluidVolume> FluidVolume;
+ConstantBuffer<FFluidVolumeLocal> Bounds;
 
 Texture3D<float> DensityMap;
-uint DensityMapSize;
+uint3 DensityMapSize;
 
 Texture2D<float3> SceneColor;
 RWTexture2D<float3> Target;
@@ -186,10 +193,9 @@ void Compute(
     do
     {
         const float3 CurrPos = RayOrigin + (RayDirection * RayT);
-        if(FluidContains(CurrPos))
+        const float Density = SampleDensity(CurrPos);
+        if(Density > 0.0)
         { 
-            const float Density = SampleDensity(CurrPos);
-            
             AccDensity += Density;
             NumSteps++;
         }

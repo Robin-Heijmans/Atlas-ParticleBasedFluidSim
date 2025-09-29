@@ -7,7 +7,6 @@
 #include "RHI.h"
 #include "GlobalShader.h"
 #include "RenderGraphUtils.h"
-#include "Components/ActorComponent.h"	
 #include "Components/SceneComponent.h"
 
 #include "Shaders.h"
@@ -23,11 +22,10 @@ public:
 	UParticleBuffers() = default;
 	~UParticleBuffers();
 
-	void Initialize(uint32 NumParticles, FFluidVolumeLocal VolumeBounds, const class AFluidBoundingVolume* Volume);
+	void Initialize(uint32 NumParticles, TUniformBufferRef<FFluidVolumeLocal> VolumeBounds, const class AFluidBoundingVolume* Volume);
 	
 	// Call this at thw beginning of the frame
 	void Register(FRDGBuilder& GraphBuilder);
-	void UpdateVolumeBounds(const FFluidVolumeLocal& Volume);
 
 	FFluidMathParams GetParticleParameters(FRDGBuilder& GraphBuilder);
 	// DensityMap left blanc
@@ -79,7 +77,5 @@ private:
 	FRDGBufferRef DensitiesRef = nullptr;
 	FRDGBufferRef SpatialIndicesRef = nullptr;
 	FRDGBufferRef SpatialOffsetsRef = nullptr;
-
-	FFluidVolumeLocal FluidBoundsLocal;
 	
 };

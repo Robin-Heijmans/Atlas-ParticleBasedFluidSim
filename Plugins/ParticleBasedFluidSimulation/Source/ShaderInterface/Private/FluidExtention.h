@@ -36,7 +36,8 @@ private:
 	FTextureRHIRef DensityMap;
 
 	// Uniform Buffers
-	FFluidVolume FluidVolume;
+	TUniformBufferRef<FFluidVolumeLocal> UBFluidBounds;
+	TUniformBufferRef<FFluidVolume> UBFluidVolume;
 
 	float TotalTime = 0.0f;
     const float FixedTimeStep = 1.f / 60.f;

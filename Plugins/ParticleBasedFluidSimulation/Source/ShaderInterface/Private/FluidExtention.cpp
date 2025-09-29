@@ -43,10 +43,7 @@ FFluidExtention::FFluidExtention(const FAutoRegister& AutoRegister) : FSceneView
 {
 	UE_LOG(LogTemp, Log, TEXT("Fluid: Custom SceneViewExtension registered"));
 
-    // Default Params for now
-    FluidVolume.BoundsPosition = FVector3f(-288.779695,8.043881,122.825553);
-    FluidVolume.BoundsSize = FVector3f(56,56,56);
-
+    // Init Density Map
     ENQUEUE_RENDER_COMMAND(GenDensityMap)(
     [this](FRHICommandListImmediate& RHICmdList) {
         FRDGBuilder GraphBuilder(RHICmdList);
@@ -72,8 +69,10 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
     // Check for new volumes, that need particles
     UWorld* World = ViewFamily.Scene->GetWorld(); 
     if(World == nullptr) return;
+
+    // Advance simulation
     #if WITH_EDITOR
-        if(World->IsPlayInEditor()) 
+        if(World->IsPlayInEditor() && CVarSimulation.GetValueOnRenderThread() == 1) 
         {
             TotalTime += World->GetDeltaSeconds();
         }
@@ -81,15 +80,23 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         TotalTime += World->GetDeltaSeconds();
     #endif
 
+    FFluidVolume FluidVolume;
     FFluidVolumeLocal VolumeBounds;
+
     for (TActorIterator<AFluidBoundingVolume> FluidVolumes(World); FluidVolumes; ++FluidVolumes)
     {
-        // Update Scale continously
+        // Update UBOs continously
         FVector Extent = FluidVolumes->Bounds->GetScaledBoxExtent();
         FVector WorldScale = FluidVolumes->Bounds->GetComponentScale();
         VolumeBounds.MinBounds = FVector3f(-Extent / WorldScale);
         VolumeBounds.MaxBounds = FVector3f(Extent / WorldScale);
-
+        
+        FluidVolume.BoundsPosition = FVector3f(FluidVolumes->Bounds->GetComponentLocation());
+        FluidVolume.BoundsSize = FVector3f(FluidVolumes->Bounds->GetScaledBoxExtent());
+        
+        UBFluidBounds = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(VolumeBounds, EUniformBufferUsage::UniformBuffer_SingleFrame);  
+        UBFluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
+    
         // Initialize ParticleBuffers
         if(!FluidVolumes->HasParticles)
         {   
@@ -106,7 +113,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
             ParticleBuffers->AttachToComponent(FluidVolumes->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
 
             // Allocate Particle Buffer
-            ParticleBuffers->Initialize(NumParticles, VolumeBounds, *FluidVolumes);
+            ParticleBuffers->Initialize(NumParticles, UBFluidBounds, *FluidVolumes);
             ParticleBuffers->SimulationSettings.DeltaTime = FixedTimeStep;
             FluidVolumes->HasParticles = true;
             return;
@@ -123,14 +130,14 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
             while(TotalTime > FixedTimeStep)
             {
                 ENQUEUE_RENDER_COMMAND(ParticleSimulation)(
-                [this, ParticleBuffers, VolumeBounds](FRHICommandListImmediate& RHICmdList) {
+                [this, ParticleBuffers](FRHICommandListImmediate& RHICmdList) {
                     FRDGBuilder GraphBuilder(RHICmdList);
                     ParticleBuffers->Register(GraphBuilder);
-                    ParticleBuffers->UpdateVolumeBounds(VolumeBounds);
                     
                     FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
 
                     FFluidMathParams FluidMath = ParticleBuffers->GetParticleParameters(GraphBuilder);
+                    FluidMath.FluidBounds = UBFluidBounds;
 
                     FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath);
                     FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath);
@@ -150,19 +157,19 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         if(CVarRendering.GetValueOnRenderThread() == 1)
         {
             ENQUEUE_RENDER_COMMAND(GenerateDensityMap)(
-            [this, ParticleBuffers, VolumeBounds](FRHICommandListImmediate& RHICmdList) {
+            [this, ParticleBuffers](FRHICommandListImmediate& RHICmdList) {
                 FRDGBuilder GraphBuilder(RHICmdList);
                 
                 ParticleBuffers->Register(GraphBuilder);
-                ParticleBuffers->UpdateVolumeBounds(VolumeBounds);
                 FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
 
                 // Render Prep
                 FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("Atlas DensityMap")));
 
                 FRenderPrepParams RenderPrepParams = ParticleBuffers->GetRenderPrepParameters(GraphBuilder);
-                RenderPrepParams.FluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
-        
+                RenderPrepParams.FluidBounds = UBFluidBounds;
+                RenderPrepParams.FluidVolume = UBFluidVolume;
+
                 RenderPrepParams.DensityMap = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(DensityMapRef));
                 RenderPrepParams.DensityMapSize = FUintVector3(DensityMapSize); // PLS PUT ME OUT OF MY MISERY
 
@@ -189,6 +196,6 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
 
     // Dispatch Fluid March / Rendering
     const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("Atlas DensityMap")));
-    FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, InView, SceneColor, FluidVolume, DensityMapRef);
+    FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, InView, SceneColor, UBFluidVolume, UBFluidBounds, DensityMapRef);
 
 }

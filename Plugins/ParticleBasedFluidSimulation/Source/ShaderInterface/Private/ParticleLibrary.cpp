@@ -23,7 +23,7 @@
 
 void UParticleBuffers::Initialize( 
     uint32 NumParticles,
-    FFluidVolumeLocal VolumeBounds,
+    TUniformBufferRef<FFluidVolumeLocal> VolumeBounds,
     const AFluidBoundingVolume* Volume
 )
 {
@@ -94,13 +94,10 @@ void UParticleBuffers::Initialize(
         GraphBuilder.QueueBufferUpload(SpatialIndicesRef,_spatialindicies.GetData(), _spatialindicies.NumBytes());
         GraphBuilder.QueueBufferUpload(SpatialOffsetsRef,_spatialoffsets.GetData(), _spatialoffsets.NumBytes());
 
-        // Update VolumeBounds
-        FluidBoundsLocal.MinBounds = VolumeBounds.MinBounds;
-        FluidBoundsLocal.MaxBounds = VolumeBounds.MaxBounds;
-
         // Generate Spatial indices and offsets
         FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
         FFluidMathParams FluidMath = GetParticleParameters(GraphBuilder);
+        FluidMath.FluidBounds = VolumeBounds;
         
         FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath);
         FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath);
@@ -129,12 +126,6 @@ void UParticleBuffers::Register(FRDGBuilder& GraphBuilder)
     DensitiesRef            = GraphBuilder.RegisterExternalBuffer(Densities, TEXT("Atlas Densities"));
     SpatialIndicesRef       = GraphBuilder.RegisterExternalBuffer(SpatialIndices, TEXT("Atlas SpatialIndices"));
     SpatialOffsetsRef       = GraphBuilder.RegisterExternalBuffer(SpatialOffsets, TEXT("Atlas SpatialOffsets"));  
-}
-
-void UParticleBuffers::UpdateVolumeBounds(const FFluidVolumeLocal& Volume)
-{
-    FluidBoundsLocal.MinBounds = Volume.MinBounds;
-    FluidBoundsLocal.MaxBounds = Volume.MaxBounds;
 }
 
  void UParticleBuffers::CreateUAVs(
@@ -184,7 +175,6 @@ FFluidMathParams UParticleBuffers::GetParticleParameters(FRDGBuilder& GraphBuild
         FluidMath.SpatialIndices, 
         FluidMath.SpatialOffsets
     );
-    FluidMath.Volume = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(FluidBoundsLocal, EUniformBufferUsage::UniformBuffer_SingleFrame);  
 
     FluidMath.CollisionDampening    = SimulationSettings.CollisionDampening    ;
     FluidMath.DeltaTime             = SimulationSettings.DeltaTime             ;
@@ -204,7 +194,6 @@ FRenderPrepParams UParticleBuffers::GetRenderPrepParameters(FRDGBuilder& GraphBu
     
     // Might want to expand this if we need more params in Renderprep
     CreateSRVs(GraphBuilder, RenderPrep.Positions, RenderPrep.PredictedPositions, RenderPrep.SpatialIndices, RenderPrep.SpatialOffsets);
-    RenderPrep.Bounds = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(FluidBoundsLocal, EUniformBufferUsage::UniformBuffer_SingleFrame);  
     RenderPrep.NumParticles = SimulationSettings.NumParticles;
 
     return RenderPrep;

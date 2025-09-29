@@ -247,7 +247,8 @@ void FFluidMarchDispatchParams::Dispatch(
     FGlobalShaderMap* GlobalShaderMap, 
     const FSceneView& InView, 
     FRDGTexture* SceneColor, 
-    FFluidVolume& Volume, 
+    TUniformBufferRef<FFluidVolume> Volume, 
+    TUniformBufferRef<FFluidVolumeLocal> Bounds, 
     const FRDGTextureRef& DensityMapRef)  
 {
     RDG_EVENT_SCOPE(GraphBuilder, "FluidMarch");
@@ -269,8 +270,9 @@ void FFluidMarchDispatchParams::Dispatch(
     //DensityMap Input
     PassParameters->Target = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutputTexture));
     PassParameters->DensityMap = GraphBuilder.CreateSRV(FRDGTextureSRVDesc(DensityMapRef));
-    PassParameters->DensityMapSize = DensityMapRef->GetRHI()->GetSizeXYZ().Size();
-    PassParameters->Volume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(Volume, EUniformBufferUsage::UniformBuffer_SingleFrame);
+    PassParameters->DensityMapSize = FUintVector3(256);
+    PassParameters->FluidVolume = Volume;
+    PassParameters->FluidBounds = Bounds;
     PassParameters->SceneColor = SceneColor;
     PassParameters->View = InView.ViewUniformBuffer;
 
