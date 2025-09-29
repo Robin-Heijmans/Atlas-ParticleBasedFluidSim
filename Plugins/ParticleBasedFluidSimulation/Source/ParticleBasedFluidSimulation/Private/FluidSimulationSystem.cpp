@@ -164,7 +164,7 @@ FVector FFluidSimulationSystem::CalculatePressureForce(const FVector& Position, 
                 float Distance = FMath::Sqrt(SqrDistance);
                 FVector Direction = Distance == 0 ? FVector::UpVector : Offset / Distance;
                 float Slope = SmoothingKernelDerivative(Distance, SmoothingRadius);
-                float Density = FMath::Min(Particles[ParticleIndex].Density, 1.0f);
+                float Density = FMath::Min(Particles[ParticleIndex].Density, 0.1f);
                 float SharedPressure = CalculateSharedPressure(Density, Particles[Index].Density);
                 PressureForce += SharedPressure * Direction * Slope * Particles[ParticleIndex].Mass / Density;
             }
