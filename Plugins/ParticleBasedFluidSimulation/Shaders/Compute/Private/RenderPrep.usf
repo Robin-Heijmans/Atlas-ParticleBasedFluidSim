@@ -70,8 +70,9 @@ void Compute(
         DispatchThreadId.z >= DensityMapSize.z)
         return;
 
-    const float3 UVW = (float3(DispatchThreadId)) / DensityMapSize;
-    const float density = CalcDensity((UVW - 0.5) * (Bounds.MaxBounds * 2.0));
+    float3 UVW = (float3(DispatchThreadId)) / DensityMapSize;
+    float3 Position = (UVW - 0.5) * (Bounds.MaxBounds * 2.0);
+    float density = Density(Position);
 
     DensityMap[DispatchThreadId] = density;
 }
