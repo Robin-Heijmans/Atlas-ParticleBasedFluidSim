@@ -82,6 +82,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
 
     FFluidVolume FluidVolume;
     FFluidVolumeLocal VolumeBounds;
+    FFluidEnviroment FluidEnviroment;
 
     for (TActorIterator<AFluidBoundingVolume> FluidVolumes(World); FluidVolumes; ++FluidVolumes)
     {
@@ -94,6 +95,28 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         FluidVolume.BoundsPosition = FVector3f(FluidVolumes->Bounds->GetComponentLocation());
         FluidVolume.BoundsSize = FVector3f(FluidVolumes->Bounds->GetScaledBoxExtent());
         
+        FTransform Cube(FluidVolumes->Bounds->GetComponentRotation(), FluidVolumes->Bounds->GetComponentLocation(), FluidVolumes->Bounds->GetComponentScale());
+
+        FluidEnviroment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
+        FluidEnviroment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
+
+		//FString Output;
+		//Output += FString::Printf(TEXT("[%g %g %g %g] \n"), FluidEnviroment.CubeLocalToWorld.M[0][0], FluidEnviroment.CubeLocalToWorld.M[0][1], FluidEnviroment.CubeLocalToWorld.M[0][2], FluidEnviroment.CubeLocalToWorld.M[0][3]);
+		//Output += FString::Printf(TEXT("[%g %g %g %g] \n"), FluidEnviroment.CubeLocalToWorld.M[1][0], FluidEnviroment.CubeLocalToWorld.M[1][1], FluidEnviroment.CubeLocalToWorld.M[1][2], FluidEnviroment.CubeLocalToWorld.M[1][3]);
+		//Output += FString::Printf(TEXT("[%g %g %g %g] \n"), FluidEnviroment.CubeLocalToWorld.M[2][0], FluidEnviroment.CubeLocalToWorld.M[2][1], FluidEnviroment.CubeLocalToWorld.M[2][2], FluidEnviroment.CubeLocalToWorld.M[2][3]);
+		//Output += FString::Printf(TEXT("[%g %g %g %g] \n"), FluidEnviroment.CubeLocalToWorld.M[3][0], FluidEnviroment.CubeLocalToWorld.M[3][1], FluidEnviroment.CubeLocalToWorld.M[3][2], FluidEnviroment.CubeLocalToWorld.M[3][3]);
+        //UE_LOG(LogTemp, Warning, TEXT("CubeLocalToWorld: \n%s"), *Output);
+        
+
+        FluidEnviroment.ExtinctionCoeff = FVector3f(FluidVolumes->ExtinctionCoeff);
+        FluidEnviroment.MarchStepSize = FluidVolumes->MarchStepSize;
+        FluidEnviroment.LightStepSize = FluidVolumes->LightStepSize;
+        FluidEnviroment.DensityStepSize = FluidVolumes->DensityStepSize;
+        FluidEnviroment.DensityMultiplier = FluidVolumes->DensityMultiplier;
+        FluidEnviroment.indexOfRefraction = FluidVolumes->indexOfRefraction;
+        FluidEnviroment.iorAir = FluidVolumes->iorAir;
+
+        UBFluidEnviroment = TUniformBufferRef<FFluidEnviroment>::CreateUniformBufferImmediate(FluidEnviroment, EUniformBufferUsage::UniformBuffer_SingleFrame);  
         UBFluidBounds = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(VolumeBounds, EUniformBufferUsage::UniformBuffer_SingleFrame);  
         UBFluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
     
@@ -196,15 +219,39 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
 	// Dipatch Shader here
     if (CVarRendering.GetValueOnRenderThread() == 0) return; 
 
-    // Get SceneColor
-	const FSceneViewFamily& ViewFamily = *InView.Family;    
-	FRDGTexture* SceneColor = Inputs.SceneTextures->GetContents()->SceneColorTexture;
 
     // Get ShaderMap
     FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(InView.Family->GetFeatureLevel());
 
-    // Dispatch Fluid March / Rendering
+    
     const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("Atlas DensityMap")));
-    FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, InView, SceneColor, UBFluidVolume, UBFluidBounds, DensityMapRef);
+        
+    // Get SceneColor
+	const FSceneViewFamily& ViewFamily = *InView.Family;    
+	FRDGTexture* SceneColor = Inputs.SceneTextures->GetContents()->SceneColorTexture;
+
+    // Output Texture
+    FRDGTextureDesc OutputDesc {};
+    OutputDesc = SceneColor->Desc;
+    //OutputDesc.Extent /= 4.0;
+    OutputDesc.Reset();
+    OutputDesc.Flags |= TexCreate_UAV;
+    OutputDesc.Flags &= ~(TexCreate_RenderTargetable | TexCreate_FastVRAM);
+    const FLinearColor ClearColor(0., 0., 0., 0.);
+    OutputDesc.ClearValue = FClearValueBinding(ClearColor);
+    const FRDGTextureRef OutputTexture = GraphBuilder.CreateTexture(OutputDesc, TEXT("Atlas Output"));
+    
+    FFluidMarchParams FluidParams;
+    FluidParams.Target = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutputTexture));
+    FluidParams.DensityMap = GraphBuilder.CreateSRV(FRDGTextureSRVDesc(DensityMapRef));
+    FluidParams.DensityMapSize = FUintVector3(256);
+    FluidParams.FluidVolume = UBFluidVolume;
+    FluidParams.FluidBounds = UBFluidBounds;
+    FluidParams.Enviroment = UBFluidEnviroment;
+    FluidParams.SceneColor = SceneColor;
+    FluidParams.View = InView.ViewUniformBuffer;
+    
+    FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, FluidParams);
+    AddCopyTexturePass(GraphBuilder, OutputTexture, SceneColor);
 
 }

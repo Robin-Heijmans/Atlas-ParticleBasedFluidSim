@@ -30,32 +30,24 @@ uint NumParticles;
 RWTexture3D<float> DensityMap;
 uint3 DensityMapSize;
 
-float CalcDensity(float3 pos)
+bool SphereIntersect(float3 dist, float3 radius)
 {
-    float SmoothingRadius = 4.0;
+    float sqrDistance = dist*dist;
+    return radius*radius > sqrDistance;
+}
 
-    int3 centreCoords = PositionToCellCoords(pos, SmoothingRadius);
-    float sqrRadius = SmoothingRadius * SmoothingRadius;
+float Density(float3 UVW)
+{
+    float density = 0;
+    for (int i = 0; i < NumParticles; i++) 
+    {
+        float3 against = Positions[i];
+        float3 offset = (UVW - against);
+        float dist = sqrt(dot(offset, offset));
 
-    float density = 0.0f;
-
-    for (int cellOffset = 0; cellOffset < 27; cellOffset++) {
-        uint hash = HashCell(centreCoords + offsets3D[cellOffset]);
-        uint key = GetKeyFromHash(hash, NumParticles);
-        uint currIndex = SpatialOffsets[key];
-
-        for (int i = currIndex; i < NumParticles; i++) {
-            uint3 indexData = SpatialIndices[currIndex];
-
-            if (indexData[2] != key) break;
-            if (indexData[1] != hash) continue;
-            uint particleIndex = indexData[0];
-            float3 offset = PredictedPositions[particleIndex] - pos;
-            float sqrDistance = dot(offset, offset);
-            if (sqrDistance <= sqrRadius) {
-                float distance = sqrt(sqrDistance);
-                density += SmoothingKernel(distance, SmoothingRadius); // assuming mass = 1.0f
-            }
+        if(SphereIntersect(dist, 4.0))
+        {   
+            density += SmoothingKernel(dist, 4.0) * 10.0;
         }
     }
     return density;
@@ -71,8 +63,9 @@ void Compute(
         DispatchThreadId.z >= DensityMapSize.z)
         return;
 
-    const float3 UVW = (float3(DispatchThreadId)) / DensityMapSize;
-    const float density = CalcDensity((UVW - 0.5) * (Bounds.MaxBounds * 2.0));
+    float3 UVW = (float3(DispatchThreadId)) / DensityMapSize;
+    float3 Position = (UVW - 0.5) * (Bounds.MaxBounds * 2.0);
+    float density = Density(Position);
 
     DensityMap[DispatchThreadId] = density;
 }
