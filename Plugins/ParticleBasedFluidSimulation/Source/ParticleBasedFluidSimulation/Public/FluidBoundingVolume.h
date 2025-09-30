@@ -25,6 +25,9 @@ protected:
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+
 public:	
 	UPROPERTY(EditAnywhere, Category = "Bounds")
 	class UBoxComponent* Bounds;
@@ -50,14 +53,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid system")
 	FFluidSimSettings Settings;
 
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid system")
+	bool RunCPU = true;
 
 	TUniquePtr<FFluidSimulationSystem> Simulation;
 	TArray<FParticle> Particles;
 	TArray<FVector3f> InitialPositions;
 	TArray<FVector> MeshPositions;
     bool HasParticles = true;
+
+public:
+	TArray<FVector> GetVolumeBounds();
 private:
 	void InitializeParticles();
 	void UpdateVolumeBounds();

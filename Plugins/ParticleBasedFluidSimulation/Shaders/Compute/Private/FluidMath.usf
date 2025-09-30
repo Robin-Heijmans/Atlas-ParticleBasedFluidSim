@@ -183,6 +183,6 @@ void CalculateViscosityForce (uint3 id : SV_DispatchThreadID) {
 void UpdatePositions (uint3 id : SV_DispatchThreadID) {
     if (id.x >= NumParticles) return;
 
-    Positions[id.x] = Velocities[id.x] * DeltaTime;
+    Positions[id.x] += Velocities[id.x] * DeltaTime;
     ResolveCollisions(id.x);
 }

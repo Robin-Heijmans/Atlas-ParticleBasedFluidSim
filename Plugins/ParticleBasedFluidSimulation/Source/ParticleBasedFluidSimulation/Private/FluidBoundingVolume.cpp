@@ -132,17 +132,20 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
 	TotalTime += DeltaTime;
 	Super::Tick(DeltaTime);
 
-    if (FrameCount > SetPositionsCount) FrameCount = 0;
+    if (RunCPU)
+    {
+        if (FrameCount > SetPositionsCount) FrameCount = 0;
 
-	if (TotalTime >= FixedTimeStep)
-	{
-		Simulation->StepSimulation(FixedTimeStep);
-        Particles = Simulation->GetParticles();
-		TotalTime = 0.0f;
-        UpdateInstances(false);
-        UpdateMaterials();
-        FrameCount++;
-	}
+        if (TotalTime >= FixedTimeStep)
+        {
+            Simulation->StepSimulation(FixedTimeStep);
+            Particles = Simulation->GetParticles();
+            TotalTime = 0.0f;
+            UpdateInstances(false);
+            UpdateMaterials();
+            FrameCount++;
+        }
+    }
 }
 
 void AFluidBoundingVolume::UpdateMaterials()
@@ -228,3 +231,13 @@ void AFluidBoundingVolume::PostEditChangeProperty(FPropertyChangedEvent& Propert
     Simulation->ApplySettings(Settings);
 }
 #endif
+
+TArray<FVector> AFluidBoundingVolume::GetVolumeBounds() {
+    FVector Extent = Bounds->GetScaledBoxExtent();
+	FVector WorldScale = Bounds->GetComponentScale();
+
+    FVector LocalMin = -Extent / WorldScale;
+	FVector LocalMax = Extent / WorldScale;
+    TArray<FVector> bounds = {LocalMin, LocalMax};
+    return bounds;
+}

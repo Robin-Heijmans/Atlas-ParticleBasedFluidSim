@@ -37,8 +37,8 @@ public:
     	float DeltaTime = 1.f/60.f;
     	float Gravity = -98.1f;
     	float PressureAmplifier = 100.f;
-    	float SmoothingRadius = 4.f;
-    	float TargetDensity = 3.f;
+    	float SmoothingRadius = 3.f;
+    	float TargetDensity = 5.f;
     	float ViscosityStrength = 1.f;
     	uint32 NumParticles = 0;
 	} SimulationSettings;

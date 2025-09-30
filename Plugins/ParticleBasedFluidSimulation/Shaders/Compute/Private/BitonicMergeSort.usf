@@ -24,8 +24,8 @@ void Sort (uint3 id : SV_DispatchThreadID)
 	// Exit if out of bounds (for non-power of 2 input sizes)
 	if (indexRight >= numEntries) return;
 
-	uint valueLeft = Entries[indexLeft].z;
-	uint valueRight = Entries[indexRight].z;
+	uint valueLeft = Entries[indexLeft][2];
+	uint valueRight = Entries[indexRight][2];
 
 	// Swap entries if value is descending
 	if (valueLeft > valueRight)
@@ -44,8 +44,8 @@ void CalculateOffsets(uint3 id : SV_DispatchThreadID)
 	uint i = id.x;
 	uint null = numEntries;
 
-	uint key = Entries[i].z;
-	uint keyPrev = i == 0 ? null : Entries[i - 1].z;
+	uint key = Entries[i][2];
+	uint keyPrev = i == 0 ? null : Entries[i - 1][2];
 
 	if (key != keyPrev)
 	{
