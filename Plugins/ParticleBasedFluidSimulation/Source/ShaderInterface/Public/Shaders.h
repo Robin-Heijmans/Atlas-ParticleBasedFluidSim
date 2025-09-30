@@ -47,18 +47,17 @@ BEGIN_UNIFORM_BUFFER_STRUCT(FFluidVolumeLocal, )
     SHADER_PARAMETER(FVector3f, MaxBounds)
 END_UNIFORM_BUFFER_STRUCT()
 
-BEGIN_UNIFORM_BUFFER_STRUCT(FFluidEnvironment, )
-
+BEGIN_UNIFORM_BUFFER_STRUCT(FFluidEnviroment, )
     SHADER_PARAMETER(FMatrix44f, CubeLocalToWorld)
     SHADER_PARAMETER(FMatrix44f, CubeWorldToLocal)
+
     SHADER_PARAMETER(FVector3f, ExtinctionCoeff)
     SHADER_PARAMETER(float, MarchStepSize)
     SHADER_PARAMETER(float, LightStepSize)
     SHADER_PARAMETER(float, DensityStepSize)
     SHADER_PARAMETER(float, DensityMultiplier)
     SHADER_PARAMETER(float, indexOfRefraction)
-    SHADER_PARAMETER(uint32, NumRefractions)
-
+    SHADER_PARAMETER(float, iorAir)
 END_UNIFORM_BUFFER_STRUCT()
 
 // -- .usf files --
@@ -118,7 +117,7 @@ END_SHADER_PARAMETER_STRUCT()
 BEGIN_SHADER_PARAMETER_STRUCT(FFluidMarchParams, )
     SHADER_PARAMETER_STRUCT_REF(FFluidVolume, FluidVolume)
     SHADER_PARAMETER_STRUCT_REF(FFluidVolumeLocal, FluidBounds)
-    SHADER_PARAMETER_STRUCT_REF(FFluidEnvironment, Enviroment)
+    SHADER_PARAMETER_STRUCT_REF(FFluidEnviroment, Enviroment)
     SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
     
     SHADER_PARAMETER_RDG_TEXTURE_SRV(RWTexture3D<float3>, DensityMap)

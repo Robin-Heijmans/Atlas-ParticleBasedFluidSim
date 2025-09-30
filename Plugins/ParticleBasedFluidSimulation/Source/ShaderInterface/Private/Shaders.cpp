@@ -48,7 +48,7 @@ namespace Shaders
 // Global Shader Buffers
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolume, "FluidVolume");
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolumeLocal, "Bounds");
-IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidEnvironment, "Environment");
+IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidEnviroment, "Enviroment");
 
 namespace FluidMathDispatch
 {
@@ -272,7 +272,7 @@ void FFluidMarchDispatchParams::Dispatch(
     FComputeShaderUtils::AddPass(
         GraphBuilder,
         RDG_EVENT_NAME("Execute Atlas FluidMarch %dx%d", ViewSize.X, ViewSize.Y),
-        ERDGPassFlags::Compute | ERDGPassFlags::NeverCull,
+        ERDGPassFlags::Compute,
         ComputeShader,
         PassParameters,
         DispatchCount);
