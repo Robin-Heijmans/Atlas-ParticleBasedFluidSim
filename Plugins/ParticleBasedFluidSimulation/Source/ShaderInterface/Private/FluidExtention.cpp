@@ -174,9 +174,9 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
                 FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath);
                 FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath);
                 FluidMathDispatch::SortAndCalculateOffsets(GraphBuilder, GlobalShaderMap, FluidMath);
-                //FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath);
-                //FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
-                //FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
                 FluidMathDispatch::UpdatePositions(GraphBuilder, GlobalShaderMap, FluidMath);
 
                 GraphBuilder.Execute();

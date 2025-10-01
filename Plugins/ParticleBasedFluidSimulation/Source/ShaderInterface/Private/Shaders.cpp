@@ -95,12 +95,9 @@ namespace FluidMathDispatch
         RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation UpdateSpatialLookup");
 
         using SorthaderType = Shaders::FFluidMathSortSpatialLookup;
-        SorthaderType::FParameters* PassParametersSort = GraphBuilder.AllocParameters<Shaders::FFluidMathSortSpatialLookup::FParameters>();
         
-        PassParametersSort->Entries = Params.SpatialIndices;
-        PassParametersSort->Offsets = Params.SpatialOffsets;
         uint32 bufferCount = Params.NumParticles;
-        PassParametersSort->numEntries = bufferCount;
+        
 
         const FIntVector DispatchCount(FMath::DivideAndRoundUp(Params.NumParticles, uint32(32)), 1, 1);
         TShaderMapRef<SorthaderType> SortComputeShader(GlobalShaderMap);
@@ -113,6 +110,11 @@ namespace FluidMathDispatch
         {
             for (int stepIndex = 0; stepIndex < stageIndex + 1; stepIndex++)
             {
+                SorthaderType::FParameters* PassParametersSort = GraphBuilder.AllocParameters<Shaders::FFluidMathSortSpatialLookup::FParameters>();
+                PassParametersSort->Entries = Params.SpatialIndices;
+                PassParametersSort->Offsets = Params.SpatialOffsets;
+                PassParametersSort->numEntries = bufferCount;
+
                 // Calculate some pattern stuff
                 int groupWidth = 1 << (stageIndex - stepIndex);
                 int groupHeight = 2 * groupWidth - 1;

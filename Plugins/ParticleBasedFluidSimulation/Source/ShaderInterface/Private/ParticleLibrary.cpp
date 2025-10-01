@@ -79,7 +79,7 @@ void UParticleBuffers::Initialize(
             _preditctedpositions.Add(FVector3f(Particle.PredictedPosition));
             _velocities.Add(FVector3f(Particle.Velocity));
             _densities.Add(Particle.Density);
-            _spatialindicies.Add(FUintVector3(420));
+            _spatialindicies.Add(FUintVector3(-1));
             _spatialoffsets.Add(uint32(-1));
         }
     
@@ -98,9 +98,9 @@ void UParticleBuffers::Initialize(
         FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath);
         FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath);
         FluidMathDispatch::SortAndCalculateOffsets(GraphBuilder, GlobalShaderMap, FluidMath);
-        //FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath);
-        //FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
-        //FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
+        FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath);
+        FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
+        FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
         FluidMathDispatch::UpdatePositions(GraphBuilder, GlobalShaderMap, FluidMath);
 
         GraphBuilder.Execute();
