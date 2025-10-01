@@ -87,10 +87,9 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
     for (TActorIterator<AFluidBoundingVolume> FluidVolumes(World); FluidVolumes; ++FluidVolumes)
     {
         // Update UBOs continously
-        FVector Extent = FluidVolumes->Bounds->GetScaledBoxExtent();
-        FVector WorldScale = FluidVolumes->Bounds->GetComponentScale();
-        VolumeBounds.MinBounds = FVector3f(-Extent / WorldScale);
-        VolumeBounds.MaxBounds = FVector3f(Extent / WorldScale);
+        TArray<FVector> bounds = FluidVolumes->GetVolumeBounds();
+        VolumeBounds.MinBounds = FVector3f(bounds[0]);
+        VolumeBounds.MaxBounds = FVector3f(bounds[1]);
         
         FluidVolume.BoundsPosition = FVector3f(FluidVolumes->Bounds->GetComponentLocation());
         FluidVolume.BoundsSize = FVector3f(FluidVolumes->Bounds->GetScaledBoxExtent());
@@ -175,9 +174,9 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
                 FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath);
                 FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath);
                 FluidMathDispatch::SortAndCalculateOffsets(GraphBuilder, GlobalShaderMap, FluidMath);
-                FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath);
-                FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
-                FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
+                //FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath);
+                //FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
+                //FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
                 FluidMathDispatch::UpdatePositions(GraphBuilder, GlobalShaderMap, FluidMath);
 
                 GraphBuilder.Execute();

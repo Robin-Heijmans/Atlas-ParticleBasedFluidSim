@@ -106,6 +106,8 @@ namespace FluidMathDispatch
         TShaderMapRef<SorthaderType> SortComputeShader(GlobalShaderMap);
 
         int numStages = static_cast<int>(FMath::Log2(static_cast<float>(FMath::RoundUpToPowerOfTwo(bufferCount))));
+        FRDGPassRef oldPassRef = nullptr;
+        FRDGPassRef currentPassRef;
 
         for (int stageIndex = 0; stageIndex < numStages; stageIndex++)
         {
@@ -118,13 +120,18 @@ namespace FluidMathDispatch
                 PassParametersSort->groupHeight = groupHeight;
                 PassParametersSort->stepIndex = stepIndex;
                 // Run the sorting step on the GPU
-                FComputeShaderUtils::AddPass(
+                currentPassRef = FComputeShaderUtils::AddPass(
                     GraphBuilder,
                     RDG_EVENT_NAME("Sort spatial lookup table"), 
                     SortComputeShader,
                     PassParametersSort,
-                    FIntVector(FMath::DivideAndRoundUp(Params.NumParticles, uint32(128)), 1, 1));
-                //ComputeHelper.Dispatch(sortCompute, FMath::RoundUpToPowerOfTwo(indexBuffer.count) / 2);
+                    FIntVector(FMath::RoundUpToPowerOfTwo(bufferCount) / 128, 1, 1));
+                if (oldPassRef) {
+                    GraphBuilder.AddPassDependency(oldPassRef, currentPassRef);
+                    UE_LOG(LogTemp, Warning, TEXT("Jow"));
+                }
+                oldPassRef = currentPassRef;
+                //ComputeHelper.Dispatch(sortCompute, FMath::RoundUpToPowerOfTwo(bufferCount) / 2);
             }
         }
         using OffsetShaderType = Shaders::FFluidMathCalculateOffsets;
