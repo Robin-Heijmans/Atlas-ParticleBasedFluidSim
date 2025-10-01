@@ -22,19 +22,14 @@ RWStructuredBuffer<uint3> SpatialIndices; //uint3(index, hash, key)
 RWStructuredBuffer<uint> SpatialOffsets;
 
 // Settings
-//cbuffer Params
-//{
-    float PressureAmplifier;
-    float TargetDensity;
-    float CollisionDampening;
-    float SmoothingRadius;
-    float ViscosityStrength;
-    float DeltaTime;
-    float Gravity;
-    uint NumParticles;
-//};
-
-static const int NumThreads = 64;
+float PressureAmplifier;
+float TargetDensity;
+float CollisionDampening;
+float SmoothingRadius;
+float ViscosityStrength;
+float DeltaTime;
+float Gravity;
+uint NumParticles;
 
 float ConvertDensityToPressure(float Density) {
     return (Density - TargetDensity) * PressureAmplifier;
@@ -115,7 +110,7 @@ void CalculatePressureForce (uint3 id : SV_DispatchThreadID) {
     int3 centreCoords = PositionToCellCoords(pos, SmoothingRadius);
     float sqrRadius = SmoothingRadius * SmoothingRadius;
 
-    float density = min(Densities[id.x], 0.2f);
+    float density = Densities[id.x];
     float pressure = ConvertDensityToPressure(density);
     float3 pressureForce = float3(0.0f, 0.0f, 0.0f);
 
@@ -138,7 +133,7 @@ void CalculatePressureForce (uint3 id : SV_DispatchThreadID) {
                 float3 direction = distance == 0 ? float3(0.0f, 0.0f, 1.0f) : offset / distance;
                 float slope = SmoothingKernelDerivative(distance, SmoothingRadius);
                 float sharedPressure = (ConvertDensityToPressure(Densities[particleIndex]) + pressure) * 0.5f;
-                pressureForce += sharedPressure * direction * slope / density;
+                pressureForce += sharedPressure * direction * slope / min(density, 0.2f);
             }
         }
     }

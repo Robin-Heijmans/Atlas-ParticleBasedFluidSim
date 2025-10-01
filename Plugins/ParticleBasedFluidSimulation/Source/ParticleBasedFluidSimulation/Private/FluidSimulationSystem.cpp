@@ -138,7 +138,7 @@ float FFluidSimulationSystem::CalculateDensity(const FVector& Position, const in
             //if (ParticleIndex == Index) continue;
             FVector Offset = Particles[ParticleIndex].PredictedPosition - Position;
             float SqrDistance = FVector::DotProduct(Offset, Offset);
-            if (SqrDistance < (SmoothingRadius * SmoothingRadius)) {
+            if (SqrDistance <= (SmoothingRadius * SmoothingRadius)) {
                 float Distance = FMath::Sqrt(SqrDistance);
                 float Influence = SmoothingKernel(Distance, SmoothingRadius);
                 Density += Influence * Particles[ParticleIndex].Mass;
@@ -160,13 +160,13 @@ FVector FFluidSimulationSystem::CalculatePressureForce(const FVector& Position, 
             if (ParticleIndex == Index) continue;
             FVector Offset = Particles[ParticleIndex].PredictedPosition - Position;
             float SqrDistance = FVector::DotProduct(Offset, Offset);
-            if (SqrDistance < (SmoothingRadius * SmoothingRadius)) {
+            if (SqrDistance <= (SmoothingRadius * SmoothingRadius)) {
                 float Distance = FMath::Sqrt(SqrDistance);
                 FVector Direction = Distance == 0 ? FVector::UpVector : Offset / Distance;
                 float Slope = SmoothingKernelDerivative(Distance, SmoothingRadius);
-                float Density = FMath::Min(Particles[ParticleIndex].Density, 0.2f);
+                float Density = Particles[ParticleIndex].Density;
                 float SharedPressure = CalculateSharedPressure(Density, Particles[Index].Density);
-                PressureForce += SharedPressure * Direction * Slope * Particles[ParticleIndex].Mass / Density;
+                PressureForce += SharedPressure * Direction * Slope * Particles[ParticleIndex].Mass / FMath::Min(Density, 0.2f);
             }
         }
     }
@@ -186,7 +186,7 @@ FVector FFluidSimulationSystem::CalculateViscosityForce(const FVector& Position,
             if (ParticleIndex == Index) continue;
             FVector Offset = Particles[ParticleIndex].PredictedPosition - Position;
             float SqrDistance = FVector::DotProduct(Offset, Offset);
-            if (SqrDistance < (SmoothingRadius * SmoothingRadius)) {
+            if (SqrDistance <= (SmoothingRadius * SmoothingRadius)) {
                 float Distance = FMath::Sqrt(SqrDistance);
                 float Influence = SmoothingKernelViscosity(Distance, SmoothingRadius);
                 ViscosityForce += (Particles[ParticleIndex].Velocity - Particles[Index].Velocity) * Influence;
