@@ -30,23 +30,23 @@ void FFluidSimulationSystem::StepSimulation(float DeltaTime) {
 
     UpdateSpatialLookup(SmoothingRadius);
 
-    //for (int i = 0; i < Particles.Num(); i++) {
-    //    Particles[i].Density = CalculateDensity(Particles[i].PredictedPosition, i);
-    //}
-    //GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, (FString::Printf(TEXT("Particle[0] Density: %f"), Particles[0].Density)));
-//
-    //for (int i = 0; i < Particles.Num(); i++) {
-    //    FVector PressureForce = CalculatePressureForce(Particles[i].PredictedPosition, i);
-    //    FVector PressureAcceleration = -PressureForce / Particles[i].Density;
-    //    Particles[i].Velocity += PressureAcceleration * DeltaTime;
-    //}
-    //GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Red, (FString::Printf(TEXT("Particle[0] Velocity after pressure forces: X=%f Y=%f Z=%f"), Particles[0].Velocity.X, Particles[0].Velocity.Y, Particles[0].Velocity.Z)));
-//
-    //for (int i = 0; i < Particles.Num(); i++) {
-    //    FVector ViscosityForce = CalculateViscosityForce(Particles[i].PredictedPosition, i);
-    //    Particles[i].Velocity += ViscosityForce * DeltaTime;
-    //}
-    //GEngine->AddOnScreenDebugMessage(2, 5.f, FColor::Blue, (FString::Printf(TEXT("Particle[0] Velocity after viscosity forces: X=%f Y=%f Z=%f"), Particles[0].Velocity.X, Particles[0].Velocity.Y, Particles[0].Velocity.Z)));
+    for (int i = 0; i < Particles.Num(); i++) {
+        Particles[i].Density = CalculateDensity(Particles[i].PredictedPosition, i);
+    }
+    GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, (FString::Printf(TEXT("Particle[0] Density: %f"), Particles[0].Density)));
+
+    for (int i = 0; i < Particles.Num(); i++) {
+        FVector PressureForce = CalculatePressureForce(Particles[i].PredictedPosition, i);
+        FVector PressureAcceleration = -PressureForce / Particles[i].Density;
+        Particles[i].Velocity += PressureAcceleration * DeltaTime;
+    }
+    GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Red, (FString::Printf(TEXT("Particle[0] Velocity after pressure forces: X=%f Y=%f Z=%f"), Particles[0].Velocity.X, Particles[0].Velocity.Y, Particles[0].Velocity.Z)));
+
+    for (int i = 0; i < Particles.Num(); i++) {
+        FVector ViscosityForce = CalculateViscosityForce(Particles[i].PredictedPosition, i);
+        Particles[i].Velocity += ViscosityForce * DeltaTime;
+    }
+    GEngine->AddOnScreenDebugMessage(2, 5.f, FColor::Blue, (FString::Printf(TEXT("Particle[0] Velocity after viscosity forces: X=%f Y=%f Z=%f"), Particles[0].Velocity.X, Particles[0].Velocity.Y, Particles[0].Velocity.Z)));
 
     for (auto& particle : Particles) {
         particle.Position += particle.Velocity * DeltaTime;
@@ -164,7 +164,7 @@ FVector FFluidSimulationSystem::CalculatePressureForce(const FVector& Position, 
                 float Distance = FMath::Sqrt(SqrDistance);
                 FVector Direction = Distance == 0 ? FVector::UpVector : Offset / Distance;
                 float Slope = SmoothingKernelDerivative(Distance, SmoothingRadius);
-                float Density = FMath::Min(Particles[ParticleIndex].Density, 0.1f);
+                float Density = FMath::Min(Particles[ParticleIndex].Density, 0.2f);
                 float SharedPressure = CalculateSharedPressure(Density, Particles[Index].Density);
                 PressureForce += SharedPressure * Direction * Slope * Particles[ParticleIndex].Mass / Density;
             }

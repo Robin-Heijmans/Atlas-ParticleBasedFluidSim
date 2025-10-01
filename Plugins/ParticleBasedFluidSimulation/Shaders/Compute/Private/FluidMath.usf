@@ -92,10 +92,9 @@ void CalculateDensity (uint3 id : SV_DispatchThreadID) {
         uint currIndex = SpatialOffsets[key];
 
         for (int i = currIndex; i < NumParticles; i++) {
-            uint3 indexData = SpatialIndices[currIndex];
+            uint3 indexData = SpatialIndices[i];
 
             if (indexData[2] != key) break;
-            if (indexData[1] != hash) continue;
             uint particleIndex = indexData[0];
             float3 offset = PredictedPositions[particleIndex] - pos;
             float sqrDistance = dot(offset, offset);
@@ -116,7 +115,7 @@ void CalculatePressureForce (uint3 id : SV_DispatchThreadID) {
     int3 centreCoords = PositionToCellCoords(pos, SmoothingRadius);
     float sqrRadius = SmoothingRadius * SmoothingRadius;
 
-    float density = Densities[id.x];
+    float density = min(Densities[id.x], 0.2f);
     float pressure = ConvertDensityToPressure(density);
     float3 pressureForce = float3(0.0f, 0.0f, 0.0f);
 
@@ -126,10 +125,11 @@ void CalculatePressureForce (uint3 id : SV_DispatchThreadID) {
         uint currIndex = SpatialOffsets[key];
 
         for (int i = currIndex; i < NumParticles; i++) {
-            uint3 indexData = SpatialIndices[currIndex];
+            uint3 indexData = SpatialIndices[i];
 
             if (indexData[2] != key) break;
-            if (indexData[1] != hash) continue;
+            if (indexData[0] == id.x) continue;
+            //if (indexData[1] != hash) continue;
             uint particleIndex = indexData[0];
             float3 offset = PredictedPositions[particleIndex] - pos;
             float sqrDistance = dot(offset, offset);
@@ -163,10 +163,11 @@ void CalculateViscosityForce (uint3 id : SV_DispatchThreadID) {
         uint currIndex = SpatialOffsets[key];
 
         for (int i = currIndex; i < NumParticles; i++) {
-            uint3 indexData = SpatialIndices[currIndex];
+            uint3 indexData = SpatialIndices[i];
 
             if (indexData[2] != key) break;
-            if (indexData[1] != hash) continue;
+            if (indexData[0] == id.x) continue;
+            //if (indexData[1] != hash) continue;
             uint particleIndex = indexData[0];
             float3 offset = PredictedPositions[particleIndex] - pos;
             float sqrDistance = dot(offset, offset);

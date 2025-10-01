@@ -32,7 +32,7 @@ uint3 DensityMapSize;
 
 float CalcDensity(float3 pos)
 {
-    float SmoothingRadius = 4.0;
+    float SmoothingRadius = 3.0;
 
     int3 centreCoords = PositionToCellCoords(pos, SmoothingRadius);
     float sqrRadius = SmoothingRadius * SmoothingRadius;
@@ -45,16 +45,15 @@ float CalcDensity(float3 pos)
         uint currIndex = SpatialOffsets[key];
 
         for (int i = currIndex; i < NumParticles; i++) {
-            uint3 indexData = SpatialIndices[currIndex];
+            uint3 indexData = SpatialIndices[i];
 
             if (indexData[2] != key) break;
-            if (indexData[1] != hash) continue;
             uint particleIndex = indexData[0];
             float3 offset = PredictedPositions[particleIndex] - pos;
             float sqrDistance = dot(offset, offset);
             if (sqrDistance <= sqrRadius) {
                 float distance = sqrt(sqrDistance);
-                density += SmoothingKernel(distance, SmoothingRadius); // assuming mass = 1.0f
+                density += SmoothingKernel(distance, SmoothingRadius) * 100; // assuming mass = 1.0f
             }
         }
     }
