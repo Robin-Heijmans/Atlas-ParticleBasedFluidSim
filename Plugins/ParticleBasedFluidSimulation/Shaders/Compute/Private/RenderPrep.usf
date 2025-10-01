@@ -60,6 +60,7 @@ float CalcDensity(float3 pos)
     return density;
 }
 
+
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void Compute(
 	uint3 DispatchThreadId : SV_DispatchThreadID,
@@ -70,9 +71,8 @@ void Compute(
         DispatchThreadId.z >= DensityMapSize.z)
         return;
 
-    float3 UVW = (float3(DispatchThreadId)) / DensityMapSize;
-    float3 Position = (UVW - 0.5) * (Bounds.MaxBounds * 2.0);
-    float density = Density(Position);
+    const float3 UVW = (float3(DispatchThreadId)) / DensityMapSize;
+    const float density = CalcDensity((UVW - 0.5) * (Bounds.MaxBounds * 2.0));
 
     DensityMap[DispatchThreadId] = density;
 }
