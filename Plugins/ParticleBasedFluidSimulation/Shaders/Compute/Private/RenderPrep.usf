@@ -38,12 +38,6 @@ bool SphereIntersect(float3 dist, float3 radius)
     return radius*radius > sqrDistance;
 }
 
-bool SphereIntersect(float3 dist, float3 radius)
-{
-    float sqrDistance = dist*dist;
-    return radius*radius > sqrDistance;
-}
-
 float CalcDensity(float3 pos)
 {
     float SmoothingRadius = 4.0;
@@ -67,7 +61,7 @@ float CalcDensity(float3 pos)
             float sqrDistance = dot(offset, offset);
             if (sqrDistance <= sqrRadius) {
                 float distance = sqrt(sqrDistance);
-                density += SmoothingKernel(distance, SmoothingRadius); // assuming mass = 1.0f
+                density += pow(SmoothingKernel(distance, SmoothingRadius), 2) * spikyPow2; // assuming mass = 1.0f
             }
         }
     }

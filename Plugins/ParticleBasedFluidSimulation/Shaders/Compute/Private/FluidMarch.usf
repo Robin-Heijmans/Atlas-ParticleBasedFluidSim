@@ -23,7 +23,6 @@ struct FFluidEnviroment {
     float DensityStepSize;
     float DensityMultiplier;
     float indexOfRefraction;
-    float iorAir;
 };
 
 ConstantBuffer<FFluidVolume> FluidVolume;
@@ -54,6 +53,8 @@ static const float tileDarkOffset = 0.50;
 static const float3 floorPos = float3(0,0,0);
 static const float3 floorSize = float3(10,10,0);
 static const float3 cubeCol = float3(0.95, 0.3, 0.35);
+
+static const float iorAir = 1.0;
 
 const float SampleDensity(const float3 RayPos)
 {
@@ -222,8 +223,9 @@ SurfaceInfo FindNextSurface(float3 origin, float3 RayDir, bool findNextFluidEntr
     if (dot(RayDir, RayDir) < 0.5) return info;
 
     float2 boundsDstInfo = RayBoxDst(Bounds.MinBounds, Bounds.MaxBounds, origin, RayDir);
+    float r = (RandomValue(RNG) - 0.5) * Enviroment.MarchStepSize * 0.4 * 1;
     bool hasExittedFluid = !FluidContains(origin);
-    origin = origin + RayDir * (boundsDstInfo.x + Enviroment.MarchStepSize);
+    origin = origin + RayDir * (boundsDstInfo.x + r);
 
     float stepSize = Enviroment.MarchStepSize;
     bool hasEnteredFluid = false;
@@ -420,23 +422,8 @@ float3 TweakHSV(float3 colRGB, float3 shift)
     return saturate(HSVToRGB(hsv + shift));
 }
 
-float3 SampleSky(float3 dir, float3 Scene)
-{
-    const float3 colGround = Scene;
-    const float3 colSkyHorizon = float3(1, 1, 1);
-    const float3 colSkyZenith = float3(0.08, 0.73, 0.37);
-
-    float sun = pow(max(0, dot(dir, dirToSun)), 500) * 1;
-    float skyGradientT = pow(smoothstep(0, dir.y, 0.4), 0.35);
-    float groundToSkyT = smoothstep(-0.01, dir.y, 0);
-    float3 skyGradient = lerp(colSkyHorizon, colSkyZenith, skyGradientT);
-
-    return lerp(colGround, skyGradient, groundToSkyT) + sun * (groundToSkyT >= 1);
-}
-
 float3 SampleEnvironment(float3 pos, float3 dir, float3 Scene)
 {
-    //return Scene;
     /*
     HitInfo floorInfo = RayBox(pos, dir);
     HitInfo cubeInfo = RayBoxWithMatrix(pos, dir, Enviroment.CubeLocalToWorld, Enviroment.CubeWorldToLocal);
@@ -467,7 +454,7 @@ float3 SampleEnvironment(float3 pos, float3 dir, float3 Scene)
         return tileCol * shadowMap;
     }
     */
-    return SampleSky(dir, Scene);
+    return Scene;
 }
 
 float3 Light(float3 pos, float3 dir, float3 Scene)
@@ -477,7 +464,7 @@ float3 Light(float3 pos, float3 dir, float3 Scene)
 
 float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene)
 {
-    const int NumRefractions = 2;
+    const int NumRefractions = 4;
 
     bool bInsideFluid = FluidContains(RayPos);
 
@@ -520,8 +507,8 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene)
         if (dot(normal, RayDir) > 0) normal = -normal;
 
         // Indicies of refraction
-        float iorA = bInsideFluid ? Enviroment.indexOfRefraction : Enviroment.iorAir;
-        float iorB =bInsideFluid ? Enviroment.iorAir : Enviroment.indexOfRefraction;
+        float iorA = bInsideFluid ? Enviroment.indexOfRefraction : iorAir;
+        float iorB = bInsideFluid ? iorAir : Enviroment.indexOfRefraction;
 
         // Calculate reflection and refraction, and choose which path to follow
         LightResponse lightResponse = CalculateReflectionAndRefraction(RayDir, normal, iorA, iorB);
@@ -531,8 +518,8 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene)
         bInsideFluid = traceRefractedRay != bInsideFluid;
 
         // Approximate less interesting path
-        if (traceRefractedRay) light += Light(surfaceInfo.pos, lightResponse.reflectDir,Scene) * transmittance * Transmittance(densityAlongReflectRay) * lightResponse.reflectWeight;
-        else light += Light(surfaceInfo.pos, lightResponse.refractDir,Scene) * transmittance * Transmittance(densityAlongRefractRay) * lightResponse.refractWeight;
+        if (traceRefractedRay) light += Light(surfaceInfo.pos, lightResponse.reflectDir, Scene) * transmittance * Transmittance(densityAlongReflectRay) * lightResponse.reflectWeight;
+        else light += Light(surfaceInfo.pos, lightResponse.refractDir, Scene) * transmittance * Transmittance(densityAlongRefractRay) * lightResponse.refractWeight;
 
         // Set up ray for more interesting path
         RayPos = surfaceInfo.pos;

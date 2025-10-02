@@ -44,17 +44,15 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
 	FVector3f ExtinctionCoeff = FVector3f(1.f,0.55f,0.35f);
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
-	float MarchStepSize = 0.25f;
+	float MarchStepSize = 0.02f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
-	float LightStepSize = 0.5f;
+	float LightStepSize = 0.4f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
 	float DensityStepSize = 0.5f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
 	float DensityMultiplier = 25.f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
-	float indexOfRefraction = 1.f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
-	float iorAir = 1.f;
+	float indexOfRefraction = 1.33f;
 
     UFUNCTION(CallInEditor, Category = "Particles")
     void GenerateParticleBuffers();

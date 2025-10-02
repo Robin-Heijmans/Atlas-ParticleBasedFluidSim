@@ -95,18 +95,10 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         FluidVolume.BoundsPosition = FVector3f(FluidVolumes->Bounds->GetComponentLocation());
         FluidVolume.BoundsSize = FVector3f(FluidVolumes->Bounds->GetScaledBoxExtent());
         
-        FTransform Cube(FluidVolumes->Bounds->GetComponentRotation(), FluidVolumes->Bounds->GetComponentLocation(), FluidVolumes->Bounds->GetComponentScale());
+        FTransform Cube(FluidVolumes->Bounds->GetComponentRotation(), FluidVolumes->Bounds->GetComponentLocation(), FluidVolumes->Bounds->GetComponentScale()FluidVolumes);
 
         FluidEnviroment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
         FluidEnviroment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
-
-		//FString Output;
-		//Output += FString::Printf(TEXT("[%g %g %g %g] \n"), FluidEnviroment.CubeLocalToWorld.M[0][0], FluidEnviroment.CubeLocalToWorld.M[0][1], FluidEnviroment.CubeLocalToWorld.M[0][2], FluidEnviroment.CubeLocalToWorld.M[0][3]);
-		//Output += FString::Printf(TEXT("[%g %g %g %g] \n"), FluidEnviroment.CubeLocalToWorld.M[1][0], FluidEnviroment.CubeLocalToWorld.M[1][1], FluidEnviroment.CubeLocalToWorld.M[1][2], FluidEnviroment.CubeLocalToWorld.M[1][3]);
-		//Output += FString::Printf(TEXT("[%g %g %g %g] \n"), FluidEnviroment.CubeLocalToWorld.M[2][0], FluidEnviroment.CubeLocalToWorld.M[2][1], FluidEnviroment.CubeLocalToWorld.M[2][2], FluidEnviroment.CubeLocalToWorld.M[2][3]);
-		//Output += FString::Printf(TEXT("[%g %g %g %g] \n"), FluidEnviroment.CubeLocalToWorld.M[3][0], FluidEnviroment.CubeLocalToWorld.M[3][1], FluidEnviroment.CubeLocalToWorld.M[3][2], FluidEnviroment.CubeLocalToWorld.M[3][3]);
-        //UE_LOG(LogTemp, Warning, TEXT("CubeLocalToWorld: \n%s"), *Output);
-        
 
         FluidEnviroment.ExtinctionCoeff = FVector3f(FluidVolumes->ExtinctionCoeff);
         FluidEnviroment.MarchStepSize = FluidVolumes->MarchStepSize;
@@ -114,7 +106,6 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         FluidEnviroment.DensityStepSize = FluidVolumes->DensityStepSize;
         FluidEnviroment.DensityMultiplier = FluidVolumes->DensityMultiplier;
         FluidEnviroment.indexOfRefraction = FluidVolumes->indexOfRefraction;
-        FluidEnviroment.iorAir = FluidVolumes->iorAir;
 
         UBFluidEnviroment = TUniformBufferRef<FFluidEnviroment>::CreateUniformBufferImmediate(FluidEnviroment, EUniformBufferUsage::UniformBuffer_SingleFrame);  
         UBFluidBounds = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(VolumeBounds, EUniformBufferUsage::UniformBuffer_SingleFrame);  
