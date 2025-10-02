@@ -1,0 +1,17 @@
+float SmoothingKernel(float distance, float radius) {
+    float volume =  15 / (2 * PI * pow(radius, 5));
+    float value = radius-distance;
+    return value * value * volume;
+}
+
+float SmoothingKernelDerivative(float distance, float radius) {
+    float volume = 15 / (pow(radius, 5) * PI);
+    float value = radius - distance;
+    return -value * volume;
+}
+
+float SmoothingKernelViscosity(float distance, float radius) {
+    float volume = 315 / (64 * PI * pow(radius, 9));
+    float value = radius * radius - distance * distance;
+    return value * value * value * volume;
+}

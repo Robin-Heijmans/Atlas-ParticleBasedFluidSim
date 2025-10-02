@@ -8,14 +8,27 @@ struct FFluidVolume {
     
 };
 
-ConstantBuffer<FFluidVolume> FluidVolume;
+struct FFluidVolumeLocal {
+    // Volume Data
+    float3 MinBounds;  // Min Bounds
+    float3 MaxBounds;  // Max Bounds    
+};
 
-Texture3D<float3> DensityMap;
-uint DensityMapSize;
+ConstantBuffer<FFluidVolume> FluidVolume;
+ConstantBuffer<FFluidVolumeLocal> Bounds;
+
+Texture3D<float> DensityMap;
+uint3 DensityMapSize;
 
 Texture2D<float3> SceneColor;
 RWTexture2D<float3> Target;
 
+const float SampleDensity(const float3 RayPos)
+{
+    const float3 UVW = (RayPos - FluidVolume.BoundsPosition) / FluidVolume.BoundsSize * 0.5 + 0.5;
+    const float Density = DensityMap.SampleLevel(GlobalBilinearClampedSampler, UVW, 0);
+    return Density;
+}
 
 float2 GetPixelUV(const uint2 Pixel) { return (float2(Pixel) + 0.5 - View.TemporalAAJitter.xy) * View.ViewSizeAndInvSize.zw; }
 
@@ -112,12 +125,37 @@ bool CubeContains(const float3 RayPos)
 		RayPos.z <= (FluidVolume.BoundsPosition + FluidVolume.BoundsSize).z;
 }
 
-const float3 SampleDensity(const float3 RayPos)
+float2 RayBoxDst(float3 rayOrigin, float3 rayDir)
 {
-    const float3 UVW = (RayPos - FluidVolume.BoundsPosition) / FluidVolume.BoundsSize * 0.5 + 0.5;
-    const float3 Density = DensityMap.SampleLevel(GlobalBilinearClampedSampler, UVW, 0);
-    return Density;
+    float3 invRayDir = 1 / rayDir;
+    // Adapted from: http://jcgt.org/published/0007/03/04/
+    float3 t0 = ((-32) - (rayOrigin - FluidVolume.BoundsPosition)) * invRayDir;
+    float3 t1 = (( 32) - (rayOrigin - FluidVolume.BoundsPosition)) * invRayDir;
+    float3 tmin = min(t0, t1);
+    float3 tmax = max(t0, t1);
+
+    float dstA = max(max(tmin.x, tmin.y), tmin.z);
+    float dstB = min(tmax.x, min(tmax.y, tmax.z));
+
+    // CASE 1: ray intersects box from outside (0 <= dstA <= dstB)
+    // dstA is dst to nearest intersection, dstB dst to far intersection
+
+    // CASE 2: ray intersects box from inside (dstA < 0 < dstB)
+    // dstA is the dst to intersection behind the ray, dstB is dst to forward intersection
+
+    // CASE 3: ray misses box (dstA > dstB)
+
+    float dstToBox = max(0, dstA);
+    float dstInsideBox = max(0, dstB - dstToBox);
+    return float2(dstToBox, dstInsideBox);
 }
+
+bool FluidContains(const float3 RayPos)
+{
+    float2 boundsDstInfo = RayBoxDst(RayPos, float3(0, 0, 1));
+    return (boundsDstInfo.x <= 0 && boundsDstInfo.y > 0) && SampleDensity(RayPos) > 0;
+}
+
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void Compute(
@@ -134,7 +172,7 @@ void Compute(
     const float2 UV = GetPixelUV(Pixel);
     float3 RayOrigin = GetRayOrigin();
     float3 RayDirection = GetRayDirection(UV);
-    float RayT = 0.1;
+    float RayT = 0;
 
     // Advance ray if not in volume
     if(!CubeContains(RayOrigin))
@@ -145,24 +183,28 @@ void Compute(
             Target[DispatchThreadId.xy] = SceneColor[DispatchThreadId.xy];
             return;
         }
-    };
+    }
 
     // Psuedo Stepping through Density Map
     uint NumSteps = 1;
-    float3 AccDensity = float3(0,0,0);
-    const float StepSize = 0.2;
+    float AccDensity = 0;
+    float StepSize = 0.02;
     
     do
     {
-        //Check if out of bounds
-        const float3 Density = SampleDensity(RayOrigin + (RayDirection * RayT));
-        AccDensity += Density;
+        const float3 CurrPos = RayOrigin + (RayDirection * RayT);
+        const float Density = SampleDensity(CurrPos);
+        if(Density > 0.0)
+        { 
+            AccDensity += Density;
+            NumSteps++;
+        }
+
         RayT += StepSize;
-        NumSteps++;
     } while(CubeContains(RayOrigin + (RayDirection * RayT)));
 
-    float3 OutColor = AccDensity / float3(NumSteps,NumSteps,NumSteps);
-    //OutColor += SceneColor[DispatchThreadId.xy];
+    float3 OutColor = AccDensity / NumSteps;
+    OutColor += SceneColor[DispatchThreadId.xy];
 
     Target[DispatchThreadId.xy] = OutColor;
 }

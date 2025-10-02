@@ -8,6 +8,7 @@
 #include "PostProcess/PostProcessMaterial.h"
 #include "SceneView.h"
 
+#include "ParticleLibrary.h"
 #include "Shaders.h"
 
 class FFluidExtention : public FSceneViewExtensionBase 
@@ -19,7 +20,6 @@ public:
 	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override {};
 	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override {};
 
-
 	/* Setup before rendering happens in here. */
 	virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override;
 
@@ -28,14 +28,17 @@ public:
 
 private:
 	// Shader 'Dispatchers'
-	FParticleSimulationDispatchParams ParticleSimulation;
+	//FParticleSimulationDispatchParams ParticleSimulation;
 	FRenderPrepDispatchParams RenderPrep;
 	FFluidMarchDispatchParams FluidMarch;
+	FFluidMathParams FluidMath;
 
 	FTextureRHIRef DensityMap;
-	TRefCountPtr<FRDGPooledBuffer> PooledPositions;
-    TArray<FVector3f> Positions;
 
 	// Uniform Buffers
-	FFluidVolume FluidVolume;
+	TUniformBufferRef<FFluidVolumeLocal> UBFluidBounds;
+	TUniformBufferRef<FFluidVolume> UBFluidVolume;
+
+	float TotalTime = 0.0f;
+    const float FixedTimeStep = 1.f / 60.f;
 };

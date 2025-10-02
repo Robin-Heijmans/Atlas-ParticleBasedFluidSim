@@ -1,43 +1,77 @@
 #include "/Engine/Public/Platform.ush"
 #include "/Engine/Private/Common.ush"
 
-#include "/Shaders/Compute/Headers/Common.ush"
+#include "/Shaders/Compute/Headers/SpatialHash3D.ush"
+#include "/Shaders/Compute/Headers/SmoothingKernels.ush"
 
-//ConstantBuffer<FParticles> FluidParticles;
+struct FFluidVolume {
+    // Volume Data
+    float3 BoundsPosition;
+    float3 BoundsSize;
+    
+};
+
+struct FFluidVolumeLocal {
+    // Volume Data
+    float3 MinBounds;  // Min Bounds
+    float3 MaxBounds;  // Max Bounds    
+};
+
+ConstantBuffer<FFluidVolume> FluidVolume;
+ConstantBuffer<FFluidVolumeLocal> Bounds;
+
 
 StructuredBuffer<float3> Positions;
+StructuredBuffer<float3> PredictedPositions;
+StructuredBuffer<uint3> SpatialIndices; //uint3(index, hash, key)
+StructuredBuffer<uint> SpatialOffsets;
 uint NumParticles;
 
-RWTexture3D<float3> DensityMap;
-uint DensityMapSize;
+RWTexture3D<float> DensityMap;
+uint3 DensityMapSize;
 
-bool SphereIntersection(float3 sphere, float radius, float3 against)
+float CalcDensity(float3 pos)
 {
-    float champion = length(sphere - against);
-    return champion < radius;
-}
+    float SmoothingRadius = 3.0;
 
-float CalcDensity(float3 UVW)
-{
-    const float particle_radius = 0.1;
-    const float influence = 10.0;
-    for(int i = 0; i < NumParticles; i++)
-    {
-        if(SphereIntersection(Positions[i], particle_radius, UVW))
-        {
-            return influence;
+    int3 centreCoords = PositionToCellCoords(pos, SmoothingRadius);
+    float sqrRadius = SmoothingRadius * SmoothingRadius;
+
+    float density = 0.0f;
+
+    for (int cellOffset = 0; cellOffset < 27; cellOffset++) {
+        uint hash = HashCell(centreCoords + offsets3D[cellOffset]);
+        uint key = GetKeyFromHash(hash, NumParticles);
+        uint currIndex = SpatialOffsets[key];
+
+        for (int i = currIndex; i < NumParticles; i++) {
+            uint3 indexData = SpatialIndices[i];
+
+            if (indexData[2] != key) break;
+            uint particleIndex = indexData[0];
+            float3 offset = PredictedPositions[particleIndex] - pos;
+            float sqrDistance = dot(offset, offset);
+            if (sqrDistance <= sqrRadius) {
+                float distance = sqrt(sqrDistance);
+                density += SmoothingKernel(distance, SmoothingRadius) * 100; // assuming mass = 1.0f
+            }
         }
     }
-    return 0.0;
+    return density;
 }
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void Compute(
 	uint3 DispatchThreadId : SV_DispatchThreadID,
 	uint GroupIndex : SV_GroupIndex)
-{
-    const float3 UVW = (float3(DispatchThreadId)) / float3(DensityMapSize, DensityMapSize, DensityMapSize);
-    const float density = CalcDensity(UVW);
+{    
+    if (DispatchThreadId.x >= DensityMapSize.x || 
+        DispatchThreadId.y >= DensityMapSize.y || 
+        DispatchThreadId.z >= DensityMapSize.z)
+        return;
 
-    DensityMap[DispatchThreadId] = float3(density, density, density);
+    const float3 UVW = (float3(DispatchThreadId)) / DensityMapSize;
+    const float density = CalcDensity((UVW - 0.5) * (Bounds.MaxBounds * 2.0));
+
+    DensityMap[DispatchThreadId] = density;
 }

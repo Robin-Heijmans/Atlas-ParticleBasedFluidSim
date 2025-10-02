@@ -1,0 +1,184 @@
+#include "/Engine/Private/Common.ush"
+
+#include "/Shaders/Compute/Headers/SpatialHash3D.ush"
+#include "/Shaders/Compute/Headers/SmoothingKernels.ush"
+
+
+struct FFluidVolumeLocal {
+    // Volume Data
+    float3 MinBounds;  // Min Bounds
+    float3 MaxBounds;      // Max Bounds
+    
+};
+
+ConstantBuffer<FFluidVolumeLocal> Bounds;
+
+// Buffers
+RWStructuredBuffer<float3> Positions;
+RWStructuredBuffer<float3> PredictedPositions;
+RWStructuredBuffer<float3> Velocities;
+RWStructuredBuffer<float> Densities;
+RWStructuredBuffer<uint3> SpatialIndices; //uint3(index, hash, key)
+RWStructuredBuffer<uint> SpatialOffsets;
+
+// Settings
+float PressureAmplifier;
+float TargetDensity;
+float CollisionDampening;
+float SmoothingRadius;
+float ViscosityStrength;
+float DeltaTime;
+float Gravity;
+uint NumParticles;
+
+float ConvertDensityToPressure(float Density) {
+    return (Density - TargetDensity) * PressureAmplifier;
+}
+
+void ResolveCollisions(uint ParticleIndex) {
+    float3 LocalPos = Positions[ParticleIndex];
+    if (LocalPos.x <= Bounds.MinBounds.x || LocalPos.x >= Bounds.MaxBounds.x) {
+        Positions[ParticleIndex].x = clamp(LocalPos.x, Bounds.MinBounds.x, Bounds.MaxBounds.x);
+        Velocities[ParticleIndex].x *= -1.f * CollisionDampening;
+    }
+    if (LocalPos.y <= Bounds.MinBounds.y || LocalPos.y >= Bounds.MaxBounds.y) {
+        Positions[ParticleIndex].y = clamp(LocalPos.y, Bounds.MinBounds.y, Bounds.MaxBounds.y);
+        Velocities[ParticleIndex].y *= -1.f * CollisionDampening;
+    }
+    if (LocalPos.z <= Bounds.MinBounds.z || LocalPos.z >= Bounds.MaxBounds.z) {
+        Positions[ParticleIndex].z = clamp(LocalPos.z, Bounds.MinBounds.z, Bounds.MaxBounds.z);
+        Velocities[ParticleIndex].z *= -1.f * CollisionDampening;
+    }
+}
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void ExternalForces (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= NumParticles) return;
+
+    Velocities[id.x] += float3(0, 0, Gravity) * DeltaTime;
+
+    PredictedPositions[id.x] = Positions[id.x] + Velocities[id.x] * 1.0 / 120.0; // Fixed LookAheadTimeStep
+}
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void UpdateSpatialLookup (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= NumParticles) return;
+
+    uint index = id.x;
+    int3 cell = PositionToCellCoords(PredictedPositions[index], SmoothingRadius);
+    uint hash = HashCell(cell);
+    uint key = GetKeyFromHash(hash, NumParticles);
+    SpatialIndices[id.x] = uint3(index, hash, key);
+}
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void CalculateDensity (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= NumParticles) return;
+
+    float3 pos = PredictedPositions[id.x];
+    int3 centreCoords = PositionToCellCoords(pos, SmoothingRadius);
+    float sqrRadius = SmoothingRadius * SmoothingRadius;
+
+    float density = 0.0f;
+
+    for (int cellOffset = 0; cellOffset < 27; cellOffset++) {
+        uint hash = HashCell(centreCoords + offsets3D[cellOffset]);
+        uint key = GetKeyFromHash(hash, NumParticles);
+        uint currIndex = SpatialOffsets[key];
+
+        for (int i = currIndex; i < NumParticles; i++) {
+            uint3 indexData = SpatialIndices[i];
+
+            if (indexData[2] != key) break;
+            uint particleIndex = indexData[0];
+            float3 offset = PredictedPositions[particleIndex] - pos;
+            float sqrDistance = dot(offset, offset);
+            if (sqrDistance <= sqrRadius) {
+                float distance = sqrt(sqrDistance);
+                density += SmoothingKernel(distance, SmoothingRadius); // assuming mass = 1.0f
+            }
+        }
+    }
+    Densities[id.x] = density;
+}
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void CalculatePressureForce (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= NumParticles) return;
+
+    float3 pos = PredictedPositions[id.x];
+    int3 centreCoords = PositionToCellCoords(pos, SmoothingRadius);
+    float sqrRadius = SmoothingRadius * SmoothingRadius;
+
+    float density = Densities[id.x];
+    float pressure = ConvertDensityToPressure(density);
+    float3 pressureForce = float3(0.0f, 0.0f, 0.0f);
+
+    for (int cellOffset = 0; cellOffset < 27; cellOffset++) {
+        uint hash = HashCell(centreCoords + offsets3D[cellOffset]);
+        uint key = GetKeyFromHash(hash, NumParticles);
+        uint currIndex = SpatialOffsets[key];
+
+        for (int i = currIndex; i < NumParticles; i++) {
+            uint3 indexData = SpatialIndices[i];
+
+            if (indexData[2] != key) break;
+            if (indexData[0] == id.x) continue;
+            //if (indexData[1] != hash) continue;
+            uint particleIndex = indexData[0];
+            float3 offset = PredictedPositions[particleIndex] - pos;
+            float sqrDistance = dot(offset, offset);
+            if (sqrDistance <= sqrRadius) {
+                float distance = sqrt(sqrDistance);
+                float3 direction = distance == 0 ? float3(0.0f, 0.0f, 1.0f) : offset / distance;
+                float slope = SmoothingKernelDerivative(distance, SmoothingRadius);
+                float sharedPressure = (ConvertDensityToPressure(Densities[particleIndex]) + pressure) * 0.5f;
+                pressureForce += sharedPressure * direction * slope / min(density, 0.2f);
+            }
+        }
+    }
+    float3 pressureAcceleration = -pressureForce / density;
+    Velocities[id.x] += pressureAcceleration * DeltaTime;
+}
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void CalculateViscosityForce (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= NumParticles) return;
+
+    float3 pos = PredictedPositions[id.x];
+    int3 centreCoords = PositionToCellCoords(pos, SmoothingRadius);
+    float sqrRadius = SmoothingRadius * SmoothingRadius;
+
+    float3 viscosityForce = float3(0.0f, 0.0f, 0.0f);
+    float3 velocity = Velocities[id.x];
+
+    for (int cellOffset = 0; cellOffset < 27; cellOffset++) {
+        uint hash = HashCell(centreCoords + offsets3D[cellOffset]);
+        uint key = GetKeyFromHash(hash, NumParticles);
+        uint currIndex = SpatialOffsets[key];
+
+        for (int i = currIndex; i < NumParticles; i++) {
+            uint3 indexData = SpatialIndices[i];
+
+            if (indexData[2] != key) break;
+            if (indexData[0] == id.x) continue;
+            //if (indexData[1] != hash) continue;
+            uint particleIndex = indexData[0];
+            float3 offset = PredictedPositions[particleIndex] - pos;
+            float sqrDistance = dot(offset, offset);
+            if (sqrDistance <= sqrRadius) {
+                float distance = sqrt(sqrDistance);
+                viscosityForce += (Velocities[particleIndex] - velocity) * SmoothingKernelViscosity(distance, SmoothingRadius); // assuming mass = 1.0f
+            }
+        }
+    }
+    Velocities[id.x] += viscosityForce * ViscosityStrength * DeltaTime; 
+}
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void UpdatePositions (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= NumParticles) return;
+
+    Positions[id.x] += Velocities[id.x] * DeltaTime;
+    ResolveCollisions(id.x);
+}

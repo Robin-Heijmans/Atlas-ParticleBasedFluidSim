@@ -7,22 +7,33 @@
 #include "PostProcess/PostProcessInputs.h"
 #include "Misc/Optional.h"
 #include "GameFramework/Actor.h"
-#include "Components/BoxComponent.h"	
 #include "RHICommandList.h"
 
+#include "Components/BoxComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetRenderingLibrary.h"
-#include "UnifiedBuffer.h"
+#include "UnifiedBuffer.h"	
+#include "GameFramework/Actor.h"
+#include "UObject/UObjectGlobals.h"
 
 #include "FluidBoundingVolume.h"
-#include "ComputeLibrary.h"
+
+constexpr uint32 DensityMapSize(256);
 
 namespace 
 {
-	TAutoConsoleVariable<int32> CVarShaderOn(
-		TEXT("r.Fluid"),
+	TAutoConsoleVariable<int32> CVarRendering(
+		TEXT("Atlas.Rendering"),
 		0,
 		TEXT("Enable Fluid Rendering \n")
+		TEXT(" 0: OFF;")
+		TEXT(" 1: ON."),
+		ECVF_RenderThreadSafe);
+        
+	TAutoConsoleVariable<int32> CVarSimulation(
+		TEXT("Atlas.Simulation"),
+		0,
+		TEXT("Enable Fluid Simulation \n")
 		TEXT(" 0: OFF;")
 		TEXT(" 1: ON."),
 		ECVF_RenderThreadSafe);
@@ -32,93 +43,149 @@ FFluidExtention::FFluidExtention(const FAutoRegister& AutoRegister) : FSceneView
 {
 	UE_LOG(LogTemp, Log, TEXT("Fluid: Custom SceneViewExtension registered"));
 
-    // Default Params for now
-    FluidVolume.BoundsPosition = FVector3f(-288.779695,8.043881,122.825553);
-    FluidVolume.BoundsSize = FVector3f(56,56,56);
-
+    // Init Density Map
     ENQUEUE_RENDER_COMMAND(GenDensityMap)(
     [this](FRHICommandListImmediate& RHICmdList) {
         FRDGBuilder GraphBuilder(RHICmdList);
 
-        const uint32 NumElements = 500;
-        const uint32 BytesPerElement = sizeof(FVector3f);
-
-        // Position Buffer
-        TArray<FVector3f> TmpPositions;
-        TmpPositions.Init(FVector3f(1,1,1), NumElements);
-
-        PooledPositions = GraphBuilder.ConvertToExternalBuffer(CreateStructuredBuffer(GraphBuilder, TEXT("TanFluidShader_ParticlePositions"), BytesPerElement, NumElements, TmpPositions.GetData(),TmpPositions.GetTypeSize() * TmpPositions.Num(), ERDGInitialDataFlags::None));
-        const FRDGBufferRef ParticlePositionsRef = GraphBuilder.RegisterExternalBuffer(PooledPositions, TEXT("TanFluidShader_ParticlePositions"));
-        //GraphBuilder.QueueBufferUpload(ParticlePositionsRef, TmpPositions.GetData(), TmpPositions.GetTypeSize() * TmpPositions.Num(), ERDGInitialDataFlags::None);
-
-        //CreateStructuredBuffer(GraphBuilder, TEXT("TanFluidShader_ParticlePositions"), BytesPerElement, NumElements, TmpPositions.GetData(),TmpPositions.GetTypeSize() * TmpPositions.Num(), ERDGInitialDataFlags::None)
-
-	    //FRDGBufferDesc Desc = FRDGBufferDesc::CreateStructuredDesc(BytesPerElement, NumElements);
-        //CreateStructuredBuffer(ParticlePositions, TEXT("TanFluidShader_ParticlePositions"));
-
-        //const FRDGBufferRef ParticlePositionsRef = GraphBuilder.CreateBuffer(Desc, TEXT("Particle Positions"));
-        //GraphBuilder.QueueBufferUpload(ParticlePositionsRef, TmpPositions.GetData(), TmpPositions.GetTypeSize() * TmpPositions.Num(), ERDGInitialDataFlags::None);
-
-        // Density Map
-        FRHITextureCreateDesc Desc = FRHITextureCreateDesc::Create3D(TEXT("DensityMap"))
-                .SetExtent(128, 128)
-                .SetDepth(128)
-                .SetFormat(PF_A32B32G32R32F)
+        //Density Map UwU
+        FRHITextureCreateDesc Desc = FRHITextureCreateDesc::Create3D(TEXT("Atlas DensityMap"))
+                .SetExtent(DensityMapSize, DensityMapSize)
+                .SetDepth(DensityMapSize)
+                .SetFormat(PF_R32_FLOAT)
                 .SetFlags(ETextureCreateFlags::UAV | ETextureCreateFlags::ShaderResource)
                 .SetInitialState(ERHIAccess::SRVCompute);
 
         DensityMap = RHICreateTexture(Desc);
-
-        const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("TanFluidShader_DensityMap")));
+        
+        const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("Atlas DensityMap")));
         FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
-        RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, DensityMapRef, ParticlePositionsRef);
-
-        //GraphBuilder.QueueBufferExtraction(ParticlePositionsRef, &PooledPositions);
         GraphBuilder.Execute();
     });
 }
 
 void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily) 
 {
-    if (CVarShaderOn.GetValueOnRenderThread() == 0) return; 
+    // Check for new volumes, that need particles
+    UWorld* World = ViewFamily.Scene->GetWorld(); 
+    if(World == nullptr) return;
 
-	UWorld* World = ViewFamily.Scene->GetWorld();
-	if (World == nullptr) return;
+    // Advance simulation
+    #if WITH_EDITOR
+        if(World->IsPlayInEditor() && CVarSimulation.GetValueOnRenderThread() == 1) 
+        {
+            TotalTime += World->GetDeltaSeconds();
+        }
+    #else
+        TotalTime += World->GetDeltaSeconds();
+    #endif
 
-	/* Fetch actors from the scene */
-	TActorIterator<AFluidBoundingVolume> BoundingVolume(World);
-	if (!BoundingVolume) return;
+    FFluidVolume FluidVolume;
+    FFluidVolumeLocal VolumeBounds;
 
-    FluidVolume.BoundsPosition = FVector3f(BoundingVolume->GetActorLocation());
-    FluidVolume.BoundsSize = FVector3f(BoundingVolume->Bounds->GetScaledBoxExtent());
-
-    // Update Positions
-    const uint32 NumElements = 500;
-    const uint32 BytesPerElement = sizeof(FVector3f);
-
-    Positions.Init(FVector3f::ZeroVector, NumElements);
-    for(int i = 0; i < NumElements; i++)
+    for (TActorIterator<AFluidBoundingVolume> FluidVolumes(World); FluidVolumes; ++FluidVolumes)
     {
-        Positions[i] = FVector3f(BoundingVolume->Particles[i].Position + BoundingVolume->Bounds->GetUnscaledBoxExtent()) / FVector3f(BoundingVolume->Bounds->GetUnscaledBoxExtent() * 2.f);
+        // Update UBOs continously
+        TArray<FVector> bounds = FluidVolumes->GetVolumeBounds();
+        VolumeBounds.MinBounds = FVector3f(bounds[0]);
+        VolumeBounds.MaxBounds = FVector3f(bounds[1]);
+        
+        FluidVolume.BoundsPosition = FVector3f(FluidVolumes->Bounds->GetComponentLocation());
+        FluidVolume.BoundsSize = FVector3f(FluidVolumes->Bounds->GetScaledBoxExtent());
+        
+        UBFluidBounds = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(VolumeBounds, EUniformBufferUsage::UniformBuffer_SingleFrame);  
+        UBFluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
+    
+        // Initialize ParticleBuffers
+        if(!FluidVolumes->HasParticles)
+        {   
+            TArray<USceneComponent*> Children;
+            FluidVolumes->GetRootComponent()->GetChildrenComponents(true, Children);
+            for(USceneComponent* Child : Children)
+            {
+                UParticleBuffers* ParticleBuffers = nullptr;
+                ParticleBuffers = reinterpret_cast<UParticleBuffers*>(Child);
+                if(ParticleBuffers != nullptr)
+                {
+                    ParticleBuffers->UnregisterComponent(); // Not working
+                }
+            }
+
+            const uint32 NumParticles = FluidVolumes->NumParticlesX * FluidVolumes->NumParticlesY * FluidVolumes->NumParticlesZ;
+            if(NumParticles > 5000 || NumParticles == 0)     
+            {
+                UE_LOG(LogTemp, Warning, TEXT("Illegal NumParticles: %d"), NumParticles);
+                continue;
+            }
+
+	        UParticleBuffers* ParticleBuffers = NewObject<UParticleBuffers>(*FluidVolumes,UParticleBuffers::StaticClass(), TEXT("Particle Buffers"));
+
+            ParticleBuffers->RegisterComponent();
+            ParticleBuffers->AttachToComponent(FluidVolumes->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+
+            // Allocate Particle Buffer
+            ParticleBuffers->Initialize(UBFluidBounds, *FluidVolumes);
+            ParticleBuffers->SimulationSettings.DeltaTime = FixedTimeStep;
+            FluidVolumes->HasParticles = true;
+            return;
+        }
     }
 
-    if(BoundingVolume->RenderPrep)
+    for (TObjectIterator<UParticleBuffers> ParticleBuffers; ParticleBuffers; ++ParticleBuffers)
     {
-        ENQUEUE_RENDER_COMMAND(GenDensityMap)(
-        [this](FRHICommandListImmediate& RHICmdList) {
-            FRDGBuilder GraphBuilder(RHICmdList);
+        if(!ParticleBuffers->bInitialized) continue;
 
-            const FRDGBufferRef ParticlePositionsRef = GraphBuilder.RegisterExternalBuffer(PooledPositions, TEXT("TanFluidShader_ParticlePositions"));
-            GraphBuilder.QueueBufferUpload(ParticlePositionsRef, Positions.GetData(), BytesPerElement * NumElements, ERDGInitialDataFlags::None);
+        // Particle Simlation
+        if(TotalTime > FixedTimeStep)
+        {
+            ENQUEUE_RENDER_COMMAND(ParticleSimulation)(
+            [this, ParticleBuffers](FRHICommandListImmediate& RHICmdList) {
+                FRDGBuilder GraphBuilder(RHICmdList);
+                ParticleBuffers->Register(GraphBuilder);
+                
+                FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
 
-            // Update Density Map
-            const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("TanFluidShader_DensityMap")));
-            FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
-            RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, DensityMapRef, ParticlePositionsRef);
+                FFluidMathParams FluidMath = ParticleBuffers->GetParticleParameters(GraphBuilder);
+                FluidMath.FluidBounds = UBFluidBounds;
 
-            GraphBuilder.Execute();
-        });
-        BoundingVolume->RenderPrep = false;
+                FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::SortAndCalculateOffsets(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
+                FluidMathDispatch::UpdatePositions(GraphBuilder, GlobalShaderMap, FluidMath);
+
+                GraphBuilder.Execute();
+            });      
+            TotalTime = 0.f;
+        }
+
+        // Density Map Generation
+        if(CVarRendering.GetValueOnRenderThread() == 1)
+        {
+            ENQUEUE_RENDER_COMMAND(GenerateDensityMap)(
+            [this, ParticleBuffers](FRHICommandListImmediate& RHICmdList) {
+                FRDGBuilder GraphBuilder(RHICmdList);
+                
+                ParticleBuffers->Register(GraphBuilder);
+                FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
+
+                // Render Prep
+                FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("Atlas DensityMap")));
+
+                FRenderPrepParams RenderPrepParams = ParticleBuffers->GetRenderPrepParameters(GraphBuilder);
+                RenderPrepParams.FluidBounds = UBFluidBounds;
+                RenderPrepParams.FluidVolume = UBFluidVolume;
+
+                RenderPrepParams.DensityMap = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(DensityMapRef));
+                RenderPrepParams.DensityMapSize = FUintVector3(DensityMapSize); // PLS PUT ME OUT OF MY MISERY
+
+                RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, RenderPrepParams);
+                    
+                GraphBuilder.Execute();
+            });
+        }
     }
 }
 
@@ -126,7 +193,7 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
 {
 
 	// Dipatch Shader here
-    if (CVarShaderOn.GetValueOnRenderThread() == 0) return; 
+    if (CVarRendering.GetValueOnRenderThread() == 0) return; 
 
     // Get SceneColor
 	const FSceneViewFamily& ViewFamily = *InView.Family;    
@@ -135,22 +202,8 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     // Get ShaderMap
     FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(InView.Family->GetFeatureLevel());
 
-    // Update Uniform Buffers
-    // Particles
-    const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("TanFluidShader_DensityMap")));
-
-    // -- General Pipeline --
-    // 1. Physics Simulation
-    // 2. Generate Density Map / Render Prep
-    // 3. Dispatch Fluid March / Rendering
-
-    // Physics Simulation
-    //ParticleSimulation.Dispatch(GraphBuilder, GlobalShaderMap, Particles);
-
-    // Render Prep
-    //RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, DensityMapRef);
-
-    // Fluid March
-    FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, InView, SceneColor, FluidVolume, DensityMapRef);
+    // Dispatch Fluid March / Rendering
+    const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("Atlas DensityMap")));
+    FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, InView, SceneColor, UBFluidVolume, UBFluidBounds, DensityMapRef);
 
 }
