@@ -45,15 +45,15 @@ public:
     int NumParticlesZ = 5;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
-	FVector3f ExtinctionCoeff = FVector3f(0.5f,0.5f,0.5f);
+	FVector3f ExtinctionCoeff = FVector3f(1.f,0.55f,0.35f);
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
-	float MarchStepSize = 0.1f;
+	float MarchStepSize = 0.25f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
-	float LightStepSize = 0.1f;
+	float LightStepSize = 0.5f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
-	float DensityStepSize = 0.1f;
+	float DensityStepSize = 0.5f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
-	float DensityMultiplier = 1.f;
+	float DensityMultiplier = 25.f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
 	float indexOfRefraction = 1.f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
