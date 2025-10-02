@@ -127,10 +127,11 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
             for(USceneComponent* Child : Children)
             {
                 UParticleBuffers* ParticleBuffers = nullptr;
-                ParticleBuffers = reinterpret_cast<UParticleBuffers*>(Child);
-                if(ParticleBuffers != nullptr)
+                ParticleBuffers = dynamic_cast<UParticleBuffers*>(Child);
+                if(ParticleBuffers && ParticleBuffers->bInitialized)
                 {
-                    ParticleBuffers->UnregisterComponent(); // Not working
+                    ParticleBuffers->UnregisterComponent(); // doesnt working, but doesnt break anything either
+                    return;
                 }
             }
 
