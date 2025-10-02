@@ -10,6 +10,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "SceneView.h"
 #include "Engine/World.h"
+#include "ExternalForceObject.h"
 
 // Sets default values
 AFluidBoundingVolume::AFluidBoundingVolume()
@@ -36,22 +37,6 @@ AFluidBoundingVolume::AFluidBoundingVolume()
             ParticleMesh->SetMaterial(0, ParticleMat.Object);
         }
     }
-
-    ExternalForceMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ExternalForceMesh"));
-    ExternalForceMesh->SetupAttachment(RootComponent);
-
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshObj(TEXT("/Engine/BasicShapes/Cube.Cube"));
-    if (CubeMeshObj.Succeeded())
-    {
-        DefaultCubeMesh = CubeMeshObj.Object;
-        ExternalForceMesh->SetStaticMesh(DefaultCubeMesh);
-        ExternalForceMesh->NumCustomDataFloats = 6;
-        static ConstructorHelpers::FObjectFinder<UMaterialInterface> CubeMat(TEXT("/ParticleBasedFluidSimulation/Materials/M_ParticleColor.M_ParticleColor"));
-        if (CubeMat.Succeeded())
-        {
-            ExternalForceMesh->SetMaterial(0, CubeMat.Object);
-        }
-    }
 }
 
 void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
@@ -62,7 +47,6 @@ void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
         InitializeParticles();
         UpdateInstances(true);
         UpdateMaterials();
-        VisualizeExternalForce();
     }
 }
 
@@ -155,7 +139,7 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
 
         if (TotalTime >= FixedTimeStep)
         {
-            Simulation->ApplyExternalForce(ExternalForceLocation, ExternalForceAmplifier);
+            GetExternalForce();
             Simulation->StepSimulation(FixedTimeStep);
             Particles = Simulation->GetParticles();
             TotalTime = 0.0f;
@@ -245,7 +229,6 @@ void AFluidBoundingVolume::PostEditChangeProperty(FPropertyChangedEvent& Propert
         UpdateInstances(true);
         UpdateMaterials();
     }
-    VisualizeExternalForce();
     // Update simulation only when values are changed in editor
     Simulation->ApplySettings(Settings);
 }
@@ -261,26 +244,11 @@ TArray<FVector> AFluidBoundingVolume::GetVolumeBounds() {
     return bounds;
 }
 
-void AFluidBoundingVolume::VisualizeExternalForce() {
-    if (!DefaultCubeMesh) return;
-    int numInstances = ExternalForceMesh->GetNumInstances();
+void AFluidBoundingVolume::GetExternalForce() {
+    if (!ExternalForceObject) return;
 
-    FTransform InstanceTransform(
-            FRotator::ZeroRotator,
-            ExternalForceLocation,
-            FVector(SphereRadius / 50.0f)
-        );
-
-    if (numInstances > 0) {
-        ExternalForceMesh->UpdateInstanceTransform(0, InstanceTransform, false, true);
-    }
-    else {
-        ExternalForceMesh->AddInstance(InstanceTransform);
-    }
-
-    FLinearColor Color = FLinearColor::Red;
-    ExternalForceMesh->SetCustomDataValue(0, 0, Color.R, true);
-    ExternalForceMesh->SetCustomDataValue(0, 1, Color.G, true);
-    ExternalForceMesh->SetCustomDataValue(0, 2, Color.B, true);
-    ExternalForceMesh->MarkRenderStateDirty();
+    FVector worldLoc = ExternalForceObject->GetActorLocation();
+    FVector localLoc = GetActorTransform().InverseTransformPosition(worldLoc);
+    GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Red, (FString::Printf(TEXT("External force position: %f, %f, %f"), localLoc.X, localLoc.Y, localLoc.Z)));
+    Simulation->ApplyExternalForce(localLoc, ExternalForceObject->ForceAmplifier);
 }

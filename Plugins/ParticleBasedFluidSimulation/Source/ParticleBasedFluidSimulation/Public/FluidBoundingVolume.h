@@ -54,13 +54,7 @@ public:
 	bool RunCPU = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="External forces")
-	FVector ExternalForceLocation = FVector::ZeroVector;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="External forces")
-	float ExternalForceAmplifier = 0.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="External forces")
-	float ExternalForcesInterval = 5.0f;
+	TObjectPtr<class AExternalForceObject> ExternalForceObject = nullptr;
 
 	TUniquePtr<FFluidSimulationSystem> Simulation;
 	TArray<FParticle> Particles;
@@ -76,16 +70,14 @@ private:
 	void UpdateMaterials();
 	void UpdateInstances(const bool AllInstances);
 	FLinearColor VelocityToColor(const float& Speed);
-	void VisualizeExternalForce();
+	void GetExternalForce();
 
 	#if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	#endif
 
 	UStaticMesh* DefaultSphereMesh;
-	UStaticMesh* DefaultCubeMesh;
 	class UInstancedStaticMeshComponent* ParticleMesh;
-	class UInstancedStaticMeshComponent* ExternalForceMesh;
 
 	const float SphereRadius = 1.0f;
 	const float FixedTimeStep = 1.f/60.f;
