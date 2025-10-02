@@ -42,7 +42,7 @@ RWTexture2D<float3> Target;
 static uint RNG = 4294967295;
 static const float TinyNudge = 0.01;
 static const float3 LightPos = float3(0,0,1);
-static const float3 dirToSun = float3(0,0,-1);
+static const float3 dirToSun = float3(0,-1,0);
 static const float3 tileCol1 = float3(1,0,1);
 static const float3 tileCol2 = float3(0,1,0);
 static const float3 tileCol3 = float3(1,0,1);
@@ -52,13 +52,15 @@ static const float tileScale = 0.10;
 static const float tileDarkOffset = 0.50;
 
 static const float3 floorPos = float3(0,0,0);
-static const float3 floorSize = float3(10,10,1);
+static const float3 floorSize = float3(10,10,0);
 static const float3 cubeCol = float3(0.95, 0.3, 0.35);
 
 const float SampleDensity(const float3 RayPos)
 {
-    const float3 UVW = (RayPos - FluidVolume.BoundsPosition) / FluidVolume.BoundsSize * 0.5 + 0.5;
-    const float Density = DensityMap.SampleLevel(GlobalBilinearClampedSampler, UVW, 0);
+    // THis WORKS ?!   
+    float3 posLocal = RayPos - FluidVolume.BoundsPosition;
+    float3 UVW = (posLocal + FluidVolume.BoundsSize * 0.5) / FluidVolume.BoundsSize;
+    float Density = DensityMap.SampleLevel(GlobalBilinearClampedSampler, UVW, 0);
     return Density;
 }
 const float3 Transmittance(float thickness)
@@ -164,15 +166,15 @@ struct SurfaceInfo
 };
 
 
-HitInfo RayUnitBox(float3 pos, float3 dir)
+HitInfo RayBox(float3 LocalPos, float3 dir)
 {
     const float3 boxMin = Bounds.MinBounds;
     const float3 boxMax = Bounds.MaxBounds;
     float3 invDir = 1 / dir;
 
     // Thanks to https://tavianator.com/2011/ray_box.html
-    float3 tMin = (boxMin - pos) * invDir;
-    float3 tMax = (boxMax - pos) * invDir;
+    float3 tMin = (boxMin - LocalPos) * invDir;
+    float3 tMax = (boxMax - LocalPos) * invDir;
     float3 t1 = min(tMin, tMax);
     float3 t2 = max(tMin, tMax);
     float tNear = max(max(t1.x, t1.y), t1.z);
@@ -187,7 +189,7 @@ HitInfo RayUnitBox(float3 pos, float3 dir)
     if (hitInfo.didHit)
     {
         float hitDst = hitInfo.isInside ? tFar : tNear;
-        float3 hitPos = pos + dir * hitDst;
+        float3 hitPos = LocalPos + dir * hitDst;
 
         hitInfo.dst = hitDst;
         hitInfo.hitPoint = hitPos;
@@ -201,19 +203,11 @@ HitInfo RayUnitBox(float3 pos, float3 dir)
     return hitInfo;
 }
 
-HitInfo RayBox(float3 rayPos, float3 rayDir, float3 centre, float3 size)
-{
-    HitInfo hitInfo = RayUnitBox((rayPos - centre) / size, rayDir / size);
-    hitInfo.hitPoint = hitInfo.hitPoint * size + centre;
-    if (hitInfo.didHit) hitInfo.dst = length(hitInfo.hitPoint - rayPos);
-    return hitInfo;
-}
-
 HitInfo RayBoxWithMatrix(float3 RayPos, float3 RayDir, float4x4 LocalToWorld, float4x4 WorldToLocal)
 {
     float3 posLocal = mul(WorldToLocal, float4(RayPos, 1)).xyz;
     float3 dirLocal = mul(WorldToLocal, float4(RayDir, 0)).xyz;
-    HitInfo hitInfo = RayUnitBox(posLocal, dirLocal);
+    HitInfo hitInfo = RayBox(posLocal, dirLocal);
     hitInfo.normal = normalize(mul(LocalToWorld, float4(hitInfo.normal, 0))).xyz;
     hitInfo.hitPoint = mul(LocalToWorld, float4(hitInfo.hitPoint, 1)).xyz;
     if (hitInfo.didHit) hitInfo.dst = length(hitInfo.hitPoint - RayPos);
@@ -226,9 +220,8 @@ SurfaceInfo FindNextSurface(float3 origin, float3 RayDir, bool findNextFluidEntr
     if (dot(RayDir, RayDir) < 0.5) return info;
 
     float2 boundsDstInfo = RayBoxDst(Bounds.MinBounds, Bounds.MaxBounds, origin, RayDir);
-    float r = (RandomValue(RNG) - 0.5) * Enviroment.MarchStepSize * 0.4 * 1;
     bool hasExittedFluid = !FluidContains(origin);
-    origin = origin + RayDir * (boundsDstInfo.x + r);
+    origin = origin + RayDir * (boundsDstInfo.x + Enviroment.MarchStepSize);
 
     float stepSize = Enviroment.MarchStepSize;
     bool hasEnteredFluid = false;
@@ -425,23 +418,25 @@ float3 TweakHSV(float3 colRGB, float3 shift)
     return saturate(HSVToRGB(hsv + shift));
 }
 
-float3 SampleSky(float3 dir)
+float3 SampleSky(float3 dir, float3 Scene)
 {
-    const float3 colGround = float3(0.35, 0.3, 0.35) * 0.53;
+    const float3 colGround = Scene;
     const float3 colSkyHorizon = float3(1, 1, 1);
-    const float3 colSkyZenith = float3(0.08, 0.37, 0.73);
+    const float3 colSkyZenith = float3(0.08, 0.73, 0.37);
 
     float sun = pow(max(0, dot(dir, dirToSun)), 500) * 1;
-    float skyGradientT = pow(smoothstep(0, 0.4, dir.y), 0.35);
-    float groundToSkyT = smoothstep(-0.01, 0, dir.y);
+    float skyGradientT = pow(smoothstep(0, dir.y, 0.4), 0.35);
+    float groundToSkyT = smoothstep(-0.01, dir.y, 0);
     float3 skyGradient = lerp(colSkyHorizon, colSkyZenith, skyGradientT);
 
     return lerp(colGround, skyGradient, groundToSkyT) + sun * (groundToSkyT >= 1);
 }
 
-float3 SampleEnvironment(float3 pos, float3 dir)
+float3 SampleEnvironment(float3 pos, float3 dir, float3 Scene)
 {
-    HitInfo floorInfo = RayBox(pos, dir, FluidVolume.BoundsPosition, FluidVolume.BoundsSize);
+    //return Scene;
+    /*
+    HitInfo floorInfo = RayBox(pos, dir);
     HitInfo cubeInfo = RayBoxWithMatrix(pos, dir, Enviroment.CubeLocalToWorld, Enviroment.CubeWorldToLocal);
 
     if (cubeInfo.didHit && cubeInfo.dst < floorInfo.dst)
@@ -464,23 +459,23 @@ float3 SampleEnvironment(float3 pos, float3 dir)
         float3 randomVariation = RandomSNorm3(RNG) * tileColVariation * 0.1;
         tileCol = TweakHSV(tileCol, randomVariation);
 
-        float3 shadowMap = Transmittance(CalculateDensityAlongRay(floorInfo.hitPoint, LightPos, Enviroment.MarchStepSize * 2) * 2);
+        float3 shadowMap = Transmittance(CalculateDensityAlongRay(floorInfo.hitPoint, LightPos, Enviroment.LightStepSize * 2) * 2);
         bool inShadow = RayBoxWithMatrix(floorInfo.hitPoint, dirToSun, Enviroment.CubeLocalToWorld, Enviroment.CubeWorldToLocal).didHit;
         if (inShadow) shadowMap *= 0.2;
         return tileCol * shadowMap;
     }
-
-    return SampleSky(dir);
+    */
+    return SampleSky(dir, Scene);
 }
 
-float3 Light(float3 pos, float3 dir)
+float3 Light(float3 pos, float3 dir, float3 Scene)
 {
-    return SampleEnvironment(pos, dir);
+    return SampleEnvironment(pos, dir,Scene);
 }
 
-float3 FluidMarch(float3 RayPos, float3 RayDir)
+float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene)
 {
-    const int NumRefractions = 1;
+    const int NumRefractions = 2;
 
     bool bInsideFluid = FluidContains(RayPos);
 
@@ -489,14 +484,14 @@ float3 FluidMarch(float3 RayPos, float3 RayDir)
 
     for (int i = 0; i < NumRefractions; i++)
     {
-        float densityStepSize = Enviroment.MarchStepSize * (i + 1); // increase step size with each iteration
+        float densityStepSize = Enviroment.DensityStepSize * (i + 1); // increase step size with each iteration
         bool searchForNextFluidEntryPoint = !bInsideFluid;
         
         HitInfo CubeHit = RayBoxWithMatrix(RayPos, RayDir, Enviroment.CubeLocalToWorld, Enviroment.CubeWorldToLocal);
         SurfaceInfo surfaceInfo = FindNextSurface(RayPos, RayDir, searchForNextFluidEntryPoint, RNG, i == 0 ? 1 : 0, CubeHit.dst);
         bool useCubeHit = CubeHit.didHit && CubeHit.dst < length(surfaceInfo.pos - RayPos);
-        if (!surfaceInfo.foundSurface) break;
-
+        
+        if (!surfaceInfo.foundSurface)  break;
 
         transmittance *= Transmittance(surfaceInfo.densityAlongRay);
 
@@ -507,7 +502,7 @@ float3 FluidMarch(float3 RayPos, float3 RayDir)
             {
                 transmittance *= Transmittance(CalculateDensityAlongRay(CubeHit.hitPoint, CubeHit.normal, densityStepSize));
             }
-            light += Light(RayPos, RayDir) * transmittance;
+            light += Light(RayPos, RayDir, Scene) * transmittance;
             transmittance = 0;
             break;
         }
@@ -534,18 +529,18 @@ float3 FluidMarch(float3 RayPos, float3 RayDir)
         bInsideFluid = traceRefractedRay != bInsideFluid;
 
         // Approximate less interesting path
-        if (traceRefractedRay) light += Light(surfaceInfo.pos, lightResponse.reflectDir) * transmittance * Transmittance(densityAlongReflectRay) * lightResponse.reflectWeight;
-        else light += Light(surfaceInfo.pos, lightResponse.refractDir) * transmittance * Transmittance(densityAlongRefractRay) * lightResponse.refractWeight;
+        if (traceRefractedRay) light += Light(surfaceInfo.pos, lightResponse.reflectDir,Scene) * transmittance * Transmittance(densityAlongReflectRay) * lightResponse.reflectWeight;
+        else light += Light(surfaceInfo.pos, lightResponse.refractDir,Scene) * transmittance * Transmittance(densityAlongRefractRay) * lightResponse.refractWeight;
 
         // Set up ray for more interesting path
         RayPos = surfaceInfo.pos;
         RayDir = traceRefractedRay ? lightResponse.refractDir : lightResponse.reflectDir;
         transmittance *= (traceRefractedRay ? lightResponse.refractWeight : lightResponse.reflectWeight);
-    }
 
+    }
     // Approximate remaining path
     float densityRemainder = CalculateDensityAlongRay(RayPos, RayDir, Enviroment.MarchStepSize);
-    light += Light(RayPos, RayDir) * transmittance * Transmittance(densityRemainder);
+    light += Light(RayPos, RayDir, Scene) * transmittance * Transmittance(densityRemainder);
 
     return light;
 }
@@ -569,7 +564,7 @@ void Compute(
     float3 RayOrigin = GetRayOrigin();
     float3 RayDirection = GetRayDirection(UV);
 
-    const float3 FluidColor = FluidMarch(RayOrigin, RayDirection);
+    const float3 FluidColor = FluidMarch(RayOrigin, RayDirection, SceneColor[DispatchThreadId.xy]);
     Target[DispatchThreadId.xy] = FluidColor;// + SceneColor[DispatchThreadId.xy];
 
     /*

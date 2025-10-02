@@ -53,7 +53,7 @@ float CalcDensity(float3 pos)
             float sqrDistance = dot(offset, offset);
             if (sqrDistance <= sqrRadius) {
                 float distance = sqrt(sqrDistance);
-                density += SmoothingKernel(distance, SmoothingRadius) * 100; // assuming mass = 1.0f
+                density += SmoothingKernel(distance, SmoothingRadius); // assuming mass = 1.0f
             }
         }
     }
