@@ -38,6 +38,7 @@ public:
     void SetVolumeBounds(FVector& MinB, FVector& MaxB);
     void StepSimulation(float DeltaTime);
     void ApplySettings(FFluidSimSettings& settings);
+    void ApplyExternalForce(const FVector& Location, const float& ForceAmplifier);
 
     const TArray<FParticle>& GetParticles() const { return Particles; }
 private:
@@ -56,6 +57,7 @@ private:
     uint32 GetKeyFromHash(const uint32& Hash);
 
     TArray<FParticle> Particles;
+    TArray<FVector> ExternalForces;
     TArray<FSpatialLookupEntry> SpatialLookup;
     TArray<uint32> StartIndices;
     FVector MinBounds = FVector::ZeroVector;

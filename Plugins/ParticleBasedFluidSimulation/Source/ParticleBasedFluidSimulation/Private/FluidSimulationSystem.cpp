@@ -9,9 +9,12 @@ void FFluidSimulationSystem::InitializeParticles(TArray<FParticle>& InParticles,
     TableSize = Particles.Num();
     SpatialLookup.SetNum(TableSize);
     StartIndices.SetNum(TableSize);
+    ExternalForces.Init(FVector::ZeroVector, TableSize);
 
     MinBounds = MinB;
     MaxBounds = MaxB;
+
+    UpdateSpatialLookup(SmoothingRadius);
 }
 
 void FFluidSimulationSystem::SetVolumeBounds(FVector& MinB, FVector& MaxB) {
@@ -23,11 +26,12 @@ void FFluidSimulationSystem::StepSimulation(float DeltaTime) {
     if (Particles.IsEmpty()) return;
     // GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Particles exist in system"));
     const float LookAheadTimeStep = 1.f / 120.f;
-    for (auto& particle : Particles) {
-        particle.Velocity += Gravity * DeltaTime;
-        particle.PredictedPosition = particle.Position + particle.Velocity * LookAheadTimeStep;
+    for (int i = 0; i < Particles.Num(); i++) {
+        Particles[i].Velocity += (ExternalForces[i] + Gravity) * DeltaTime;
+        Particles[i].PredictedPosition = Particles[i].Position + Particles[i].Velocity * LookAheadTimeStep;
     }
-
+    // Reset external forces
+    ExternalForces.Init(FVector::ZeroVector, TableSize);
     UpdateSpatialLookup(SmoothingRadius);
 
     for (int i = 0; i < Particles.Num(); i++) {
@@ -40,13 +44,11 @@ void FFluidSimulationSystem::StepSimulation(float DeltaTime) {
         FVector PressureAcceleration = -PressureForce / Particles[i].Density;
         Particles[i].Velocity += PressureAcceleration * DeltaTime;
     }
-    GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Red, (FString::Printf(TEXT("Particle[0] Velocity after pressure forces: X=%f Y=%f Z=%f"), Particles[0].Velocity.X, Particles[0].Velocity.Y, Particles[0].Velocity.Z)));
 
     for (int i = 0; i < Particles.Num(); i++) {
         FVector ViscosityForce = CalculateViscosityForce(Particles[i].PredictedPosition, i);
         Particles[i].Velocity += ViscosityForce * DeltaTime;
     }
-    GEngine->AddOnScreenDebugMessage(2, 5.f, FColor::Blue, (FString::Printf(TEXT("Particle[0] Velocity after viscosity forces: X=%f Y=%f Z=%f"), Particles[0].Velocity.X, Particles[0].Velocity.Y, Particles[0].Velocity.Z)));
 
     for (auto& particle : Particles) {
         particle.Position += particle.Velocity * DeltaTime;
@@ -209,4 +211,22 @@ uint32 FFluidSimulationSystem::HashCell(const FIntVector& CellCoords) {
 
 uint32 FFluidSimulationSystem::GetKeyFromHash(const uint32& Hash) {
     return Hash % TableSize;
+}
+
+void FFluidSimulationSystem::ApplyExternalForce(const FVector& Location, const float& ForceAmplifier) {
+    FIntVector CentreCoords = PositionToCellCoords(Location, SmoothingRadius);
+    
+    uint32 Key = GetKeyFromHash(HashCell(CentreCoords));
+    uint32 StartIndex = StartIndices[Key];
+    for (uint32 i = StartIndex; i < TableSize; i++) {
+        if (SpatialLookup[i].Key != Key) break;
+        int ParticleIndex = SpatialLookup[i].ParticleIndex;
+        FVector Offset = Particles[ParticleIndex].PredictedPosition - Location;
+        float SqrDistance = FVector::DotProduct(Offset, Offset);
+        if (SqrDistance <= (SmoothingRadius * SmoothingRadius)) {
+            float Distance = FMath::Sqrt(SqrDistance);
+            FVector Direction = Distance == 0 ? FVector::UpVector : Offset / Distance;
+            ExternalForces[ParticleIndex] += ForceAmplifier * Direction;
+        }
+    }
 }

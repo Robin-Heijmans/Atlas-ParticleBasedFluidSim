@@ -32,9 +32,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Bounds")
 	class UBoxComponent* Bounds;
 
-	UPROPERTY(VisibleAnywhere, Category = "Particles")
-    class UInstancedStaticMeshComponent* ParticleMesh;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
     int NumParticlesX = 5;
 
@@ -56,6 +53,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid system")
 	bool RunCPU = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="External forces")
+	FVector ExternalForceLocation = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="External forces")
+	float ExternalForceAmplifier = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="External forces")
+	float ExternalForcesInterval = 5.0f;
+
 	TUniquePtr<FFluidSimulationSystem> Simulation;
 	TArray<FParticle> Particles;
 	TArray<FVector3f> InitialPositions;
@@ -70,12 +76,17 @@ private:
 	void UpdateMaterials();
 	void UpdateInstances(const bool AllInstances);
 	FLinearColor VelocityToColor(const float& Speed);
+	void VisualizeExternalForce();
 
 	#if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	#endif
 
 	UStaticMesh* DefaultSphereMesh;
+	UStaticMesh* DefaultCubeMesh;
+	class UInstancedStaticMeshComponent* ParticleMesh;
+	class UInstancedStaticMeshComponent* ExternalForceMesh;
+
 	const float SphereRadius = 1.0f;
 	const float FixedTimeStep = 1.f/60.f;
 	const int SetPositionsCount = 60;
