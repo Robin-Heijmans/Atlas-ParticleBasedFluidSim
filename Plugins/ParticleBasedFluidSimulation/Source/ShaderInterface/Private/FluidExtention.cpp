@@ -118,22 +118,23 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
 
         UBFluidEnviroment = TUniformBufferRef<FFluidEnviroment>::CreateUniformBufferImmediate(FluidEnviroment, EUniformBufferUsage::UniformBuffer_SingleFrame);  
         UBFluidBounds = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(VolumeBounds, EUniformBufferUsage::UniformBuffer_SingleFrame);  
-            UBFluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
-        
-            // Initialize ParticleBuffers
-            if(!FluidComp->HasParticles)
-            {   
-                TArray<USceneComponent*> Children;
-                FluidComp->GetChildrenComponents(true, Children);
-                for(USceneComponent* Child : Children)
+        UBFluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
+    
+        // Initialize ParticleBuffers
+        if(!FluidVolumes->HasParticles)
+        {   
+            TArray<USceneComponent*> Children;
+            FluidVolumes->GetRootComponent()->GetChildrenComponents(true, Children);
+            for(USceneComponent* Child : Children)
+            {
+                UParticleBuffers* ParticleBuffers = nullptr;
+                ParticleBuffers = dynamic_cast<UParticleBuffers*>(Child);
+                if(ParticleBuffers && ParticleBuffers->bInitialized)
                 {
-                    UParticleBuffers* ParticleBuffers = nullptr;
-                    ParticleBuffers = reinterpret_cast<UParticleBuffers*>(Child);
-                    if(ParticleBuffers != nullptr)
-                    {
-                        ParticleBuffers->UnregisterComponent(); // Not working
-                    }
+                    ParticleBuffers->UnregisterComponent(); // doesnt working, but doesnt break anything either
+                    return;
                 }
+            }
 
                 const uint32 NumParticles = FluidComp->NumParticlesX * FluidComp->NumParticlesY * FluidComp->NumParticlesZ;
                 if(NumParticles > 5000 || NumParticles == 0)     
