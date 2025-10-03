@@ -20,7 +20,7 @@
 	"Modules": [
 		{
 			"Name": "ParticleBasedFluidSimulation",
-			"Type": "Editor",
+			"Type": "Runtime",
 			"LoadingPhase": "Default",
 			"Dependencies": [
 				"ShaderInterface"

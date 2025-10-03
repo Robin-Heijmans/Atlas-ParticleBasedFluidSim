@@ -6,7 +6,7 @@
 #include "ExternalForceObject.generated.h"
 
 UCLASS()
-class AExternalForceObject : public AActor
+class PARTICLEBASEDFLUIDSIMULATION_API AExternalForceObject : public AActor
 {
     GENERATED_BODY()
 

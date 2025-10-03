@@ -2,7 +2,7 @@
 #include "Components/InstancedStaticMeshComponent.h"
 
 AExternalForceObject::AExternalForceObject() {
-    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = false;
 
     ExternalForceMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ExternalForceMesh"));
     ExternalForceMesh->SetupAttachment(RootComponent);

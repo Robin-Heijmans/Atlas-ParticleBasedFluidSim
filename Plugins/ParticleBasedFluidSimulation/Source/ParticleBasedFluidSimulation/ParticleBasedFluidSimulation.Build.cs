@@ -10,6 +10,7 @@ public class ParticleBasedFluidSimulation : ModuleRules
 		
 		PublicIncludePaths.AddRange(
 			new string[] {
+				"ParticleBasedFluidSimulation/Public"
 				// ... add public include paths required here ...
 			}
 			);
@@ -17,6 +18,7 @@ public class ParticleBasedFluidSimulation : ModuleRules
 		
 		PrivateIncludePaths.AddRange(
 			new string[] {
+				"ParticleBasedFluidSimulation/Private"
 				// ... add other private include paths required here ...
 			}
 			);

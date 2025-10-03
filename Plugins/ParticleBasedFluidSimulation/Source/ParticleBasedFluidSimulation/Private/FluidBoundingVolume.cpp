@@ -249,6 +249,6 @@ void AFluidBoundingVolume::GetExternalForce() {
 
     FVector worldLoc = ExternalForceObject->GetActorLocation();
     FVector localLoc = GetActorTransform().InverseTransformPosition(worldLoc);
-    GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Red, (FString::Printf(TEXT("External force position: %f, %f, %f"), localLoc.X, localLoc.Y, localLoc.Z)));
+    //GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Red, (FString::Printf(TEXT("External force position: %f, %f, %f"), localLoc.X, localLoc.Y, localLoc.Z)));
     Simulation->ApplyExternalForce(localLoc, ExternalForceObject->ForceAmplifier);
 }
