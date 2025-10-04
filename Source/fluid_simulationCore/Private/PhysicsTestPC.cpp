@@ -48,7 +48,9 @@ void APhysicsTestPC::OnDragPressed(const FInputActionValue& Value)
 {
     FHitResult Hit;
     GetHitResultUnderCursor(ECC_Visibility, false, Hit);
-    previousPos = Hit.Location;
+    float MouseX, MouseY;
+    GetMousePosition(MouseX, MouseY);
+    previousPos = FVector2D(MouseX, MouseY);
     
     if (Cast<AExternalForceObject>(Hit.GetActor())) {
         DraggedActor = Hit.GetActor();
@@ -66,20 +68,19 @@ void APhysicsTestPC::OnDragTick(const FInputActionValue& Value)
 
     float MouseX, MouseY;
     GetMousePosition(MouseX, MouseY);
-    FVector2D ScreenPos(MouseX, MouseY);
+    currentPos = FVector2D(MouseX, MouseY);
+    FVector2D deltaPos = currentPos - previousPos;
 
     FVector CameraUp = PlayerCameraManager->GetActorUpVector();
     FVector CameraRight = PlayerCameraManager->GetActorRightVector();
-    float HorizontalDelta = FVector::DotProduct(Direction, CameraRight);
-    float VerticalDelta = FVector::DotProduct(Direction, CameraUp);
-    if (Hit.bBlockingHit)
+    //float HorizontalDelta = FVector::DotProduct(Direction, CameraRight);
+    //float VerticalDelta = FVector::DotProduct(Direction, CameraUp);
+
+    // Move the actor directly while button is held
+    GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Red, (FString::Printf(TEXT("Mouse position: %f, %f, %f"), CameraRight.X, CameraRight.Y, CameraRight.Z)));
+    if (DraggedActor)
     {
-        // Move the actor directly while button is held
-        GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Red, (FString::Printf(TEXT("Mouse position: %f, %f, %f"), CameraRight.X, CameraRight.Y, CameraRight.Z)));
-        if (DraggedActor)
-        {
-            DraggedActor->AddActorWorldOffset((CameraRight * HorizontalDelta + CameraUp * VerticalDelta) * MovementSpeed);
-        }
+        DraggedActor->AddActorWorldOffset((CameraRight * deltaPos.X + CameraUp * -deltaPos.Y) * MovementSpeed);
     }
     previousPos = currentPos;
 }
