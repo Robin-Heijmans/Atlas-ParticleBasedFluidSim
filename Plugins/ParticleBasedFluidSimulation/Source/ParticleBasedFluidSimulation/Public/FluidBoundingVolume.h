@@ -53,9 +53,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid system")
 	bool RunCPU = true;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="External forces")
-	TObjectPtr<class AExternalForceObject> ExternalForceObject = nullptr;
-
 	TUniquePtr<FFluidSimulationSystem> Simulation;
 	TArray<FParticle> Particles;
 	TArray<FVector3f> InitialPositions;

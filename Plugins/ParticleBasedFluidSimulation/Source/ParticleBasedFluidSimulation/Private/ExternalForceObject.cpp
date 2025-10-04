@@ -2,7 +2,7 @@
 #include "Components/InstancedStaticMeshComponent.h"
 
 AExternalForceObject::AExternalForceObject() {
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
 
     ExternalForceMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ExternalForceMesh"));
     ExternalForceMesh->SetupAttachment(RootComponent);
@@ -19,6 +19,12 @@ AExternalForceObject::AExternalForceObject() {
             ExternalForceMesh->SetMaterial(0, CubeMat.Object);
         }
     }
+    FTransform InstanceTransform(FRotator::ZeroRotator, FVector::ZeroVector, FVector(1/50.0f));
+    ExternalForceMesh->AddInstance(InstanceTransform);
+    FLinearColor Color = FLinearColor::Red;
+    ExternalForceMesh->SetCustomDataValue(0, 0, Color.R, true);
+    ExternalForceMesh->SetCustomDataValue(0, 1, Color.G, true);
+    ExternalForceMesh->SetCustomDataValue(0, 2, Color.B, true);
 }
 
 void AExternalForceObject::BeginPlay() {

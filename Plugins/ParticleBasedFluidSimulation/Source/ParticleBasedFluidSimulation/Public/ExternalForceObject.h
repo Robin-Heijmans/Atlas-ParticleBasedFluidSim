@@ -26,6 +26,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="External forces")
 	float ForceAmplifier = 0.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="External forces", meta = (ClampMin = "0.0", ClampMax = "3.0"))
+	float Radius = 3.0f;
+
 private:
 
 	UStaticMesh* DefaultCubeMesh;

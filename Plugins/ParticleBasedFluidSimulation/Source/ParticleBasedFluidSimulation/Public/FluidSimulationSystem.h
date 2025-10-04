@@ -38,7 +38,7 @@ public:
     void SetVolumeBounds(FVector& MinB, FVector& MaxB);
     void StepSimulation(float DeltaTime);
     void ApplySettings(FFluidSimSettings& settings);
-    void ApplyExternalForce(const FVector& Location, const float& ForceAmplifier);
+    void ApplyExternalForce(const FVector& Location, const float& ForceAmplifier, const float& radius);
 
     const TArray<FParticle>& GetParticles() const { return Particles; }
 private:

@@ -213,20 +213,22 @@ uint32 FFluidSimulationSystem::GetKeyFromHash(const uint32& Hash) {
     return Hash % TableSize;
 }
 
-void FFluidSimulationSystem::ApplyExternalForce(const FVector& Location, const float& ForceAmplifier) {
+void FFluidSimulationSystem::ApplyExternalForce(const FVector& Location, const float& ForceAmplifier, const float& radius) {
     FIntVector CentreCoords = PositionToCellCoords(Location, SmoothingRadius);
     
-    uint32 Key = GetKeyFromHash(HashCell(CentreCoords));
-    uint32 StartIndex = StartIndices[Key];
-    for (uint32 i = StartIndex; i < TableSize; i++) {
-        if (SpatialLookup[i].Key != Key) break;
-        int ParticleIndex = SpatialLookup[i].ParticleIndex;
-        FVector Offset = Particles[ParticleIndex].PredictedPosition - Location;
-        float SqrDistance = FVector::DotProduct(Offset, Offset);
-        if (SqrDistance <= (SmoothingRadius * SmoothingRadius)) {
-            float Distance = FMath::Sqrt(SqrDistance);
-            FVector Direction = Distance == 0 ? FVector::UpVector : Offset / Distance;
-            ExternalForces[ParticleIndex] += ForceAmplifier * Direction;
+    for (const auto& cellOffset : Offsets3D) {
+        uint32 Key = GetKeyFromHash(HashCell(CentreCoords + cellOffset));
+        uint32 StartIndex = StartIndices[Key];
+        for (uint32 i = StartIndex; i < TableSize; i++) {
+            if (SpatialLookup[i].Key != Key) break;
+            int ParticleIndex = SpatialLookup[i].ParticleIndex;
+            FVector Offset = Particles[ParticleIndex].PredictedPosition - Location;
+            float SqrDistance = FVector::DotProduct(Offset, Offset);
+            if (SqrDistance <= (radius * radius)) {
+                float Distance = FMath::Sqrt(SqrDistance);
+                FVector Direction = Distance == 0 ? FVector::UpVector : Offset / Distance;
+                ExternalForces[ParticleIndex] += ForceAmplifier * Direction;
+            }
         }
     }
 }
