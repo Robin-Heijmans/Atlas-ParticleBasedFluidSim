@@ -82,7 +82,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
 
     FFluidVolume FluidVolume;
     FFluidVolumeLocal VolumeBounds;
-    FFluidEnviroment FluidEnviroment;
+    FFluidEnvironment FluidEnvironment;
 
     for (TActorIterator<AActor> ActorItr(World); ActorItr; ++ActorItr)
     {
@@ -104,8 +104,8 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
             
             FTransform Cube(FluidComp->Bounds->GetComponentRotation(), FluidComp->Bounds->GetComponentLocation(), FluidComp->Bounds->GetComponentScale());
 
-        FluidEnviroment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
-        FluidEnviroment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
+        FluidEnvironment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
+        FluidEnvironment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
 
 		//FString Output;
 		//Output += FString::Printf(TEXT("[%g %g %g %g] \n"), FluidEnviroment.CubeLocalToWorld.M[0][0], FluidEnviroment.CubeLocalToWorld.M[0][1], FluidEnviroment.CubeLocalToWorld.M[0][2], FluidEnviroment.CubeLocalToWorld.M[0][3]);
@@ -123,7 +123,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         FluidEnviroment.indexOfRefraction = FluidComp->indexOfRefraction;
         FluidEnviroment.iorAir = FluidComp->iorAir;
 
-        UBFluidEnviroment = TUniformBufferRef<FFluidEnviroment>::CreateUniformBufferImmediate(FluidEnviroment, EUniformBufferUsage::UniformBuffer_SingleFrame);  
+        UBFluidEnvironment = TUniformBufferRef<FFluidEnvironment>::CreateUniformBufferImmediate(FluidEnvironment, EUniformBufferUsage::UniformBuffer_SingleFrame);  
         UBFluidBounds = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(VolumeBounds, EUniformBufferUsage::UniformBuffer_SingleFrame);  
             UBFluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
         
@@ -194,7 +194,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         }
 
         // Density Map Generation
-        if(CVarRendering.GetValueOnRenderThread() == 1)
+        if(CVarRendering.GetValueOnRenderThread())
         {
             ENQUEUE_RENDER_COMMAND(GenerateDensityMap)(
             [this, ParticleBuffers](FRHICommandListImmediate& RHICmdList) {
@@ -255,7 +255,7 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     FluidParams.DensityMapSize = FUintVector3(256);
     FluidParams.FluidVolume = UBFluidVolume;
     FluidParams.FluidBounds = UBFluidBounds;
-    FluidParams.Enviroment = UBFluidEnviroment;
+    FluidParams.Enviroment = UBFluidEnvironment;
     FluidParams.SceneColor = SceneColor;
     FluidParams.View = InView.ViewUniformBuffer;
     
