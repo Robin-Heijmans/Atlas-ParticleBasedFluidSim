@@ -14,7 +14,7 @@ struct FFluidVolumeLocal {
     float3 MaxBounds;  // Max Bounds    
 };
 
-struct FFluidEnviroment {    
+struct FFluidEnvironment {    
     float4x4 CubeLocalToWorld;
     float4x4 CubeWorldToLocal;
     float3 ExtinctionCoeff;
@@ -23,15 +23,15 @@ struct FFluidEnviroment {
     float DensityStepSize;
     float DensityMultiplier;
     float indexOfRefraction;
+    uint NumRefractions;
 };
 
 ConstantBuffer<FFluidVolume> FluidVolume;
 ConstantBuffer<FFluidVolumeLocal> Bounds;
-ConstantBuffer<FFluidEnviroment> Enviroment;
+ConstantBuffer<FFluidEnvironment> Environment;
 
 Texture3D<float> DensityMap;
 uint3 DensityMapSize;
-
 
 Texture2D<float3> SceneColor;
 RWTexture2D<float3> Target;
@@ -66,7 +66,7 @@ const float SampleDensity(const float3 RayPos)
 }
 const float3 Transmittance(float thickness)
 {
-    return exp(-thickness * Enviroment.ExtinctionCoeff);
+    return exp(-thickness * Environment.ExtinctionCoeff);
 }
 uint NextRandom(inout uint state)
 {
@@ -223,11 +223,11 @@ SurfaceInfo FindNextSurface(float3 origin, float3 RayDir, bool findNextFluidEntr
     if (dot(RayDir, RayDir) < 0.5) return info;
 
     float2 boundsDstInfo = RayBoxDst(Bounds.MinBounds, Bounds.MaxBounds, origin, RayDir);
-    float r = (RandomValue(RNG) - 0.5) * Enviroment.MarchStepSize * 0.4 * 1;
+    float r = (RandomValue(RNG) - 0.5) * Environment.MarchStepSize * 0.4 * 1;
     bool hasExittedFluid = !FluidContains(origin);
     origin = origin + RayDir * (boundsDstInfo.x + r);
 
-    float stepSize = Enviroment.MarchStepSize;
+    float stepSize = Environment.MarchStepSize;
     bool hasEnteredFluid = false;
     float3 lastPosInFluid = origin;
 
@@ -237,7 +237,7 @@ SurfaceInfo FindNextSurface(float3 origin, float3 RayDir, bool findNextFluidEntr
     {
         bool isLastStep = dst + stepSize >= dstToTest;
         float3 samplePos = origin + RayDir * dst;
-        float thickness = SampleDensity(samplePos) * Enviroment.DensityMultiplier * stepSize;
+        float thickness = SampleDensity(samplePos) * Environment.DensityMultiplier * stepSize;
         bool insideFluid = thickness > 0;
         if (insideFluid)
         {
@@ -270,28 +270,31 @@ float3 CalculateClosestFaceNormal(float3 boxSize, float3 p)
 {
     float3 halfSize = boxSize * 0.5;
     float3 o = (halfSize - abs(p));
-    return (o.x < o.y && o.x < o.z) ? float3(sign(p.x), 0, 0) : (o.y < o.z) ? float3(0, sign(p.y), 0) : float3(0, 0, sign(p.z));
+    return 
+    (o.x < o.y && o.x < o.z) ? float3(sign(p.x), 0, 0) : 
+    (o.y < o.z) ? float3(0, sign(p.y), 0) : 
+    float3(0, 0, sign(p.z));
 }
 
-float3 CalculateNormal(float3 pos)
-{
-    float3 uvw = (pos + Bounds.MaxBounds * 0.5) / Bounds.MaxBounds;
+float3 CalculateNormal(float3 RayPos)
+{   
+    float3 pos = RayPos - FluidVolume.BoundsPosition;
 
-    const float s = 0.1;
+    const float s = 0.2;
     float3 offsetX = float3(1, 0, 0) * s;
     float3 offsetY = float3(0, 1, 0) * s;
     float3 offsetZ = float3(0, 0, 1) * s;
 
-    float dx = SampleDensity(pos - offsetX) - SampleDensity(pos + offsetX);
-    float dy = SampleDensity(pos - offsetY) - SampleDensity(pos + offsetY);
-    float dz = SampleDensity(pos - offsetZ) - SampleDensity(pos + offsetZ);
+    float dx = SampleDensity(RayPos - offsetX) - SampleDensity(RayPos + offsetX);
+    float dy = SampleDensity(RayPos - offsetY) + SampleDensity(RayPos + offsetY);
+    float dz = SampleDensity(RayPos - offsetZ) - SampleDensity(RayPos + offsetZ);
 
     float3 volumeNormal = normalize(float3(dx, dy, dz));
 
     // Smoothly flatten normals out at boundary edges
-    float3 o = Bounds.MaxBounds / 2 - abs(pos);
+    float3 o = pos;
     float faceWeight = min(o.x, min(o.y, o.z));
-    float3 faceNormal = CalculateClosestFaceNormal(Bounds.MaxBounds, pos);
+    float3 faceNormal = normalize(CalculateClosestFaceNormal(FluidVolume.BoundsSize, pos));
     const float smoothDst = 0.3;
     const float smoothPow = 5;
     faceWeight = (1 - smoothstep(0, smoothDst, faceWeight)) * (1 - pow(saturate(volumeNormal.y), smoothPow));
@@ -319,7 +322,7 @@ float CalculateDensityAlongRay(float3 RayPos, float3 RayDir, float stepSize)
     while (dstTravelled < dstThroughBounds)
     {
         RayPos = entryPoint + RayDir * dstTravelled;
-        float density = SampleDensity(RayPos) * Enviroment.DensityMultiplier * stepSize;
+        float density = SampleDensity(RayPos) * Environment.DensityMultiplier * stepSize;
         if (density > 0)
         {
             opticalDepth += density;
@@ -426,7 +429,7 @@ float3 SampleEnvironment(float3 pos, float3 dir, float3 Scene)
 {
     /*
     HitInfo floorInfo = RayBox(pos, dir);
-    HitInfo cubeInfo = RayBoxWithMatrix(pos, dir, Enviroment.CubeLocalToWorld, Enviroment.CubeWorldToLocal);
+    HitInfo cubeInfo = RayBoxWithMatrix(pos, dir, Environment.CubeLocalToWorld, Environment.CubeWorldToLocal);
 
     if (cubeInfo.didHit && cubeInfo.dst < floorInfo.dst)
     {
@@ -448,8 +451,8 @@ float3 SampleEnvironment(float3 pos, float3 dir, float3 Scene)
         float3 randomVariation = RandomSNorm3(RNG) * tileColVariation * 0.1;
         tileCol = TweakHSV(tileCol, randomVariation);
 
-        float3 shadowMap = Transmittance(CalculateDensityAlongRay(floorInfo.hitPoint, LightPos, Enviroment.LightStepSize * 2) * 2);
-        bool inShadow = RayBoxWithMatrix(floorInfo.hitPoint, dirToSun, Enviroment.CubeLocalToWorld, Enviroment.CubeWorldToLocal).didHit;
+        float3 shadowMap = Transmittance(CalculateDensityAlongRay(floorInfo.hitPoint, LightPos, Environment.LightStepSize * 2) * 2);
+        bool inShadow = RayBoxWithMatrix(floorInfo.hitPoint, dirToSun, Environment.CubeLocalToWorld, Environment.CubeWorldToLocal).didHit;
         if (inShadow) shadowMap *= 0.2;
         return tileCol * shadowMap;
     }
@@ -464,19 +467,17 @@ float3 Light(float3 pos, float3 dir, float3 Scene)
 
 float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene)
 {
-    const int NumRefractions = 4;
-
     bool bInsideFluid = FluidContains(RayPos);
 
     float3 transmittance = 1;
     float3 light = 0;
 
-    for (int i = 0; i < NumRefractions; i++)
+    for (int i = 0; i < Environment.NumRefractions; i++)
     {
-        float densityStepSize = Enviroment.DensityStepSize * (i + 1); // increase step size with each iteration
+        float densityStepSize = Environment.MarchStepSize * (i + 1); // increase step size with each iteration
         bool searchForNextFluidEntryPoint = !bInsideFluid;
         
-        HitInfo CubeHit = RayBoxWithMatrix(RayPos, RayDir, Enviroment.CubeLocalToWorld, Enviroment.CubeWorldToLocal);
+        HitInfo CubeHit = RayBoxWithMatrix(RayPos, RayDir, Environment.CubeLocalToWorld, Environment.CubeWorldToLocal);
         SurfaceInfo surfaceInfo = FindNextSurface(RayPos, RayDir, searchForNextFluidEntryPoint, RNG, i == 0 ? 1 : 0, CubeHit.dst);
         bool useCubeHit = CubeHit.didHit && CubeHit.dst < length(surfaceInfo.pos - RayPos);
         
@@ -505,10 +506,11 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene)
 
         float3 normal = CalculateNormal(surfaceInfo.pos);
         if (dot(normal, RayDir) > 0) normal = -normal;
+        
 
         // Indicies of refraction
-        float iorA = bInsideFluid ? Enviroment.indexOfRefraction : iorAir;
-        float iorB = bInsideFluid ? iorAir : Enviroment.indexOfRefraction;
+        float iorA = bInsideFluid ? Environment.indexOfRefraction : iorAir;
+        float iorB = bInsideFluid ? iorAir : Environment.indexOfRefraction;
 
         // Calculate reflection and refraction, and choose which path to follow
         LightResponse lightResponse = CalculateReflectionAndRefraction(RayDir, normal, iorA, iorB);
@@ -528,7 +530,7 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene)
 
     }
     // Approximate remaining path
-    float densityRemainder = CalculateDensityAlongRay(RayPos, RayDir, Enviroment.MarchStepSize);
+    float densityRemainder = CalculateDensityAlongRay(RayPos, RayDir, Environment.DensityStepSize);
     light += Light(RayPos, RayDir, Scene) * transmittance * Transmittance(densityRemainder);
 
     return light;
@@ -555,39 +557,4 @@ void Compute(
 
     const float3 FluidColor = FluidMarch(RayOrigin, RayDirection, SceneColor[DispatchThreadId.xy]);
     Target[DispatchThreadId.xy] = FluidColor;// + SceneColor[DispatchThreadId.xy];
-
-    /*
-    // Advance ray if not in volume
-    if(!CubeContains(RayOrigin))
-    {
-        RayT = CubeIntersect(RayOrigin, RayDirection);
-        if(RayT <= 0.0) 
-        {
-            Target[DispatchThreadId.xy] = SceneColor[DispatchThreadId.xy];
-            return;
-        }
-    }
-
-    // Psuedo Stepping through Density Map
-    uint NumSteps = 1;
-    float AccDensity = 0;
-    float StepSize = 0.02;
-    
-    do
-    {
-        const float3 CurrPos = RayOrigin + (RayDirection * RayT);
-        const float Density = SampleDensity(CurrPos);
-        if(Density > 0.0)
-        { 
-            AccDensity += Density;
-            NumSteps++;
-        }
-
-        RayT += StepSize;
-    } while(CubeContains(RayOrigin + (RayDirection * RayT)));
-
-    float3 OutColor = AccDensity / NumSteps;
-    OutColor += SceneColor[DispatchThreadId.xy];
-    */
-
 }
