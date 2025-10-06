@@ -13,17 +13,17 @@
 #include "ExternalForceObject.h"
 
 // Sets default values
-AFluidBoundingVolume::AFluidBoundingVolume()
+UFluidBoundingVolumeComponent::UFluidBoundingVolumeComponent()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = true;
 
 
 	Bounds = CreateDefaultSubobject<UBoxComponent>(TEXT("Bounds"));
-    RootComponent = Bounds;
+    Bounds->SetupAttachment(this);
 
 	ParticleMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ParticleMesh"));
-    ParticleMesh->SetupAttachment(RootComponent);
+    ParticleMesh->SetupAttachment(this);
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMeshObj(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
     if (SphereMeshObj.Succeeded())
@@ -39,9 +39,9 @@ AFluidBoundingVolume::AFluidBoundingVolume()
     }
 }
 
-void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
+void UFluidBoundingVolumeComponent::OnRegister()
 {
-    Super::OnConstruction(Transform);
+    Super::OnRegister();
     UpdateVolumeBounds();
     if (!IsInitialized) {
         InitializeParticles();
@@ -50,12 +50,12 @@ void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
     }
 }
 
-void AFluidBoundingVolume::GenerateParticleBuffers()
+void UFluidBoundingVolumeComponent::GenerateParticleBuffers()
 {
     HasParticles = false;
 }
 
-void AFluidBoundingVolume::InitializeParticles()
+void UFluidBoundingVolumeComponent::InitializeParticles()
 {
     Particles.Empty();
     MeshPositions.Empty();
@@ -105,7 +105,7 @@ void AFluidBoundingVolume::InitializeParticles()
 	Simulation->InitializeParticles(Particles, LocalMin, LocalMax);
 }
 
-void AFluidBoundingVolume::UpdateVolumeBounds() {
+void UFluidBoundingVolumeComponent::UpdateVolumeBounds() {
     if (!Simulation) return;
     FVector Extent = Bounds->GetScaledBoxExtent();
 	FVector WorldScale = Bounds->GetComponentScale();
@@ -116,7 +116,7 @@ void AFluidBoundingVolume::UpdateVolumeBounds() {
 }
 
 // Called when the game starts or when spawned
-void AFluidBoundingVolume::BeginPlay()
+void UFluidBoundingVolumeComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	InitializeParticles();
@@ -127,12 +127,11 @@ void AFluidBoundingVolume::BeginPlay()
 }
 
 // Called every frame
-void AFluidBoundingVolume::Tick(float DeltaTime)
+void UFluidBoundingVolumeComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-    
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	TotalTime += DeltaTime;
-	Super::Tick(DeltaTime);
-
+	
     if (RunCPU)
     {
         if (FrameCount > SetPositionsCount) FrameCount = 0;
@@ -150,7 +149,7 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
     }
 }
 
-void AFluidBoundingVolume::UpdateMaterials()
+void UFluidBoundingVolumeComponent::UpdateMaterials()
 {
     if (!DefaultSphereMesh || Particles.Num() == 0) return;
     FVector WorldScale = Bounds->GetComponentScale();
@@ -169,7 +168,7 @@ void AFluidBoundingVolume::UpdateMaterials()
     }
 }
 
-void AFluidBoundingVolume::UpdateInstances(const bool AllInstances) {
+void UFluidBoundingVolumeComponent::UpdateInstances(const bool AllInstances) {
     if (!DefaultSphereMesh || Particles.Num() == 0) return;
     int32 startIndex = 0;
     int32 endIndex = Particles.Num();
@@ -196,7 +195,7 @@ void AFluidBoundingVolume::UpdateInstances(const bool AllInstances) {
     ParticleMesh->MarkRenderStateDirty();
 }
 
-FLinearColor AFluidBoundingVolume::VelocityToColor(const float& Speed) {
+FLinearColor UFluidBoundingVolumeComponent::VelocityToColor(const float& Speed) {
     float Alpha = FMath::Clamp(Speed / MaxSpeedGradient, 0.0f, 1.0f);
 
     if (Alpha < 0.5f) // interpolate from blue to green
@@ -216,25 +215,25 @@ FLinearColor AFluidBoundingVolume::VelocityToColor(const float& Speed) {
 }
 
 #if WITH_EDITOR
-void AFluidBoundingVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+void UFluidBoundingVolumeComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
     Super::PostEditChangeProperty(PropertyChangedEvent);
 
     const FName PropertyName = PropertyChangedEvent.GetPropertyName();
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(AFluidBoundingVolume, NumParticlesX) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(AFluidBoundingVolume, NumParticlesY) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(AFluidBoundingVolume, NumParticlesZ))
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UFluidBoundingVolumeComponent, NumParticlesX) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UFluidBoundingVolumeComponent, NumParticlesY) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UFluidBoundingVolumeComponent, NumParticlesZ))
     {
-        InitializeParticles();
-        UpdateInstances(true);
-        UpdateMaterials();
+        //InitializeParticles();
+        //UpdateInstances(true);
+        //UpdateMaterials();
     }
     // Update simulation only when values are changed in editor
-    Simulation->ApplySettings(Settings);
+    //Simulation->ApplySettings(Settings);
 }
 #endif
 
-TArray<FVector> AFluidBoundingVolume::GetVolumeBounds() {
+TArray<FVector> UFluidBoundingVolumeComponent::GetVolumeBounds() {
     FVector Extent = Bounds->GetScaledBoxExtent();
 	FVector WorldScale = Bounds->GetComponentScale();
 
@@ -244,7 +243,7 @@ TArray<FVector> AFluidBoundingVolume::GetVolumeBounds() {
     return bounds;
 }
 
-void AFluidBoundingVolume::GetExternalForce() {
+void UFluidBoundingVolumeComponent::GetExternalForce() {
     UWorld* World = GetWorld();
     if (!World) return;
 
@@ -255,7 +254,7 @@ void AFluidBoundingVolume::GetExternalForce() {
             continue;
 
         FVector WorldLoc = ForceComp->GetComponentLocation();
-        FVector LocalLoc = GetActorTransform().InverseTransformPosition(WorldLoc);
+        FVector LocalLoc = GetComponentTransform().InverseTransformPosition(WorldLoc);
         Simulation->ApplyExternalForce(LocalLoc, ForceComp->ForceAmplifier, ForceComp->Radius);
     }
 }

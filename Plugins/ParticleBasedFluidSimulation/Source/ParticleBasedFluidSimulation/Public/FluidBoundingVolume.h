@@ -3,30 +3,30 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "Components/SceneComponent.h"
 #include "FluidSimulationSystem.h"
 #include "Templates/UniquePtr.h"
 
 // Has to be last include in header
 #include "FluidBoundingVolume.generated.h"
 
-UCLASS()
-class PARTICLEBASEDFLUIDSIMULATION_API AFluidBoundingVolume : public AActor
+UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
+class PARTICLEBASEDFLUIDSIMULATION_API UFluidBoundingVolumeComponent  : public USceneComponent
 {
 	GENERATED_BODY()
 	
 public:	
 	// Sets default values for this actor's properties
-	AFluidBoundingVolume();
+	UFluidBoundingVolumeComponent();
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	virtual void OnConstruction(const FTransform& Transform) override;
+	virtual void OnRegister() override;
 
 	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 public:	
 	UPROPERTY(EditAnywhere, Category = "Bounds")
