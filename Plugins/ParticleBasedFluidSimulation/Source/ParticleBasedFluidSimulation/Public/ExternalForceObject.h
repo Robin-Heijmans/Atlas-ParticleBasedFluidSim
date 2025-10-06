@@ -5,7 +5,7 @@
 
 #include "ExternalForceObject.generated.h"
 
-UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
+UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent, DisplayName="Atlas External Froce Object"))
 class PARTICLEBASEDFLUIDSIMULATION_API UExternalForceComponent : public USceneComponent
 {
     GENERATED_BODY()

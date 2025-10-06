@@ -52,7 +52,7 @@ void APhysicsTestPC::OnDragPressed(const FInputActionValue& Value)
     GetMousePosition(MouseX, MouseY);
     previousPos = FVector2D(MouseX, MouseY);
     
-    UPrimitiveComponent* HitComp = Hit.GetComponent();
+    USceneComponent* HitComp = Hit.GetComponent();
     UExternalForceComponent* ForceComp = nullptr;
     ForceComp = Cast<UExternalForceComponent>(HitComp);
     if (!ForceComp)
