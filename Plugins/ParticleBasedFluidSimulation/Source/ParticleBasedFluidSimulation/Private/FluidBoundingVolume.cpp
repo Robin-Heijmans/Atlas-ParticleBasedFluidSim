@@ -245,12 +245,17 @@ TArray<FVector> AFluidBoundingVolume::GetVolumeBounds() {
 }
 
 void AFluidBoundingVolume::GetExternalForce() {
-    TArray<AExternalForceObject*> FoundForces;
-    UGameplayStatics::GetAllActorsOfClass(GetWorld(), AExternalForceObject::StaticClass(), (TArray<AActor*>&)FoundForces);
+    UWorld* World = GetWorld();
+    if (!World) return;
 
-    for (auto& actor : FoundForces) {
-        FVector localLoc = GetActorTransform().InverseTransformPosition(actor->GetActorLocation());
-        //GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Red, (FString::Printf(TEXT("External force position: %f, %f, %f"), localLoc.X, localLoc.Y, localLoc.Z)));
-        Simulation->ApplyExternalForce(localLoc, actor->ForceAmplifier, actor->Radius);
+    for (TObjectIterator<UExternalForceComponent> It; It; ++It)
+    {
+        UExternalForceComponent* ForceComp = *It;
+        if (!ForceComp || !ForceComp->GetWorld() || ForceComp->GetWorld() != World)
+            continue;
+
+        FVector WorldLoc = ForceComp->GetComponentLocation();
+        FVector LocalLoc = GetActorTransform().InverseTransformPosition(WorldLoc);
+        Simulation->ApplyExternalForce(LocalLoc, ForceComp->ForceAmplifier, ForceComp->Radius);
     }
 }

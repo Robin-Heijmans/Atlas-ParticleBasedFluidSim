@@ -1,11 +1,11 @@
 #include "ExternalForceObject.h"
 #include "Components/InstancedStaticMeshComponent.h"
 
-AExternalForceObject::AExternalForceObject() {
-    PrimaryActorTick.bCanEverTick = true;
+UExternalForceComponent::UExternalForceComponent() {
+    PrimaryComponentTick.bCanEverTick = true;
 
     ExternalForceMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ExternalForceMesh"));
-    ExternalForceMesh->SetupAttachment(RootComponent);
+    ExternalForceMesh->SetupAttachment(this);
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshObj(TEXT("/Engine/BasicShapes/Cube.Cube"));
     if (CubeMeshObj.Succeeded())
@@ -19,22 +19,29 @@ AExternalForceObject::AExternalForceObject() {
             ExternalForceMesh->SetMaterial(0, CubeMat.Object);
         }
     }
-    FTransform InstanceTransform(FRotator::ZeroRotator, FVector::ZeroVector, FVector(1/50.0f));
-    ExternalForceMesh->AddInstance(InstanceTransform);
-    FLinearColor Color = FLinearColor::Red;
-    ExternalForceMesh->SetCustomDataValue(0, 0, Color.R, true);
-    ExternalForceMesh->SetCustomDataValue(0, 1, Color.G, true);
-    ExternalForceMesh->SetCustomDataValue(0, 2, Color.B, true);
 }
 
-void AExternalForceObject::BeginPlay() {
+void UExternalForceComponent::BeginPlay() {
     Super::BeginPlay();
 }
 
-void AExternalForceObject::OnConstruction(const FTransform& Transform) {
-    Super::OnConstruction(Transform);
+void UExternalForceComponent::OnRegister()
+{
+    Super::OnRegister();
+
+    if (ExternalForceMesh && ExternalForceMesh->GetStaticMesh())
+    {
+        ExternalForceMesh->ClearInstances();
+
+        FTransform InstanceTransform(FRotator::ZeroRotator, FVector::ZeroVector, FVector(1/50.f));
+        ExternalForceMesh->AddInstance(InstanceTransform);
+        FLinearColor Color = FLinearColor::Red;
+        ExternalForceMesh->SetCustomDataValue(0, 0, Color.R, true);
+        ExternalForceMesh->SetCustomDataValue(0, 1, Color.G, true);
+        ExternalForceMesh->SetCustomDataValue(0, 2, Color.B, true);
+    }
 }
 
-void AExternalForceObject::Tick(float DeltaTime) {
-    Super::Tick(DeltaTime);
+void UExternalForceComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) {
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }

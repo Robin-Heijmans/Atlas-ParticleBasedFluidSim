@@ -10,7 +10,7 @@
 
 APhysicsTestPC::APhysicsTestPC()
 {
-    DraggedActor = nullptr;
+    DraggedForceComponent = nullptr;
 }
 
 void APhysicsTestPC::BeginPlay()
@@ -52,14 +52,22 @@ void APhysicsTestPC::OnDragPressed(const FInputActionValue& Value)
     GetMousePosition(MouseX, MouseY);
     previousPos = FVector2D(MouseX, MouseY);
     
-    if (Cast<AExternalForceObject>(Hit.GetActor())) {
-        DraggedActor = Hit.GetActor();
+    UPrimitiveComponent* HitComp = Hit.GetComponent();
+    UExternalForceComponent* ForceComp = nullptr;
+    ForceComp = Cast<UExternalForceComponent>(HitComp);
+    if (!ForceComp)
+    {
+        ForceComp = HitComp->GetOwner() ? HitComp->GetOwner()->FindComponentByClass<UExternalForceComponent>() : nullptr;
+    }
+
+    if (ForceComp) {
+        DraggedForceComponent = ForceComp;
     }
 }
 
 void APhysicsTestPC::OnDragReleased(const FInputActionValue& Value)
 {
-    DraggedActor = nullptr;
+    DraggedForceComponent = nullptr;
 }
 
 void APhysicsTestPC::OnDragTick(const FInputActionValue& Value)
@@ -78,9 +86,9 @@ void APhysicsTestPC::OnDragTick(const FInputActionValue& Value)
 
     // Move the actor directly while button is held
     GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Red, (FString::Printf(TEXT("Mouse position: %f, %f, %f"), CameraRight.X, CameraRight.Y, CameraRight.Z)));
-    if (DraggedActor)
+    if (DraggedForceComponent)
     {
-        DraggedActor->AddActorWorldOffset((CameraRight * deltaPos.X + CameraUp * -deltaPos.Y) * MovementSpeed);
+        DraggedForceComponent->AddWorldOffset((CameraRight * deltaPos.X + CameraUp * -deltaPos.Y) * MovementSpeed);
     }
     previousPos = currentPos;
 }
@@ -90,10 +98,10 @@ void APhysicsTestPC::OnScrollWheel(const FInputActionValue& Value)
     if (!bEditorMode) return;
 
     float ScrollAmount = Value.Get<float>(); // positive or negative
-    if (DraggedActor)
+    if (DraggedForceComponent)
     {
         FVector CameraForward = PlayerCameraManager->GetActorForwardVector();
-        DraggedActor->AddActorWorldOffset(CameraForward * ScrollAmount * ScrollSpeed);
+        DraggedForceComponent->AddWorldOffset(CameraForward * ScrollAmount * ScrollSpeed);
     }
 }
 

@@ -1,26 +1,25 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "Components/SceneComponent.h"
 
 #include "ExternalForceObject.generated.h"
 
-UCLASS()
-class PARTICLEBASEDFLUIDSIMULATION_API AExternalForceObject : public AActor
+UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
+class PARTICLEBASEDFLUIDSIMULATION_API UExternalForceComponent : public USceneComponent
 {
     GENERATED_BODY()
 
 public:
-    AExternalForceObject();
+    UExternalForceComponent();
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-	virtual void OnConstruction(const FTransform& Transform) override;
+	virtual void OnRegister() override;
 
 	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="External forces")

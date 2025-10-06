@@ -49,7 +49,7 @@ private:
 	void OnScrollWheel(const FInputActionValue& Value);
 
 	bool bEditorMode = false;
-    TObjectPtr<class AActor> DraggedActor;
+    TObjectPtr<class UExternalForceComponent> DraggedForceComponent;
 
 	FVector2D previousPos = FVector2D::ZeroVector;
 	FVector2D currentPos = FVector2D::ZeroVector;
