@@ -82,7 +82,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
 
     FFluidVolume FluidVolume;
     FFluidVolumeLocal VolumeBounds;
-    FFluidEnviroment FluidEnviroment;
+    FFluidEnvironment FluidEnvironment;
 
     for (TActorIterator<AFluidBoundingVolume> FluidVolumes(World); FluidVolumes; ++FluidVolumes)
     {
@@ -94,19 +94,20 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         FluidVolume.BoundsPosition = FVector3f(FluidVolumes->Bounds->GetComponentLocation());
         FluidVolume.BoundsSize = FVector3f(FluidVolumes->Bounds->GetScaledBoxExtent());
         
-        FTransform Cube(FluidVolumes->Bounds->GetComponentRotation(), FluidVolumes->Bounds->GetComponentLocation(), FluidVolumes->Bounds->GetComponentScale()FluidVolumes);
+        FTransform Cube(FluidVolumes->Bounds->GetComponentRotation(), FluidVolumes->Bounds->GetComponentLocation(), FluidVolumes->Bounds->GetComponentScale());
 
-        FluidEnviroment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
-        FluidEnviroment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
+        FluidEnvironment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
+        FluidEnvironment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
 
-        FluidEnviroment.ExtinctionCoeff = FVector3f(FluidVolumes->ExtinctionCoeff);
-        FluidEnviroment.MarchStepSize = FluidVolumes->MarchStepSize;
-        FluidEnviroment.LightStepSize = FluidVolumes->LightStepSize;
-        FluidEnviroment.DensityStepSize = FluidVolumes->DensityStepSize;
-        FluidEnviroment.DensityMultiplier = FluidVolumes->DensityMultiplier;
-        FluidEnviroment.indexOfRefraction = FluidVolumes->indexOfRefraction;
+        FluidEnvironment.ExtinctionCoeff = FVector3f(FluidVolumes->ExtinctionCoeff);
+        FluidEnvironment.MarchStepSize = FluidVolumes->MarchStepSize;
+        FluidEnvironment.LightStepSize = FluidVolumes->LightStepSize;
+        FluidEnvironment.DensityStepSize = FluidVolumes->DensityStepSize;
+        FluidEnvironment.DensityMultiplier = FluidVolumes->DensityMultiplier;
+        FluidEnvironment.indexOfRefraction = FluidVolumes->indexOfRefraction;
+        FluidEnvironment.NumRefractions = FluidVolumes->NumRefraction;
 
-        UBFluidEnviroment = TUniformBufferRef<FFluidEnviroment>::CreateUniformBufferImmediate(FluidEnviroment, EUniformBufferUsage::UniformBuffer_SingleFrame);  
+        UBFluidEnvironment = TUniformBufferRef<FFluidEnvironment>::CreateUniformBufferImmediate(FluidEnvironment, EUniformBufferUsage::UniformBuffer_SingleFrame);  
         UBFluidBounds = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(VolumeBounds, EUniformBufferUsage::UniformBuffer_SingleFrame);  
         UBFluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
     
@@ -122,7 +123,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
                 if(ParticleBuffers && ParticleBuffers->bInitialized)
                 {
                     ParticleBuffers->UnregisterComponent(); // doesnt working, but doesnt break anything either
-                    return;
+                    
                 }
             }
 
@@ -177,7 +178,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         }
 
         // Density Map Generation
-        if(CVarRendering.GetValueOnRenderThread() == 1)
+        if(CVarRendering.GetValueOnRenderThread())
         {
             ENQUEUE_RENDER_COMMAND(GenerateDensityMap)(
             [this, ParticleBuffers](FRHICommandListImmediate& RHICmdList) {
@@ -238,7 +239,7 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     FluidParams.DensityMapSize = FUintVector3(256);
     FluidParams.FluidVolume = UBFluidVolume;
     FluidParams.FluidBounds = UBFluidBounds;
-    FluidParams.Enviroment = UBFluidEnviroment;
+    FluidParams.Enviroment = UBFluidEnvironment;
     FluidParams.SceneColor = SceneColor;
     FluidParams.View = InView.ViewUniformBuffer;
     

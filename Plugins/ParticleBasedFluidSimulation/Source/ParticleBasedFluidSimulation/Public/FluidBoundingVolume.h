@@ -56,6 +56,8 @@ public:
 	float DensityMultiplier = 25.f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
 	float indexOfRefraction = 1.33f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
+	int32 NumRefraction = 4;
 
     UFUNCTION(CallInEditor, Category = "Particles")
     void GenerateParticleBuffers();
