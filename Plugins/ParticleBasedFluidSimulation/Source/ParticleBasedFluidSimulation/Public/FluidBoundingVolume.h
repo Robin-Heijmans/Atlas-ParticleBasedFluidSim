@@ -68,6 +68,7 @@ private:
 	void UpdateInstances(const bool AllInstances);
 	FLinearColor VelocityToColor(const float& Speed);
 	void GetExternalForce();
+	void CollisionsCheck();
 
 	#if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;

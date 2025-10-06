@@ -232,3 +232,15 @@ void FFluidSimulationSystem::ApplyExternalForce(const FVector& Location, const f
         }
     }
 }
+
+void FFluidSimulationSystem::CheckBoxCollision(const FVector& Location) {
+
+}
+
+void FFluidSimulationSystem::CheckSphereCollision(const FVector& Location) {
+
+}
+
+void FFluidSimulationSystem::CheckCapsuleCollision(const FVector& Location) {
+    
+}

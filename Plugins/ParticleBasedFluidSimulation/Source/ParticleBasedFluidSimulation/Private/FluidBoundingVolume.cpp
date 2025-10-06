@@ -3,7 +3,11 @@
 
 #include "FluidBoundingVolume.h"
 #include "Components/BoxComponent.h"
+#include "Components/SphereComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
+
+#include "PhysicsEngine/BodyInstance.h"
 
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/KismetRenderingLibrary.h"
@@ -11,6 +15,7 @@
 #include "SceneView.h"
 #include "Engine/World.h"
 #include "ExternalForceObject.h"
+#include "Engine/OverlapResult.h"
 
 // Sets default values
 UFluidBoundingVolumeComponent::UFluidBoundingVolumeComponent()
@@ -140,6 +145,7 @@ void UFluidBoundingVolumeComponent::TickComponent(float DeltaTime, ELevelTick Ti
         {
             GetExternalForce();
             Simulation->StepSimulation(FixedTimeStep);
+            CollisionsCheck();
             Particles = Simulation->GetParticles();
             TotalTime = 0.0f;
             UpdateInstances(false);
@@ -253,8 +259,55 @@ void UFluidBoundingVolumeComponent::GetExternalForce() {
         if (!ForceComp || !ForceComp->GetWorld() || ForceComp->GetWorld() != World)
             continue;
 
-        FVector WorldLoc = ForceComp->GetComponentLocation();
-        FVector LocalLoc = GetComponentTransform().InverseTransformPosition(WorldLoc);
-        Simulation->ApplyExternalForce(LocalLoc, ForceComp->ForceAmplifier, ForceComp->Radius);
+        FVector WorldPos = ForceComp->GetComponentLocation();
+        FVector LocalPos = GetComponentTransform().InverseTransformPosition(WorldPos);
+        Simulation->ApplyExternalForce(LocalPos, ForceComp->ForceAmplifier, ForceComp->Radius);
+    }
+}
+
+void UFluidBoundingVolumeComponent::CollisionsCheck() {
+    TArray<FOverlapResult> Overlaps;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(GetOwner());
+
+    FVector Center = Bounds->GetComponentLocation();
+    FVector Extent = Bounds->GetScaledBoxExtent();
+
+    GetWorld()->OverlapMultiByChannel(
+        Overlaps,
+        Center,
+        FQuat::Identity,
+        ECC_PhysicsBody,
+        FCollisionShape::MakeBox(Extent),
+        Params
+    );
+
+    for (auto& Overlap : Overlaps)
+    {
+        UPrimitiveComponent* Comp = Overlap.GetComponent();
+        if (!Comp || !Comp->IsSimulatingPhysics()) continue;
+
+        FVector LocalPos = GetComponentTransform().InverseTransformPosition(Comp->GetComponentLocation());
+
+        if (UBoxComponent* Box = Cast<UBoxComponent>(Comp)) {
+            // To be implemented
+            Simulation->CheckBoxCollision(LocalPos);
+        }
+        else if (USphereComponent* Sphere = Cast<USphereComponent>(Comp)) {
+            // To be implemented
+            Simulation->CheckSphereCollision(LocalPos);
+        }
+        else if (UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Comp)) {
+            // To be implemented
+            Simulation->CheckCapsuleCollision(LocalPos);
+        }
+        else {
+            UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>(Comp);
+            if (MeshComp && MeshComp->GetBodyInstance())
+            {
+                FBodyInstance* Body = MeshComp->GetBodyInstance();
+                // To be implemented (complex shapes)
+            }
+        }
     }
 }
