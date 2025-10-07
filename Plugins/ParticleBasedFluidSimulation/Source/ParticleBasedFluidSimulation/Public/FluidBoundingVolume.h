@@ -53,7 +53,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
 	float DensityStepSize = 0.5f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
-	float DensityMultiplier = 25.f;
+	float DensityMultiplier = 1.f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
 	float indexOfRefraction = 1.33f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")

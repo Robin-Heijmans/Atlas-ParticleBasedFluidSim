@@ -121,7 +121,7 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidMarchParams, )
     SHADER_PARAMETER_STRUCT_REF(FFluidEnvironment, Enviroment)
     SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
     
-    SHADER_PARAMETER_RDG_TEXTURE_SRV(RWTexture3D<float3>, DensityMap)
+    SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture3D<float>, DensityMap)
     SHADER_PARAMETER(FUintVector3, DensityMapSize)
 
     SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SceneColor)

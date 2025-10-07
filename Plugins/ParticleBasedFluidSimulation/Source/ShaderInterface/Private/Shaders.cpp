@@ -240,7 +240,7 @@ void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShade
     ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<ShaderType::FParameters>();
     *PassParameters = Params;
 
-    const FIntVector DispatchCount(32,32,32);
+    const FIntVector DispatchCount(Params.DensityMapSize / 8);
     TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
 
     FComputeShaderUtils::AddPass(
@@ -266,13 +266,13 @@ void FFluidMarchDispatchParams::Dispatch(
     *PassParameters = Params;
 
 	const FIntPoint ViewSize = PassParameters->SceneColor->Desc.Extent;
-    const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, FIntPoint(48,16));
+    const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, FComputeShaderUtils::kGolden2DGroupSize);
     
     TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
     FComputeShaderUtils::AddPass(
         GraphBuilder,
         RDG_EVENT_NAME("Execute Atlas FluidMarch %dx%d", ViewSize.X, ViewSize.Y),
-        ERDGPassFlags::Compute | ERDGPassFlags::NeverCull,
+        ERDGPassFlags::Compute,
         ComputeShader,
         PassParameters,
         DispatchCount);

@@ -22,19 +22,20 @@ public:
 
 	/* Setup before rendering happens in here. */
 	virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override;
+	
+	virtual void PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily) override;
 
 	/* All the rendering happens in here. */
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FPostProcessingInputs& Inputs) override;
 
 private:
 	// Shader 'Dispatchers'
-	//FParticleSimulationDispatchParams ParticleSimulation;
 	FRenderPrepDispatchParams RenderPrep;
 	FFluidMarchDispatchParams FluidMarch;
 	FFluidMathParams FluidMath;
 
-	FTextureRHIRef DensityMap;
-
+	TRefCountPtr<IPooledRenderTarget> DensityMap;
+	
 	// Uniform Buffers
 	TUniformBufferRef<FFluidEnvironment> UBFluidEnvironment;
 	TUniformBufferRef<FFluidVolumeLocal> UBFluidBounds;

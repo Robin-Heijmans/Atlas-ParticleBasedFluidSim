@@ -18,7 +18,7 @@
 
 #include "FluidBoundingVolume.h"
 
-constexpr uint32 DensityMapSize(256);
+const FUintVector3 DensityMapSize = FUintVector3(128, 128, 128);
 
 namespace 
 {
@@ -50,15 +50,16 @@ FFluidExtention::FFluidExtention(const FAutoRegister& AutoRegister) : FSceneView
 
         //Density Map UwU
         FRHITextureCreateDesc Desc = FRHITextureCreateDesc::Create3D(TEXT("Atlas DensityMap"))
-                .SetExtent(DensityMapSize, DensityMapSize)
-                .SetDepth(DensityMapSize)
-                .SetFormat(PF_R32_FLOAT)
+                .SetExtent(DensityMapSize.X, DensityMapSize.Y)
+                .SetDepth(DensityMapSize.Z)
+                .SetFormat(EPixelFormat::PF_R8)
                 .SetFlags(ETextureCreateFlags::UAV | ETextureCreateFlags::ShaderResource)
                 .SetInitialState(ERHIAccess::SRVCompute);
 
-        DensityMap = RHICreateTexture(Desc);
+        FTextureRHIRef DensityMapRHI = RHICreateTexture(Desc);
+        DensityMap = CreateRenderTarget(DensityMapRHI, TEXT("Atlas DensityMap"));
         
-        const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("Atlas DensityMap")));
+        const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(DensityMap);
         FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
         GraphBuilder.Execute();
     });
@@ -176,48 +177,43 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
             });      
             TotalTime = 0.f;
         }
+    }
+}
+
+void FFluidExtention::PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily) 
+{  
+    for (TObjectIterator<UParticleBuffers> ParticleBuffers; ParticleBuffers; ++ParticleBuffers)
+    {
+        if(!ParticleBuffers->bInitialized) continue;
 
         // Density Map Generation
-        if(CVarRendering.GetValueOnRenderThread())
-        {
-            ENQUEUE_RENDER_COMMAND(GenerateDensityMap)(
-            [this, ParticleBuffers](FRHICommandListImmediate& RHICmdList) {
-                FRDGBuilder GraphBuilder(RHICmdList);
-                
-                ParticleBuffers->Register(GraphBuilder);
-                FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
+        if(CVarRendering.GetValueOnRenderThread() == 0) return;
 
-                // Render Prep
-                FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("Atlas DensityMap")));
+        ParticleBuffers->Register(GraphBuilder);
+        FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
 
-                FRenderPrepParams RenderPrepParams = ParticleBuffers->GetRenderPrepParameters(GraphBuilder);
-                RenderPrepParams.FluidBounds = UBFluidBounds;
-                RenderPrepParams.FluidVolume = UBFluidVolume;
+        // Render Prep
+        const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(DensityMap);
 
-                RenderPrepParams.DensityMap = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(DensityMapRef));
-                RenderPrepParams.DensityMapSize = FUintVector3(DensityMapSize); // PLS PUT ME OUT OF MY MISERY
+        FRenderPrepParams RenderPrepParams = ParticleBuffers->GetRenderPrepParameters(GraphBuilder);
+        RenderPrepParams.FluidBounds = UBFluidBounds;
+        RenderPrepParams.FluidVolume = UBFluidVolume;
 
-                RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, RenderPrepParams);
-                    
-                GraphBuilder.Execute();
-            });
-        }
+        RenderPrepParams.DensityMap = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(DensityMapRef));
+        RenderPrepParams.DensityMapSize = FUintVector3(DensityMap->GetDesc().GetSize());
+
+        RenderPrep.Dispatch(GraphBuilder, GlobalShaderMap, RenderPrepParams);          
     }
 }
 
 void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FPostProcessingInputs& Inputs) 
 {
-
 	// Dipatch Shader here
-    if (CVarRendering.GetValueOnRenderThread() == 0) return; 
-
+    if (CVarRendering.GetValueOnRenderThread() == 0) return;
 
     // Get ShaderMap
     FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(InView.Family->GetFeatureLevel());
-
     
-    const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(CreateRenderTarget(DensityMap, TEXT("Atlas DensityMap")));
-        
     // Get SceneColor
 	const FSceneViewFamily& ViewFamily = *InView.Family;    
 	FRDGTexture* SceneColor = Inputs.SceneTextures->GetContents()->SceneColorTexture;
@@ -232,11 +228,12 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     const FLinearColor ClearColor(0., 0., 0., 0.);
     OutputDesc.ClearValue = FClearValueBinding(ClearColor);
     const FRDGTextureRef OutputTexture = GraphBuilder.CreateTexture(OutputDesc, TEXT("Atlas Output"));
+    const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(DensityMap);
     
     FFluidMarchParams FluidParams;
     FluidParams.Target = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutputTexture));
     FluidParams.DensityMap = GraphBuilder.CreateSRV(FRDGTextureSRVDesc(DensityMapRef));
-    FluidParams.DensityMapSize = FUintVector3(256);
+    FluidParams.DensityMapSize = FUintVector3(DensityMap->GetDesc().GetSize());
     FluidParams.FluidVolume = UBFluidVolume;
     FluidParams.FluidBounds = UBFluidBounds;
     FluidParams.Enviroment = UBFluidEnvironment;
@@ -245,5 +242,4 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     
     FluidMarch.Dispatch(GraphBuilder, GlobalShaderMap, FluidParams);
     AddCopyTexturePass(GraphBuilder, OutputTexture, SceneColor);
-
 }
