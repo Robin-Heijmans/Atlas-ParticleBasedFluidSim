@@ -295,15 +295,15 @@ void UFluidBoundingVolumeComponent::CollisionsCheck() {
 
         if (UBoxComponent* Box = Cast<UBoxComponent>(Comp)) {
             // To be implemented
-            Simulation->CheckBoxCollision(*Box);
+            Simulation->BoxCollision(*Box, *Bounds, LocalPos);
         }
         else if (USphereComponent* Sphere = Cast<USphereComponent>(Comp)) {
             // To be implemented
-            Simulation->CheckSphereCollision(*Sphere);
+            Simulation->SphereCollision(*Sphere, *Bounds, LocalPos);
         }
         else if (UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Comp)) {
             // To be implemented
-            Simulation->CheckCapsuleCollision(*Capsule);
+            Simulation->CapsuleCollision(*Capsule, *Bounds, LocalPos);
         }
         else {
             UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>(Comp);

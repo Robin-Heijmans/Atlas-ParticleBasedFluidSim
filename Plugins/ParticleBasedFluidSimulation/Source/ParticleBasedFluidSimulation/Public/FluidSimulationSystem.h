@@ -39,9 +39,9 @@ public:
     void StepSimulation(float DeltaTime);
     void ApplySettings(FFluidSimSettings& settings);
     void ApplyExternalForce(const FVector& Location, const float& ForceAmplifier, const float& radius);
-    void CheckBoxCollision(const class UBoxComponent& Comp);
-    void CheckSphereCollision(const class USphereComponent& Comp);
-    void CheckCapsuleCollision(const class UCapsuleComponent& Comp);
+    void BoxCollision(const class UBoxComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos);
+    void SphereCollision(const class USphereComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos);
+    void CapsuleCollision(const class UCapsuleComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos);
 
     const TArray<FParticle>& GetParticles() const { return Particles; }
 private:
@@ -56,8 +56,11 @@ private:
     FVector CalculatePressureForce(const FVector& Position, const int Index);
     FVector CalculateViscosityForce(const FVector& Position, const int Index);
     FIntVector PositionToCellCoords(const FVector& Position, const float& Radius);
+    FVector CellToPosition(const FIntVector& Cell, const float& Radius);
     uint32 HashCell(const FIntVector& CellCoords);
     uint32 GetKeyFromHash(const uint32& Hash);
+
+    bool CheckBoxCollision(const FVector& Location, const FVector& IntersectionMinBounds, const FVector& IntersectionMaxBounds);
 
     TArray<FParticle> Particles;
     TArray<FVector> ExternalForces;

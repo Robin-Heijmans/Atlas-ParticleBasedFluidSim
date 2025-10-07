@@ -209,6 +209,10 @@ FIntVector FFluidSimulationSystem::PositionToCellCoords(const FVector& Position,
     return FIntVector(CellX, CellY, CellZ);
 }
 
+FVector FFluidSimulationSystem::CellToPosition(const FIntVector& Cell, const float& Radius) {
+    return FVector(Cell.X, Cell.Y, Cell.Z) * Radius;
+}
+
 uint32 FFluidSimulationSystem::HashCell(const FIntVector& CellCoords) {
     return CellCoords.X * HashKey1 + CellCoords.Y * HashKey2 + CellCoords.Z * HashKey3; // Multiply with 3 prime numbers
 }
@@ -237,14 +241,96 @@ void FFluidSimulationSystem::ApplyExternalForce(const FVector& Location, const f
     }
 }
 
-void FFluidSimulationSystem::CheckBoxCollision(const UBoxComponent& Comp) {
-    GEngine->AddOnScreenDebugMessage(4, 5.f, FColor::Yellow, (FString::Printf(TEXT("Check box collision"))));
-}
+void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos) {
+    // Transform other to local
+    FVector WorldScaleBounds = Bounds.GetComponentScale();
+    FVector TranslatedCenter = OtherComp.GetComponentLocation() - Bounds.GetComponentLocation();
+    FVector LocalCenter = TranslatedCenter / WorldScaleBounds;
+    FVector LocalScale = OtherComp.GetComponentScale() / WorldScaleBounds;
 
-void FFluidSimulationSystem::CheckSphereCollision(const USphereComponent& Comp) {
+    FVector ObjectExtent = OtherComp.GetUnscaledBoxExtent() * LocalScale;
+    FVector ObjMinBounds = LocalCenter - ObjectExtent;
+    FVector ObjMaxBounds = LocalCenter + ObjectExtent;
 
-}
+    FVector ThisExtent = Bounds.GetUnscaledBoxExtent();
+    FVector LocalMin = -ThisExtent;
+	FVector LocalMax = ThisExtent;
 
-void FFluidSimulationSystem::CheckCapsuleCollision(const UCapsuleComponent& Comp) {
+    FVector IntersectionMin = FVector(FMath::Max(ObjMinBounds.X, LocalMin.X),
+                                      FMath::Max(ObjMinBounds.Y, LocalMin.Y),
+                                      FMath::Max(ObjMinBounds.Z, LocalMin.Z));
     
+    FVector IntersectionMax = FVector(FMath::Min(ObjMaxBounds.X, LocalMax.X),
+                                      FMath::Min(ObjMaxBounds.Y, LocalMax.Y),
+                                      FMath::Min(ObjMaxBounds.Z, LocalMax.Z));
+    FIntVector MinCoords = PositionToCellCoords(IntersectionMin, SmoothingRadius);
+    FIntVector MaxCoords = PositionToCellCoords(IntersectionMax, SmoothingRadius);
+
+    for (int CellX = MinCoords.X; CellX < MaxCoords.X; CellX++) {
+        for (int CellY = MinCoords.Y; CellY < MaxCoords.Y; CellY++) {
+            for (int CellZ = MinCoords.Z; CellZ < MaxCoords.Z; CellZ++) {
+                FIntVector CellCoords = FIntVector(CellX, CellY, CellZ);
+                uint32 Key = GetKeyFromHash(HashCell(CellCoords));
+                uint32 StartIndex = StartIndices[Key];
+                for (uint32 i = StartIndex; i < TableSize; i++) {
+                    if (SpatialLookup[i].Key != Key) break;
+                    int ParticleIndex = SpatialLookup[i].ParticleIndex;
+                    FVector& Pos = Particles[ParticleIndex].Position;
+                    if (CheckBoxCollision(Pos, IntersectionMin, IntersectionMax)) {
+                        GEngine->AddOnScreenDebugMessage(4, 1.f, FColor::Yellow, (FString::Printf(TEXT("Box collision detected"))));
+                        FVector& Vel = Particles[ParticleIndex].Velocity;
+                        FVector DistToMin = Pos - ObjMinBounds;
+                        FVector DistToMax = ObjMaxBounds - Pos;
+
+                        // Which axis is the smallest overlap?
+                        float MinPenX = FMath::Min(FMath::Abs(DistToMin.X), FMath::Abs(DistToMax.X));
+                        float MinPenY = FMath::Min(FMath::Abs(DistToMin.Y), FMath::Abs(DistToMax.Y));
+                        float MinPenZ = FMath::Min(FMath::Abs(DistToMin.Z), FMath::Abs(DistToMax.Z));
+
+                        float SmallestPen = MinPenX;
+                        FVector PushDir = FVector::ZeroVector;
+
+                        if (MinPenY < SmallestPen) { SmallestPen = MinPenY; }
+                        if (MinPenZ < SmallestPen) { SmallestPen = MinPenZ; }
+
+                        if (SmallestPen == MinPenX) {
+                            if (FMath::Abs(DistToMin.X) < FMath::Abs(DistToMax.X))
+                                PushDir = FVector::BackwardVector;
+                            else
+                                PushDir = FVector::ForwardVector;
+                        } else if (SmallestPen == MinPenY) {
+                            if (FMath::Abs(DistToMin.Y) < FMath::Abs(DistToMax.Y))
+                                PushDir = FVector::LeftVector;
+                            else
+                                PushDir = FVector::RightVector;
+                        } else {
+                            if (FMath::Abs(DistToMin.Z) < FMath::Abs(DistToMax.Z))
+                                PushDir = FVector::DownVector;
+                            else
+                                PushDir = FVector::UpVector;
+                        }
+                        Pos += PushDir * (SmallestPen + 0.01f);
+                        Vel *= (-1.f * PushDir.GetAbs()) * CollisionDampening;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos) {
+
+}
+
+void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos) {
+    
+}
+
+bool FFluidSimulationSystem::CheckBoxCollision(const FVector& Location, const FVector& IntersectionMinBounds, const FVector& IntersectionMaxBounds) {
+    if (Location.X < IntersectionMinBounds.X || Location.X > IntersectionMaxBounds.X
+    || Location.Y < IntersectionMinBounds.Y || Location.Y > IntersectionMaxBounds.Y
+    || Location.Z < IntersectionMinBounds.Z || Location.Z > IntersectionMaxBounds.Z) {
+        return false;
+    }
+    else return true;
 }
