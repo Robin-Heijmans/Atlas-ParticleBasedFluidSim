@@ -36,6 +36,7 @@ private:
 	FTextureRHIRef DensityMap;
 
 	// Uniform Buffers
+	TUniformBufferRef<FFluidEnvironment> UBFluidEnvironment;
 	TUniformBufferRef<FFluidVolumeLocal> UBFluidBounds;
 	TUniformBufferRef<FFluidVolume> UBFluidVolume;
 

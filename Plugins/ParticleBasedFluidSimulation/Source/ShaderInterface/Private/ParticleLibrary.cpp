@@ -112,23 +112,26 @@ void UParticleBuffers::Initialize(
 UParticleBuffers::~UParticleBuffers()
 {
     // DELETE THE BUFFERS IF POSSIBLE PLEASE !!!!!!!!!!!111!!!11Elf!!!
-    if(Positions)           Positions->Release();
-	if(PredictedPositions)  PredictedPositions->Release();
-	if(Velocities)          Velocities->Release();
-	if(Densities)           Densities->Release();
-	if(SpatialIndices)      SpatialIndices->Release();
-	if(SpatialOffsets)      SpatialOffsets->Release();
+    if(Positions && Positions.IsValid())                    Positions->Release();
+	if(PredictedPositions && PredictedPositions.IsValid())  PredictedPositions->Release();
+	if(Velocities && Velocities.IsValid())                  Velocities->Release();
+	if(Densities && Densities.IsValid())                    Densities->Release();
+	if(SpatialIndices && SpatialIndices.IsValid())          SpatialIndices->Release();
+	if(SpatialOffsets && SpatialOffsets.IsValid())          SpatialOffsets->Release();
     bInitialized = false;
 }
 
 void UParticleBuffers::Register(FRDGBuilder& GraphBuilder)
 {
-    PositionsRef            = GraphBuilder.RegisterExternalBuffer(Positions, TEXT("Atlas Positions"));
-    PredictedPositionsRef   = GraphBuilder.RegisterExternalBuffer(PredictedPositions, TEXT("Atlas PredictedPositions"));
-    VelocitiesRef           = GraphBuilder.RegisterExternalBuffer(Velocities, TEXT("Atlas Velocities"));
-    DensitiesRef            = GraphBuilder.RegisterExternalBuffer(Densities, TEXT("Atlas Densities"));
-    SpatialIndicesRef       = GraphBuilder.RegisterExternalBuffer(SpatialIndices, TEXT("Atlas SpatialIndices"));
-    SpatialOffsetsRef       = GraphBuilder.RegisterExternalBuffer(SpatialOffsets, TEXT("Atlas SpatialOffsets"));  
+    if(bInitialized)
+    {
+        PositionsRef            = GraphBuilder.RegisterExternalBuffer(Positions, TEXT("Atlas Positions"));
+        PredictedPositionsRef   = GraphBuilder.RegisterExternalBuffer(PredictedPositions, TEXT("Atlas PredictedPositions"));
+        VelocitiesRef           = GraphBuilder.RegisterExternalBuffer(Velocities, TEXT("Atlas Velocities"));
+        DensitiesRef            = GraphBuilder.RegisterExternalBuffer(Densities, TEXT("Atlas Densities"));
+        SpatialIndicesRef       = GraphBuilder.RegisterExternalBuffer(SpatialIndices, TEXT("Atlas SpatialIndices"));
+        SpatialOffsetsRef       = GraphBuilder.RegisterExternalBuffer(SpatialOffsets, TEXT("Atlas SpatialOffsets"));  
+    }
 }
 
  void UParticleBuffers::CreateUAVs(
@@ -168,6 +171,7 @@ void UParticleBuffers::Register(FRDGBuilder& GraphBuilder)
 FFluidMathParams UParticleBuffers::GetParticleParameters(FRDGBuilder& GraphBuilder)
 {
     FFluidMathParams FluidMath;
+    if(!bInitialized) return FluidMath;
 
     CreateUAVs(
         GraphBuilder,
@@ -194,6 +198,7 @@ FFluidMathParams UParticleBuffers::GetParticleParameters(FRDGBuilder& GraphBuild
 FRenderPrepParams UParticleBuffers::GetRenderPrepParameters(FRDGBuilder& GraphBuilder)
 {
     FRenderPrepParams RenderPrep;
+    if(!bInitialized) return RenderPrep;
     
     // Might want to expand this if we need more params in Renderprep
     CreateSRVs(GraphBuilder, RenderPrep.Positions, RenderPrep.PredictedPositions, RenderPrep.SpatialIndices, RenderPrep.SpatialOffsets);

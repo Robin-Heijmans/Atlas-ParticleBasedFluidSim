@@ -48,7 +48,7 @@ namespace Shaders
 // Global Shader Buffers
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolume, "FluidVolume");
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolumeLocal, "Bounds");
-//IMPLEMENT_UNIFORM_BUFFER_STRUCT(FParticles, "FluidParticles");
+IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidEnvironment, "Environment");
 
 namespace FluidMathDispatch
 {
@@ -235,16 +235,17 @@ namespace FluidMathDispatch
 void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRenderPrepParams Params)
 {
     RDG_EVENT_SCOPE(GraphBuilder, "Atlas RenderPrep");
-
-    Shaders::FRenderPrepShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FRenderPrepShader::FParameters>();
+   
+    using ShaderType = Shaders::FRenderPrepShader;
+    ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<ShaderType::FParameters>();
     *PassParameters = Params;
 
     const FIntVector DispatchCount(32,32,32);
-    TShaderMapRef<Shaders::FRenderPrepShader> ComputeShader(GlobalShaderMap);
+    TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
 
     FComputeShaderUtils::AddPass(
         GraphBuilder,
-        RDG_EVENT_NAME("Execute RenderPrep"),
+        RDG_EVENT_NAME("Execute Atlas RenderPrep"),
         ERDGPassFlags::Compute,
         ComputeShader,
         PassParameters,
@@ -254,49 +255,25 @@ void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShade
 void FFluidMarchDispatchParams::Dispatch(
     FRDGBuilder& GraphBuilder, 
     FGlobalShaderMap* GlobalShaderMap, 
-    const FSceneView& InView, 
-    FRDGTexture* SceneColor, 
-    TUniformBufferRef<FFluidVolume> Volume, 
-    TUniformBufferRef<FFluidVolumeLocal> Bounds, 
-    const FRDGTextureRef& DensityMapRef)  
+    FFluidMarchParams Params)  
 {
-    RDG_EVENT_SCOPE(GraphBuilder, "FluidMarch");
+    RDG_EVENT_SCOPE(GraphBuilder, "Atlas FluidMarch");
  
-    Shaders::FFluidMarchShader::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMarchShader::FParameters>();
-
-    // Output Texture
-    FRDGTextureDesc OutputDesc {};
-    OutputDesc = SceneColor->Desc;
-    //OutputDesc.Extent /= 4.0;
-    OutputDesc.Reset();
-    OutputDesc.Flags |= TexCreate_UAV;
-    OutputDesc.Flags &= ~(TexCreate_RenderTargetable | TexCreate_FastVRAM);
-    const FLinearColor ClearColor(0., 0., 0., 0.);
-    OutputDesc.ClearValue = FClearValueBinding(ClearColor);
-
-    const FRDGTextureRef OutputTexture = GraphBuilder.CreateTexture(OutputDesc, TEXT("TanFluidShader_Output"));
+    using ShaderType = Shaders::FFluidMarchShader;
+    ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<ShaderType::FParameters>();
 
     //DensityMap Input
-    PassParameters->Target = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutputTexture));
-    PassParameters->DensityMap = GraphBuilder.CreateSRV(FRDGTextureSRVDesc(DensityMapRef));
-    PassParameters->DensityMapSize = FUintVector3(256);
-    PassParameters->FluidVolume = Volume;
-    PassParameters->FluidBounds = Bounds;
-    PassParameters->SceneColor = SceneColor;
-    PassParameters->View = InView.ViewUniformBuffer;
+    *PassParameters = Params;
 
-	const FIntPoint ViewSize = SceneColor->Desc.Extent;
+	const FIntPoint ViewSize = PassParameters->SceneColor->Desc.Extent;
     const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, FIntPoint(48,16));
     
-    TShaderMapRef<Shaders::FFluidMarchShader> ComputeShader(GlobalShaderMap);
+    TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
     FComputeShaderUtils::AddPass(
         GraphBuilder,
-        RDG_EVENT_NAME("Execute TanComputeShader %dx%d", ViewSize.X, ViewSize.Y),
-        ERDGPassFlags::Compute,
+        RDG_EVENT_NAME("Execute Atlas FluidMarch %dx%d", ViewSize.X, ViewSize.Y),
+        ERDGPassFlags::Compute | ERDGPassFlags::NeverCull,
         ComputeShader,
         PassParameters,
         DispatchCount);
-
-    AddCopyTexturePass(GraphBuilder, OutputTexture, SceneColor);
-
 }
