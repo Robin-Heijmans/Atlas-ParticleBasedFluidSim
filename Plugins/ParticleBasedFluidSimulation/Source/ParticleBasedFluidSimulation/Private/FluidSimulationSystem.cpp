@@ -1,4 +1,8 @@
 #include "FluidSimulationSystem.h"
+#include "Components/BoxComponent.h"
+#include "Components/SphereComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 
 FFluidSimulationSystem::FFluidSimulationSystem() {
 
@@ -233,14 +237,14 @@ void FFluidSimulationSystem::ApplyExternalForce(const FVector& Location, const f
     }
 }
 
-void FFluidSimulationSystem::CheckBoxCollision(const FVector& Location) {
+void FFluidSimulationSystem::CheckBoxCollision(const UBoxComponent& Comp) {
+    GEngine->AddOnScreenDebugMessage(4, 5.f, FColor::Yellow, (FString::Printf(TEXT("Check box collision"))));
+}
+
+void FFluidSimulationSystem::CheckSphereCollision(const USphereComponent& Comp) {
 
 }
 
-void FFluidSimulationSystem::CheckSphereCollision(const FVector& Location) {
-
-}
-
-void FFluidSimulationSystem::CheckCapsuleCollision(const FVector& Location) {
+void FFluidSimulationSystem::CheckCapsuleCollision(const UCapsuleComponent& Comp) {
     
 }

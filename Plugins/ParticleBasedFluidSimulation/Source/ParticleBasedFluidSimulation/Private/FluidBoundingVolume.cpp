@@ -26,6 +26,11 @@ UFluidBoundingVolumeComponent::UFluidBoundingVolumeComponent()
 
 	Bounds = CreateDefaultSubobject<UBoxComponent>(TEXT("Bounds"));
     Bounds->SetupAttachment(this);
+    Bounds->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    Bounds->SetCollisionObjectType(ECC_WorldDynamic);
+    Bounds->SetCollisionResponseToAllChannels(ECR_Ignore);
+    Bounds->SetCollisionResponseToChannel(ECC_PhysicsBody, ECR_Overlap);
+    Bounds->SetGenerateOverlapEvents(true);
 
 	ParticleMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ParticleMesh"));
     ParticleMesh->SetupAttachment(this);
@@ -285,24 +290,24 @@ void UFluidBoundingVolumeComponent::CollisionsCheck() {
     for (auto& Overlap : Overlaps)
     {
         UPrimitiveComponent* Comp = Overlap.GetComponent();
-        if (!Comp || !Comp->IsSimulatingPhysics()) continue;
-
+        if (!Comp) continue;
         FVector LocalPos = GetComponentTransform().InverseTransformPosition(Comp->GetComponentLocation());
 
         if (UBoxComponent* Box = Cast<UBoxComponent>(Comp)) {
             // To be implemented
-            Simulation->CheckBoxCollision(LocalPos);
+            Simulation->CheckBoxCollision(*Box);
         }
         else if (USphereComponent* Sphere = Cast<USphereComponent>(Comp)) {
             // To be implemented
-            Simulation->CheckSphereCollision(LocalPos);
+            Simulation->CheckSphereCollision(*Sphere);
         }
         else if (UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Comp)) {
             // To be implemented
-            Simulation->CheckCapsuleCollision(LocalPos);
+            Simulation->CheckCapsuleCollision(*Capsule);
         }
         else {
             UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>(Comp);
+            GEngine->AddOnScreenDebugMessage(3, 5.f, FColor::Yellow, (FString::Printf(TEXT("RIP: Static mesh detected"))));
             if (MeshComp && MeshComp->GetBodyInstance())
             {
                 FBodyInstance* Body = MeshComp->GetBodyInstance();

@@ -39,9 +39,9 @@ public:
     void StepSimulation(float DeltaTime);
     void ApplySettings(FFluidSimSettings& settings);
     void ApplyExternalForce(const FVector& Location, const float& ForceAmplifier, const float& radius);
-    void CheckBoxCollision(const FVector& Location);
-    void CheckSphereCollision(const FVector& Location);
-    void CheckCapsuleCollision(const FVector& Location);
+    void CheckBoxCollision(const class UBoxComponent& Comp);
+    void CheckSphereCollision(const class USphereComponent& Comp);
+    void CheckCapsuleCollision(const class UCapsuleComponent& Comp);
 
     const TArray<FParticle>& GetParticles() const { return Particles; }
 private:
