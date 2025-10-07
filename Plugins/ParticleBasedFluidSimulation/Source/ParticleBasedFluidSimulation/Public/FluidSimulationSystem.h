@@ -76,7 +76,7 @@ private:
     float CollisionDampening = 0.6f;
     float SmoothingRadius = 4.f;
     float ViscosityStrength = 1.f;
-    float Sven = 0.2f;
+    float Sven = 0.1f;
 
     uint32 TableSize = 0; 
     const uint32 HashKey1 = 467;
