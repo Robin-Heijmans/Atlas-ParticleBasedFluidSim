@@ -61,6 +61,8 @@ private:
     uint32 GetKeyFromHash(const uint32& Hash);
 
     bool CheckBoxCollision(const FVector& Location, const FVector& IntersectionMinBounds, const FVector& IntersectionMaxBounds);
+    bool CheckSphereCollision(const FVector& Location, const FVector& SphereCentre, const FVector& Radius3D);
+
 
     TArray<FParticle> Particles;
     TArray<FVector> ExternalForces;
