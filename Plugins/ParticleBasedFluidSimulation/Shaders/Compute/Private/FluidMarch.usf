@@ -36,8 +36,6 @@ uint3 DensityMapSize;
 Texture2D<float3> SceneColor;
 RWTexture2D<float3> Target;
 
-
-
 static uint RNG = 4294967295;
 static const float TinyNudge = 0.01;
 static const float3 LightPos = float3(0,0,1);
@@ -294,7 +292,7 @@ float3 CalculateNormal(float3 RayPos)
     float faceWeight = min(o.x, min(o.y, o.z));
     float3 faceNormal = normalize(CalculateClosestFaceNormal(FluidVolume.BoundsSize, pos));
     const float smoothDst = 0.3;
-    const float smoothPow = 5;
+    const float smoothPow = 3;
     faceWeight = (1 - smoothstep(0, smoothDst, faceWeight)) * (1 - pow(saturate(volumeNormal.y), smoothPow));
 
     return normalize(volumeNormal * (1 - faceWeight) + faceNormal * (faceWeight));
