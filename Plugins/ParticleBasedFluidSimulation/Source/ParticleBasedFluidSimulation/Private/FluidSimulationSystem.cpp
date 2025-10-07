@@ -266,9 +266,9 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
     FIntVector MinCoords = PositionToCellCoords(IntersectionMin, SmoothingRadius);
     FIntVector MaxCoords = PositionToCellCoords(IntersectionMax, SmoothingRadius);
 
-    for (int CellX = MinCoords.X; CellX < MaxCoords.X; CellX++) {
-        for (int CellY = MinCoords.Y; CellY < MaxCoords.Y; CellY++) {
-            for (int CellZ = MinCoords.Z; CellZ < MaxCoords.Z; CellZ++) {
+    for (int CellX = MinCoords.X; CellX <= MaxCoords.X; CellX++) {
+        for (int CellY = MinCoords.Y; CellY <= MaxCoords.Y; CellY++) {
+            for (int CellZ = MinCoords.Z; CellZ <= MaxCoords.Z; CellZ++) {
                 FIntVector CellCoords = FIntVector(CellX, CellY, CellZ);
                 uint32 Key = GetKeyFromHash(HashCell(CellCoords));
                 uint32 StartIndex = StartIndices[Key];
@@ -282,7 +282,6 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
                         FVector DistToMin = Pos - ObjMinBounds;
                         FVector DistToMax = ObjMaxBounds - Pos;
 
-                        // Which axis is the smallest overlap?
                         float MinPenX = FMath::Min(FMath::Abs(DistToMin.X), FMath::Abs(DistToMax.X));
                         float MinPenY = FMath::Min(FMath::Abs(DistToMin.Y), FMath::Abs(DistToMax.Y));
                         float MinPenZ = FMath::Min(FMath::Abs(DistToMin.Z), FMath::Abs(DistToMax.Z));
@@ -294,23 +293,29 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
                         if (MinPenZ < SmallestPen) { SmallestPen = MinPenZ; }
 
                         if (SmallestPen == MinPenX) {
-                            if (FMath::Abs(DistToMin.X) < FMath::Abs(DistToMax.X))
+                            if (FMath::Abs(DistToMin.X) < FMath::Abs(DistToMax.X)) {
                                 PushDir = FVector::BackwardVector;
-                            else
+                            }
+                            else {
                                 PushDir = FVector::ForwardVector;
+                            }
                         } else if (SmallestPen == MinPenY) {
-                            if (FMath::Abs(DistToMin.Y) < FMath::Abs(DistToMax.Y))
+                            if (FMath::Abs(DistToMin.Y) < FMath::Abs(DistToMax.Y)) {
                                 PushDir = FVector::LeftVector;
-                            else
+                            }
+                            else {
                                 PushDir = FVector::RightVector;
+                            }
                         } else {
-                            if (FMath::Abs(DistToMin.Z) < FMath::Abs(DistToMax.Z))
+                            if (FMath::Abs(DistToMin.Z) < FMath::Abs(DistToMax.Z)) {
                                 PushDir = FVector::DownVector;
-                            else
+                            }
+                            else {
                                 PushDir = FVector::UpVector;
+                            }
                         }
-                        Pos += PushDir * (SmallestPen + 0.01f);
-                        Vel *= (-1.f * PushDir.GetAbs()) * CollisionDampening;
+                        Pos += PushDir * SmallestPen;
+                        Vel *= (-PushDir.GetAbs() * CollisionDampening + (FVector::OneVector - PushDir.GetAbs()));
                     }
                 }
             }
