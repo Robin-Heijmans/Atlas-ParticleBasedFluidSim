@@ -18,7 +18,7 @@
 
 #include "FluidBoundingVolume.h"
 
-const FUintVector3 DensityMapSize = FUintVector3(128, 128, 128);
+const FUintVector3 DensityMapSize = FUintVector3(64, 64, 64);
 
 namespace 
 {

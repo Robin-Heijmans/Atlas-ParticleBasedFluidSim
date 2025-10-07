@@ -36,16 +36,23 @@ uint3 DensityMapSize;
 Texture2D<float3> SceneColor;
 RWTexture2D<float3> Target;
 
-static const float TinyNudge = 0.01;
+static const float TinyNudge = 0.1;
+static const float volumeValueOffset = 0.01;
 
 static const float iorAir = 1.0;
 
 const float SampleDensity(const float3 RayPos)
 {
-    // THis WORKS ?!
-    float3 UVW = (RayPos + FluidVolume.BoundsSize * 0.5) / FluidVolume.BoundsSize;
-    float Density = DensityMap.SampleLevel(GlobalBilinearClampedSampler, UVW, 0).r;
-    return Density;
+    // THis WORKS ?!   
+    float3 posLocal = RayPos - FluidVolume.BoundsPosition;
+    float3 UVW = (posLocal + FluidVolume.BoundsSize * 0.5) / FluidVolume.BoundsSize;
+
+
+    const float epsilon = 0.0001;
+    bool isEdge = any(UVW >= 1 - epsilon || UVW <= epsilon);
+    if (isEdge) return -volumeValueOffset;
+
+    return DensityMap.SampleLevel(GlobalBilinearClampedSampler, UVW, 0).r - volumeValueOffset;
 }
 const float3 Transmittance(float thickness)
 {
@@ -63,7 +70,7 @@ float RandomValue(inout uint state)
     return NextRandom(state) / 4294967295.0; // 2^32 - 1
 }
 
-float2 GetPixelUV(const uint2 Pixel) { return (float2(Pixel) + 0.5) * View.ViewSizeAndInvSize.zw; }
+float2 GetPixelUV(const uint2 Pixel) { return (float2(Pixel) + 0.5 - View.TemporalAAJitter.xy) * View.ViewSizeAndInvSize.zw; }
 
 float3 GetRayOrigin() { return View.WorldViewOriginHigh + View.WorldViewOriginLow; }
 
@@ -198,7 +205,6 @@ SurfaceInfo FindNextSurface(float3 origin, float3 RayDir, bool findNextFluidEntr
     float2 boundsDstInfo = RayBoxDst(Bounds.MinBounds, Bounds.MaxBounds, origin, RayDir);
     float r = (RandomValue(RNG) - 0.5) * Environment.MarchStepSize * 0.4 * 1;
     bool hasExittedFluid = !FluidContains(origin);
-    origin -= FluidVolume.BoundsPosition;
     origin = origin + RayDir * (boundsDstInfo.x + r);
 
     float stepSize = Environment.MarchStepSize;
@@ -242,7 +248,7 @@ SurfaceInfo FindNextSurface(float3 origin, float3 RayDir, bool findNextFluidEntr
 
 float3 CalculateClosestFaceNormal(float3 boxSize, float3 p)
 {
-    float3 halfSize = boxSize/2;
+    float3 halfSize = boxSize * 0.5;
     float3 o = (halfSize - abs(p));
     return 
     (o.x < o.y && o.x < o.z) ? float3(sign(p.x), 0, 0) : 
@@ -255,24 +261,25 @@ float3 CalculateNormal(float3 RayPos)
     float3 pos = RayPos - FluidVolume.BoundsPosition;
     float3 uvw = (pos + FluidVolume.BoundsSize * 0.5) / FluidVolume.BoundsSize;
 
-    const float s = 1;
+    const float s = 0.2;
     float3 offsetX = float3(1, 0, 0) * s;
     float3 offsetY = float3(0, 1, 0) * s;
     float3 offsetZ = float3(0, 0, 1) * s;
 
-    float dx = SampleDensity(pos - offsetX) - SampleDensity(pos + offsetX);
-    float dy = SampleDensity(pos - offsetY) - SampleDensity(pos + offsetY);
-    float dz = SampleDensity(pos - offsetZ) - SampleDensity(pos + offsetZ);
+    float dx = SampleDensity(RayPos - offsetX) - SampleDensity(RayPos + offsetX);
+    float dy = SampleDensity(RayPos - offsetY) + SampleDensity(RayPos + offsetY);
+    float dz = SampleDensity(RayPos - offsetZ) - SampleDensity(RayPos + offsetZ);
 
     float3 volumeNormal = normalize(float3(dx, dy, dz));
 
     // Smoothly flatten normals out at boundary edges
-    float3 o = FluidVolume.BoundsSize - abs(pos);
+    float3 o = pos;
     float faceWeight = min(o.x, min(o.y, o.z));
     float3 faceNormal = normalize(CalculateClosestFaceNormal(FluidVolume.BoundsSize, pos));
     const float smoothDst = 0.3;
-    const float smoothPow = 5;
+    const float smoothPow = 3;
     faceWeight = (1 - smoothstep(0, smoothDst, faceWeight)) * (1 - pow(saturate(volumeNormal.y), smoothPow));
+    faceWeight = 0;
 
     return normalize(volumeNormal * (1 - faceWeight) + faceNormal * (faceWeight));
 }
@@ -297,7 +304,6 @@ float CalculateDensityAlongRay(float3 RayPos, float3 RayDir, float stepSize)
     while (dstTravelled < dstThroughBounds)
     {
         RayPos = entryPoint + RayDir * dstTravelled;
-        RayPos -= FluidVolume.BoundsPosition;
         float density = SampleDensity(RayPos) * Environment.DensityMultiplier * stepSize;
         if (density > 0)
         {
