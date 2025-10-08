@@ -1,6 +1,5 @@
 #include "Shaders.h"
 
-#include "PixelShaderUtils.h"
 #include "MeshPassProcessor.inl"
 #include "StaticMeshResources.h"
 #include "DynamicMeshBuilder.h"
@@ -25,10 +24,7 @@
 
 namespace Shaders
 {
-
     // Implementations ... 
-    
-    //IMPLEMENT_GLOBAL_SHADER(FParticleSimulationShader,  "/Shaders/Compute/ParticleSim.usf", "Compute", SF_Compute);
     IMPLEMENT_GLOBAL_SHADER(FRenderPrepShader,                  "/Shaders/Compute/RenderPrep.usf", "Compute", SF_Compute);
     IMPLEMENT_GLOBAL_SHADER(FFluidMarchShader,                  "/Shaders/Compute/FluidMarch.usf", "Compute", SF_Compute);
 
@@ -46,9 +42,59 @@ namespace Shaders
 }
 
 // Global Shader Buffers
+//IMPLEMENT_STATIC_AND_SHADER_UNIFORM_BUFFER_STRUCT
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolume, "FluidVolume");
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolumeLocal, "Bounds");
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidEnvironment, "Environment");
+
+namespace RenderDispatch
+{
+    FRDGPassRef GenerateDensityMap(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRenderPrepParams Params)
+    {
+        RDG_EVENT_SCOPE(GraphBuilder, "Atlas RenderPrep");
+    
+        using ShaderType = Shaders::FRenderPrepShader;
+        ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<ShaderType::FParameters>();
+        *PassParameters = Params;
+
+        const FIntVector DispatchCount(Params.DensityMapSize / 8);
+        TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
+
+        return FComputeShaderUtils::AddPass(
+            GraphBuilder,
+            RDG_EVENT_NAME("Execute Atlas RenderPrep"),
+            ERDGPassFlags::AsyncCompute,
+            ComputeShader,
+            PassParameters,
+            DispatchCount);
+    }
+
+    FRDGPassRef Raymarch(
+        FRDGBuilder& GraphBuilder, 
+        FGlobalShaderMap* GlobalShaderMap, 
+        FFluidMarchParams Params)  
+    {
+        RDG_EVENT_SCOPE(GraphBuilder, "Atlas FluidMarch");
+    
+        using ShaderType = Shaders::FFluidMarchShader;
+        ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<ShaderType::FParameters>();
+
+        //DensityMap Input
+        *PassParameters = Params;
+
+        const FIntPoint ViewSize = PassParameters->SceneColor->Desc.Extent;
+        const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, FComputeShaderUtils::kGolden2DGroupSize);
+        TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
+
+        return FComputeShaderUtils::AddPass(
+            GraphBuilder,
+            RDG_EVENT_NAME("Execute Atlas FluidMarch %dx%d", ViewSize.X, ViewSize.Y),
+            ERDGPassFlags::AsyncCompute,
+            ComputeShader,
+            PassParameters,
+            DispatchCount);
+    }
+}
 
 namespace FluidMathDispatch
 {
@@ -66,7 +112,7 @@ namespace FluidMathDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute ExternalForces"), 
-            ERDGPassFlags::Compute,
+            ERDGPassFlags::AsyncCompute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -85,7 +131,7 @@ namespace FluidMathDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute UpdateSpatialLookup"), 
-            ERDGPassFlags::Compute,
+            ERDGPassFlags::AsyncCompute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -149,7 +195,7 @@ namespace FluidMathDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute UpdateSpatialLookup"), 
-            ERDGPassFlags::Compute,
+            ERDGPassFlags::AsyncCompute,
             OffsetComputeShader,
             PassParametersOffset,
             DispatchCount);
@@ -168,7 +214,7 @@ namespace FluidMathDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute CalculateDensity"), 
-            ERDGPassFlags::Compute,
+            ERDGPassFlags::AsyncCompute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -187,7 +233,7 @@ namespace FluidMathDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute CalculatePressureForce"), 
-            ERDGPassFlags::Compute,
+            ERDGPassFlags::AsyncCompute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -206,7 +252,7 @@ namespace FluidMathDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute CalculateViscosityForce"), 
-            ERDGPassFlags::Compute,
+            ERDGPassFlags::AsyncCompute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -225,55 +271,10 @@ namespace FluidMathDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute UpdatePositions"), 
-            ERDGPassFlags::Compute,
+            ERDGPassFlags::AsyncCompute,
             ComputeShader,
             PassParameters,
             DispatchCount);
     }
 }
 
-void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRenderPrepParams Params)
-{
-    RDG_EVENT_SCOPE(GraphBuilder, "Atlas RenderPrep");
-   
-    using ShaderType = Shaders::FRenderPrepShader;
-    ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<ShaderType::FParameters>();
-    *PassParameters = Params;
-
-    const FIntVector DispatchCount(Params.DensityMapSize / 8);
-    TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
-
-    FComputeShaderUtils::AddPass(
-        GraphBuilder,
-        RDG_EVENT_NAME("Execute Atlas RenderPrep"),
-        ERDGPassFlags::AsyncCompute,
-        ComputeShader,
-        PassParameters,
-        DispatchCount);
-}
-
-void FFluidMarchDispatchParams::Dispatch(
-    FRDGBuilder& GraphBuilder, 
-    FGlobalShaderMap* GlobalShaderMap, 
-    FFluidMarchParams Params)  
-{
-    RDG_EVENT_SCOPE(GraphBuilder, "Atlas FluidMarch");
- 
-    using ShaderType = Shaders::FFluidMarchShader;
-    ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<ShaderType::FParameters>();
-
-    //DensityMap Input
-    *PassParameters = Params;
-
-	const FIntPoint ViewSize = PassParameters->SceneColor->Desc.Extent;
-    const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, FComputeShaderUtils::kGolden2DGroupSize);
-    
-    TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
-    FComputeShaderUtils::AddPass(
-        GraphBuilder,
-        RDG_EVENT_NAME("Execute Atlas FluidMarch %dx%d", ViewSize.X, ViewSize.Y),
-        ERDGPassFlags::AsyncCompute,
-        ComputeShader,
-        PassParameters,
-        DispatchCount);
-}

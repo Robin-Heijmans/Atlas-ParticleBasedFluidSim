@@ -22,14 +22,13 @@ public:
 	UParticleBuffers() = default;
 	~UParticleBuffers();
 
-	void Initialize(TUniformBufferRef<FFluidVolumeLocal> VolumeBounds, const class AFluidBoundingVolume* Volume);
+	void Initialize(class AFluidBoundingVolume* Volume);
 	
-	// Call this at thw beginning of the frame
+	// Call this at the beginning of the frame
 	void Register(FRDGBuilder& GraphBuilder);
 
-	FFluidMathParams GetParticleParameters(FRDGBuilder& GraphBuilder);
-	// DensityMap left blanc
-	FRenderPrepParams GetRenderPrepParameters(FRDGBuilder& GraphBuilder);
+	void DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap);
+	void DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRDGTexture* SceneColor, const FSceneView& InView);
 
 	struct FSimulationSettings
 	{
@@ -44,23 +43,6 @@ public:
 	} SimulationSettings;
 	bool bInitialized = false;
 private:
-	void CreateUAVs( 
-		FRDGBuilder& GraphBuilder,
-		FRDGBufferUAV*& OutPositions, 
-		FRDGBufferUAV*& OutPredictedPositions, 
-		FRDGBufferUAV*& OutVelocities, 
-		FRDGBufferUAV*& OutDensities, 
-		FRDGBufferUAV*& OutSpatialIndcies, 
-		FRDGBufferUAV*& OutSpatialOffsets
-	);
-
-	void CreateSRVs(
-		FRDGBuilder& GraphBuilder,
-		FRDGBufferSRV*& OutPositions,
-    	FRDGBufferSRV*& OutPredictedPositions,
-		FRDGBufferSRV*& OutSpatialIndices, 
-		FRDGBufferSRV*& OutSpatialOffsets
-	);
 
 	// Persistent through frames
 	TRefCountPtr<FRDGPooledBuffer> Positions;
@@ -69,6 +51,14 @@ private:
 	TRefCountPtr<FRDGPooledBuffer> Densities;
 	TRefCountPtr<FRDGPooledBuffer> SpatialIndices;
 	TRefCountPtr<FRDGPooledBuffer> SpatialOffsets;
+	
+	const FUintVector3 DensityMapSize = FUintVector3(128, 128, 128);
+	TRefCountPtr<IPooledRenderTarget> DensityMap;
+
+	// Uniform Buffers
+	TUniformBufferRef<FFluidEnvironment> UBFluidEnvironment;
+	TUniformBufferRef<FFluidVolumeLocal> UBFluidBounds;
+	TUniformBufferRef<FFluidVolume> UBFluidVolume;
 
 	// These are local to a single frame
 	FRDGBufferRef PositionsRef = nullptr;

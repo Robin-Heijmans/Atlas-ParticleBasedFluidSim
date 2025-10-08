@@ -13,7 +13,6 @@
 #include "MeshPassUtils.h"
 #include "MaterialShader.h"
 
-#include "Shaders.generated.h"
 
 /// look at these comments for naming conventions pls
 
@@ -130,61 +129,11 @@ END_SHADER_PARAMETER_STRUCT()
 
 
 
-// ---------
-// USTRUCT() struct F*ShaderName*DispatchParams
-// int x,y,z for numthreads
-// members... (dont forget to add UPROPERT())
-// needs default constructor
-//  
-// IMPORTANT add function decleration:
-// void Dispatch(FRDGBuilder& GraphBuilder); -> defined in Shaders.cpp
-// ---------
-
-// Cannot be in a namespace, generated_body() is being skipped (???)
-
-// Fluid March // Actually rendering to screen
-USTRUCT(BlueprintType)
-struct SHADERINTERFACE_API FFluidMarchDispatchParams
-{	
-    GENERATED_BODY()
-public:
-    int X = 1;
-    int Y = 1;
-    int Z = 1;
-
-    FFluidMarchDispatchParams() = default;
-    FFluidMarchDispatchParams(int x, int y, int z)
-        : X(x)
-        , Y(y)
-        , Z(z)
-    {
-    }
-    void Dispatch(FRDGBuilder& GraphBuilder, 
-        FGlobalShaderMap* GlobalShaderMap, 
-        FFluidMarchParams Params);
-};
-
-// GenerateDensityMap
-USTRUCT(BlueprintType)
-struct SHADERINTERFACE_API FRenderPrepDispatchParams
-{	
-GENERATED_BODY()
-    public:
-    int X = 1;
-    int Y = 1;
-    int Z = 1;
-
-    FRenderPrepDispatchParams() = default;
-    FRenderPrepDispatchParams(int x, int y, int z)
-        : X(x)
-        , Y(y)
-        , Z(z)
-    {
-    }    
-    
-    void Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRenderPrepParams Params);
-};
-
+namespace RenderDispatch
+{
+    FRDGPassRef GenerateDensityMap(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRenderPrepParams Params);
+    FRDGPassRef Raymarch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMarchParams Params);
+}
 
 namespace FluidMathDispatch
 {

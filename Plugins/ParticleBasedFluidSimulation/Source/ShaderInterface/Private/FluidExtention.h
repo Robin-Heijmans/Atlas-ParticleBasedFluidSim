@@ -28,18 +28,6 @@ public:
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FPostProcessingInputs& Inputs) override;
 
 private:
-	// Shader 'Dispatchers'
-	FRenderPrepDispatchParams RenderPrep;
-	FFluidMarchDispatchParams FluidMarch;
-	FFluidMathParams FluidMath;
-
-	TRefCountPtr<IPooledRenderTarget> DensityMap;
-	
-	// Uniform Buffers
-	TUniformBufferRef<FFluidEnvironment> UBFluidEnvironment;
-	TUniformBufferRef<FFluidVolumeLocal> UBFluidBounds;
-	TUniformBufferRef<FFluidVolume> UBFluidVolume;
-
 	float TotalTime = 0.0f;
     const float FixedTimeStep = 1.f / 60.f;
 };
