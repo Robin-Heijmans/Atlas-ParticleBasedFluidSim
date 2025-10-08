@@ -323,7 +323,7 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
     }
 }
 
-void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos) {
+void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos, UWorld* World) {
     FVector WorldScaleBounds = Bounds.GetComponentScale();
     FVector TranslatedCenter = OtherComp.GetComponentLocation() - Bounds.GetComponentLocation();
     FVector LocalCenter = TranslatedCenter / WorldScaleBounds;
@@ -344,8 +344,9 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
     FVector IntersectionMax = FVector(FMath::Min(ObjMaxBounds.X, LocalMax.X),
                                       FMath::Min(ObjMaxBounds.Y, LocalMax.Y),
                                       FMath::Min(ObjMaxBounds.Z, LocalMax.Z));
-    FIntVector MinCoords = PositionToCellCoords(IntersectionMin, SmoothingRadius);
-    FIntVector MaxCoords = PositionToCellCoords(IntersectionMax, SmoothingRadius);
+    FVector SafetyMargin = FVector(0.5f * SmoothingRadius);
+    FIntVector MinCoords = PositionToCellCoords(IntersectionMin - SafetyMargin, SmoothingRadius);
+    FIntVector MaxCoords = PositionToCellCoords(IntersectionMax + SafetyMargin, SmoothingRadius);
     
     for (int CellX = MinCoords.X; CellX <= MaxCoords.X; CellX++) {
         for (int CellY = MinCoords.Y; CellY <= MaxCoords.Y; CellY++) {
@@ -361,18 +362,12 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
                     int ParticleIndex = SpatialLookup[i].ParticleIndex;
                     FVector& Pos = Particles[ParticleIndex].Position;
                     FVector Offset = (Pos - LocalCenter) / SphereRadius3D;
-                    GEngine->AddOnScreenDebugMessage(5, 1.f, FColor::Red, (FString::Printf(TEXT("Offset: %f, %f, %f"), Offset.X, Offset.Y, Offset.Z)));
                     if (CheckSphereCollision(Offset)) {
                         FVector& Vel = Particles[ParticleIndex].Velocity;
                         FVector Direction = Offset / Offset.Size();
-                        FVector OnSurfaceWorld = Offset * Direction;
-                        GEngine->AddOnScreenDebugMessage(7, 1.f, FColor::Green, (FString::Printf(TEXT("Direction: %f, %f, %f"), Direction.X, Direction.Y, Direction.Z)));
-                        GEngine->AddOnScreenDebugMessage(6, 1.f, FColor::Blue, (FString::Printf(TEXT("Distance: %f"), Offset.Size())));
+                        FVector OnSurfaceWorld = ((1.f - Offset.Size()) * SphereRadius3D) * Direction;
                         Pos += OnSurfaceWorld;
-                        //FVector Normal = (Offset / (SphereRadius3D * SphereRadius3D)).GetSafeNormal();
-                        //Vel -= 2.f * Direction;
-                        //Vel *= CollisionDampening;
-                        Vel = FVector::ZeroVector;
+                        Vel = ReflectVelocity(Vel, Direction) * CollisionDampening;
                     }
                 }
             }
@@ -405,4 +400,8 @@ bool FFluidSimulationSystem::CheckSphereCellCollision(const FIntVector& CellCoor
                                CellMin.Y < SphereCenter.Y ? CellMin.Y : CellMax.Y, 
                                CellMin.Z < SphereCenter.Z ? CellMin.Z : CellMax.Z));
     return CheckSphereCollision((PosToCheck - SphereCenter) / Radius3D);
+}
+
+FVector FFluidSimulationSystem::ReflectVelocity(const FVector& Vel, const FVector& Normal) {
+    return Vel - 2.f * FVector::DotProduct(Vel, Normal) * Normal;
 }
