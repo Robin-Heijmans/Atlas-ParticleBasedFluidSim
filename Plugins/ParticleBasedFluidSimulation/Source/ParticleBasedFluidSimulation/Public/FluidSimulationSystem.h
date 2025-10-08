@@ -61,9 +61,8 @@ private:
     uint32 GetKeyFromHash(const uint32& Hash);
 
     bool CheckBoxCollision(const FVector& Position, const FVector& IntersectionMinBounds, const FVector& IntersectionMaxBounds);
-    bool CheckSphereCollision(const FVector& Position);
     bool CheckSphereCellCollision(const FIntVector& CellCoords, const FVector& SphereCenter, const FVector& Radius3D);
-    bool CheckCapsuleCollision(const FVector& Position, const FVector& LocalCenter, const float& Radius, const float& HalfHeightCylinder);
+    bool CheckSphereCollision(const float& Distance, const float& Radius);
     FVector ReflectVelocity(const FVector& Vel, const FVector& Normal);
 
 
