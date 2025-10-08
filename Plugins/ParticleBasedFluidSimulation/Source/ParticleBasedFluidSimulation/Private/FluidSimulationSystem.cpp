@@ -346,18 +346,33 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
                                       FMath::Min(ObjMaxBounds.Z, LocalMax.Z));
     FIntVector MinCoords = PositionToCellCoords(IntersectionMin, SmoothingRadius);
     FIntVector MaxCoords = PositionToCellCoords(IntersectionMax, SmoothingRadius);
+    
     for (int CellX = MinCoords.X; CellX <= MaxCoords.X; CellX++) {
         for (int CellY = MinCoords.Y; CellY <= MaxCoords.Y; CellY++) {
             for (int CellZ = MinCoords.Z; CellZ <= MaxCoords.Z; CellZ++) {
                 FIntVector CellCoords = FIntVector(CellX, CellY, CellZ);
+                GEngine->AddOnScreenDebugMessage(4, 1.f, FColor::Yellow, (FString::Printf(TEXT("Sphere collision detected"))));
+                //if (!CheckSphereCellCollision(CellCoords, LocalCenter, SphereRadius3D)) continue;
+
                 uint32 Key = GetKeyFromHash(HashCell(CellCoords));
                 uint32 StartIndex = StartIndices[Key];
                 for (uint32 i = StartIndex; i < TableSize; i++) {
                     if (SpatialLookup[i].Key != Key) break;
                     int ParticleIndex = SpatialLookup[i].ParticleIndex;
                     FVector& Pos = Particles[ParticleIndex].Position;
-                    if (CheckSphereCollision(Pos, LocalCenter, SphereRadius3D)) {
-                        
+                    FVector Offset = (Pos - LocalCenter) / SphereRadius3D;
+                    GEngine->AddOnScreenDebugMessage(5, 1.f, FColor::Red, (FString::Printf(TEXT("Offset: %f, %f, %f"), Offset.X, Offset.Y, Offset.Z)));
+                    if (CheckSphereCollision(Offset)) {
+                        FVector& Vel = Particles[ParticleIndex].Velocity;
+                        FVector Direction = Offset / Offset.Size();
+                        FVector OnSurfaceWorld = Offset * Direction;
+                        GEngine->AddOnScreenDebugMessage(7, 1.f, FColor::Green, (FString::Printf(TEXT("Direction: %f, %f, %f"), Direction.X, Direction.Y, Direction.Z)));
+                        GEngine->AddOnScreenDebugMessage(6, 1.f, FColor::Blue, (FString::Printf(TEXT("Distance: %f"), Offset.Size())));
+                        Pos += OnSurfaceWorld;
+                        //FVector Normal = (Offset / (SphereRadius3D * SphereRadius3D)).GetSafeNormal();
+                        //Vel -= 2.f * Direction;
+                        //Vel *= CollisionDampening;
+                        Vel = FVector::ZeroVector;
                     }
                 }
             }
@@ -369,15 +384,25 @@ void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp
     
 }
 
-bool FFluidSimulationSystem::CheckBoxCollision(const FVector& Location, const FVector& IntersectionMinBounds, const FVector& IntersectionMaxBounds) {
-    if (Location.X < IntersectionMinBounds.X || Location.X > IntersectionMaxBounds.X
-    || Location.Y < IntersectionMinBounds.Y || Location.Y > IntersectionMaxBounds.Y
-    || Location.Z < IntersectionMinBounds.Z || Location.Z > IntersectionMaxBounds.Z) {
+bool FFluidSimulationSystem::CheckBoxCollision(const FVector& Position, const FVector& IntersectionMinBounds, const FVector& IntersectionMaxBounds) {
+    if (Position.X < IntersectionMinBounds.X || Position.X > IntersectionMaxBounds.X
+    || Position.Y < IntersectionMinBounds.Y || Position.Y > IntersectionMaxBounds.Y
+    || Position.Z < IntersectionMinBounds.Z || Position.Z > IntersectionMaxBounds.Z) {
         return false;
     }
     else return true;
 }
 
-bool FFluidSimulationSystem::CheckSphereCollision(const FVector& Location, const FVector& SphereCentre, const FVector& Radius3D) {
-    return true;
+bool FFluidSimulationSystem::CheckSphereCollision(const FVector& Position) {
+    return Position.SizeSquared() <= 1.f;
+}
+
+bool FFluidSimulationSystem::CheckSphereCellCollision(const FIntVector& CellCoords, const FVector& SphereCenter, const FVector& Radius3D) {
+    FVector CellCenter = CellToPosition(CellCoords, SmoothingRadius);
+    FVector CellMin = CellCenter - SmoothingRadius;
+    FVector CellMax = CellCenter + SmoothingRadius;
+    FVector PosToCheck = FVector((CellMin.X < SphereCenter.X ? CellMin.X : CellMax.X, 
+                               CellMin.Y < SphereCenter.Y ? CellMin.Y : CellMax.Y, 
+                               CellMin.Z < SphereCenter.Z ? CellMin.Z : CellMax.Z));
+    return CheckSphereCollision((PosToCheck - SphereCenter) / Radius3D);
 }
