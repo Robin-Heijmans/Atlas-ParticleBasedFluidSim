@@ -18,7 +18,7 @@
 
 #include "FluidBoundingVolume.h"
 
-const FUintVector3 DensityMapSize = FUintVector3(64, 64, 64);
+const FUintVector3 DensityMapSize = FUintVector3(128, 128, 128);
 
 namespace 
 {
@@ -65,15 +65,15 @@ FFluidExtention::FFluidExtention(const FAutoRegister& AutoRegister) : FSceneView
     });
 }
 
-void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily) 
+void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
 {
-    // Check for new volumes, that need particles
-    UWorld* World = ViewFamily.Scene->GetWorld(); 
+        // Check for new volumes, that need particles
+    UWorld* World = InViewFamily.Scene->GetWorld(); 
     if(World == nullptr) return;
 
     // Advance simulation
     #if WITH_EDITOR
-        if(World->IsPlayInEditor() && CVarSimulation.GetValueOnRenderThread() == 1) 
+        if(CVarSimulation.GetValueOnRenderThread() == 1) 
         {
             TotalTime += World->GetDeltaSeconds();
         }
@@ -135,7 +135,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
                 continue;
             }
 
-	        UParticleBuffers* ParticleBuffers = NewObject<UParticleBuffers>(*FluidVolumes,UParticleBuffers::StaticClass(), TEXT("Particle Buffers"));
+            UParticleBuffers* ParticleBuffers = NewObject<UParticleBuffers>(*FluidVolumes,UParticleBuffers::StaticClass(), TEXT("Particle Buffers"));
 
             ParticleBuffers->RegisterComponent();
             ParticleBuffers->AttachToComponent(FluidVolumes->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
@@ -147,50 +147,36 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
             return;
         }
     }
-
-    for (TObjectIterator<UParticleBuffers> ParticleBuffers; ParticleBuffers; ++ParticleBuffers)
-    {
-        if(!ParticleBuffers->bInitialized) continue;
-
-        // Particle Simlation
-        if(TotalTime > FixedTimeStep)
-        {
-            ENQUEUE_RENDER_COMMAND(ParticleSimulation)(
-            [this, ParticleBuffers](FRHICommandListImmediate& RHICmdList) {
-                FRDGBuilder GraphBuilder(RHICmdList);
-                ParticleBuffers->Register(GraphBuilder);
-                
-                FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
-
-                FFluidMathParams FluidMath = ParticleBuffers->GetParticleParameters(GraphBuilder);
-                FluidMath.FluidBounds = UBFluidBounds;
-
-                FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath);
-                FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath);
-                FluidMathDispatch::SortAndCalculateOffsets(GraphBuilder, GlobalShaderMap, FluidMath);
-                FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath);
-                FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
-                FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
-                FluidMathDispatch::UpdatePositions(GraphBuilder, GlobalShaderMap, FluidMath);
-
-                GraphBuilder.Execute();
-            });      
-            TotalTime = 0.f;
-        }
-    }
 }
 
-void FFluidExtention::PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily) 
+void FFluidExtention::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) 
 {  
     for (TObjectIterator<UParticleBuffers> ParticleBuffers; ParticleBuffers; ++ParticleBuffers)
     {
         if(!ParticleBuffers->bInitialized) continue;
+        ParticleBuffers->Register(GraphBuilder);
+        FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
+
+        // Particle Simlation
+        if(TotalTime > FixedTimeStep)
+        {
+            FluidMath = ParticleBuffers->GetParticleParameters(GraphBuilder);
+            FluidMath.FluidBounds = UBFluidBounds;
+
+            FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath);
+            FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath);
+            FluidMathDispatch::SortAndCalculateOffsets(GraphBuilder, GlobalShaderMap, FluidMath);
+            FluidMathDispatch::CalculateDensity(GraphBuilder, GlobalShaderMap, FluidMath);
+            FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
+            FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
+            FluidMathDispatch::UpdatePositions(GraphBuilder, GlobalShaderMap, FluidMath);
+
+            TotalTime = 0.f;
+        }
 
         // Density Map Generation
         if(CVarRendering.GetValueOnRenderThread() == 0) return;
 
-        ParticleBuffers->Register(GraphBuilder);
-        FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
 
         // Render Prep
         const FRDGTextureRef DensityMapRef = GraphBuilder.RegisterExternalTexture(DensityMap);
@@ -215,7 +201,6 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(InView.Family->GetFeatureLevel());
     
     // Get SceneColor
-	const FSceneViewFamily& ViewFamily = *InView.Family;    
 	FRDGTexture* SceneColor = Inputs.SceneTextures->GetContents()->SceneColorTexture;
 
     // Output Texture

@@ -246,7 +246,7 @@ void FRenderPrepDispatchParams::Dispatch(FRDGBuilder& GraphBuilder, FGlobalShade
     FComputeShaderUtils::AddPass(
         GraphBuilder,
         RDG_EVENT_NAME("Execute Atlas RenderPrep"),
-        ERDGPassFlags::Compute,
+        ERDGPassFlags::AsyncCompute,
         ComputeShader,
         PassParameters,
         DispatchCount);
@@ -272,7 +272,7 @@ void FFluidMarchDispatchParams::Dispatch(
     FComputeShaderUtils::AddPass(
         GraphBuilder,
         RDG_EVENT_NAME("Execute Atlas FluidMarch %dx%d", ViewSize.X, ViewSize.Y),
-        ERDGPassFlags::Compute,
+        ERDGPassFlags::AsyncCompute,
         ComputeShader,
         PassParameters,
         DispatchCount);

@@ -447,10 +447,10 @@ float3 Light(float3 pos, float3 dir, float3 Scene)
     return SampleEnvironment(pos, dir,Scene);
 }
 
-float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, float2 UV)
+static uint RNG = 15484135;
+float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene)
 {
     bool bInsideFluid = FluidContains(RayPos);
-    uint rngState = (uint)(UV.x * 1243 + UV.y * 96456);
 
     float3 transmittance = 1;
     float3 light = 0;
@@ -461,7 +461,7 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, float2 UV)
         bool searchForNextFluidEntryPoint = !bInsideFluid;
         
         HitInfo CubeHit = RayBoxWithMatrix(RayPos, RayDir, Environment.CubeLocalToWorld, Environment.CubeWorldToLocal);
-        SurfaceInfo surfaceInfo = FindNextSurface(RayPos, RayDir, searchForNextFluidEntryPoint, rngState, i == 0 ? 1 : 0, CubeHit.dst);
+        SurfaceInfo surfaceInfo = FindNextSurface(RayPos, RayDir, searchForNextFluidEntryPoint, RNG, i == 0 ? 1 : 0, CubeHit.dst);
         bool useCubeHit = CubeHit.didHit && CubeHit.dst < length(surfaceInfo.pos - RayPos);
         
         if (!surfaceInfo.foundSurface)  break;
@@ -538,6 +538,6 @@ void Compute(
     float3 RayOrigin = GetRayOrigin();
     float3 RayDirection = GetRayDirection(UV);
 
-    const float3 FluidColor = FluidMarch(RayOrigin, RayDirection, SceneColor[DispatchThreadId.xy], UV);
+    float3 FluidColor = FluidMarch(RayOrigin, RayDirection, SceneColor[DispatchThreadId.xy]);
     Target[DispatchThreadId.xy] = FluidColor;// + SceneColor[DispatchThreadId.xy];
 }

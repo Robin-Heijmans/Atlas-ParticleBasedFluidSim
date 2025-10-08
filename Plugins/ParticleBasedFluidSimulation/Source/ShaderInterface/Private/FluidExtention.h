@@ -23,9 +23,8 @@ public:
 	/* Setup before rendering happens in here. */
 	virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) override;
 	
-	virtual void PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily) override;
-
 	/* All the rendering happens in here. */
+	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InViewy) override;
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FPostProcessingInputs& Inputs) override;
 
 private:
