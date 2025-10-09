@@ -115,13 +115,13 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         //UE_LOG(LogTemp, Warning, TEXT("CubeLocalToWorld: \n%s"), *Output);
         
 
-        FluidEnviroment.ExtinctionCoeff = FVector3f(FluidComp->ExtinctionCoeff);
-        FluidEnviroment.MarchStepSize = FluidComp->MarchStepSize;
-        FluidEnviroment.LightStepSize = FluidComp->LightStepSize;
-        FluidEnviroment.DensityStepSize = FluidComp->DensityStepSize;
-        FluidEnviroment.DensityMultiplier = FluidComp->DensityMultiplier;
-        FluidEnviroment.indexOfRefraction = FluidComp->indexOfRefraction;
-        FluidEnviroment.iorAir = FluidComp->iorAir;
+        //FluidEnviroment.ExtinctionCoeff = FVector3f(FluidComp->ExtinctionCoeff);
+        //FluidEnviroment.MarchStepSize = FluidComp->MarchStepSize;
+        //FluidEnviroment.LightStepSize = FluidComp->LightStepSize;
+        //FluidEnviroment.DensityStepSize = FluidComp->DensityStepSize;
+        //FluidEnviroment.DensityMultiplier = FluidComp->DensityMultiplier;
+        //FluidEnviroment.indexOfRefraction = FluidComp->indexOfRefraction;
+        //FluidEnviroment.iorAir = FluidComp->iorAir;
 
         UBFluidEnvironment = TUniformBufferRef<FFluidEnvironment>::CreateUniformBufferImmediate(FluidEnvironment, EUniformBufferUsage::UniformBuffer_SingleFrame);  
         UBFluidBounds = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(VolumeBounds, EUniformBufferUsage::UniformBuffer_SingleFrame);  
