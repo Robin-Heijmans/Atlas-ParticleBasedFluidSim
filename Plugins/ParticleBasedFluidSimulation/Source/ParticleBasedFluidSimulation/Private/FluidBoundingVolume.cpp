@@ -149,7 +149,7 @@ void UFluidBoundingVolumeComponent::TickComponent(float DeltaTime, ELevelTick Ti
         if (TotalTime >= FixedTimeStep)
         {
             GetExternalForce();
-            Simulation->StepSimulation(FixedTimeStep);
+            Simulation->StepSimulation(FixedTimeStep, *Bounds);
             CollisionsCheck();
             Particles = Simulation->GetParticles();
             TotalTime = 0.0f;
@@ -163,10 +163,10 @@ void UFluidBoundingVolumeComponent::TickComponent(float DeltaTime, ELevelTick Ti
 void UFluidBoundingVolumeComponent::UpdateMaterials()
 {
     if (!DefaultSphereMesh || Particles.Num() == 0) return;
-    FVector WorldScale = Bounds->GetComponentScale();
+    FTransform WorldTransfom = Bounds->GetComponentTransform();
     for (int32 i = 0; i < Particles.Num(); i++) {
         const FParticle& particle = Particles[i];
-        FVector posOffset = (particle.Position - MeshPositions[i]) * WorldScale;
+        FVector posOffset = WorldTransfom.TransformVector(particle.Position - MeshPositions[i]);
 
         FLinearColor Color = VelocityToColor(particle.Velocity.Length());
 

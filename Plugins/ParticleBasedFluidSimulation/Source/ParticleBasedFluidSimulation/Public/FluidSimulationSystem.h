@@ -36,7 +36,7 @@ public:
     FFluidSimulationSystem();
     void InitializeParticles(TArray<FParticle>& InParticles, FVector& MinB, FVector& MaxB);
     void SetVolumeBounds(FVector& MinB, FVector& MaxB);
-    void StepSimulation(float DeltaTime);
+    void StepSimulation(float DeltaTime, const class UBoxComponent& Bounds);
     void ApplySettings(FFluidSimSettings& settings);
     void ApplyExternalForce(const FVector& Location, const float& ForceAmplifier, const float& radius);
     void BoxCollision(const class UBoxComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos);

@@ -26,12 +26,16 @@ void FFluidSimulationSystem::SetVolumeBounds(FVector& MinB, FVector& MaxB) {
     MaxBounds = MaxB;
 }
 
-void FFluidSimulationSystem::StepSimulation(float DeltaTime) {
+void FFluidSimulationSystem::StepSimulation(float DeltaTime, const UBoxComponent& Bounds) {
     if (Particles.IsEmpty()) return;
     // GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Particles exist in system"));
     const float LookAheadTimeStep = 1.f / 120.f;
+
+    FTransform WorldTransform = Bounds.GetComponentTransform().Inverse();
+    FVector WorldGravity = WorldTransform.TransformVectorNoScale(Gravity);// * WorldTransform.TransformVectorNoScale(FVector::DownVector);
+    GEngine->AddOnScreenDebugMessage(10, 5.f, FColor::Green, (FString::Printf(TEXT("World gravity: %f %f %f"), WorldGravity.X, WorldGravity.Y, WorldGravity.Z)));
     for (int i = 0; i < Particles.Num(); i++) {
-        Particles[i].Velocity += (ExternalForces[i] + Gravity) * DeltaTime;
+        Particles[i].Velocity += (ExternalForces[i] + WorldGravity) * DeltaTime;
         Particles[i].PredictedPosition = Particles[i].Position + Particles[i].Velocity * LookAheadTimeStep;
     }
     // Reset external forces
