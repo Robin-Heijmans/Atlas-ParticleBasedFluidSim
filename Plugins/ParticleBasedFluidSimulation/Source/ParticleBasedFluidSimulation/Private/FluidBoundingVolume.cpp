@@ -295,7 +295,7 @@ void UFluidBoundingVolumeComponent::CollisionsCheck() {
 
         if (UBoxComponent* Box = Cast<UBoxComponent>(Comp)) {
             // To be implemented
-            Simulation->BoxCollision(*Box, *Bounds, LocalPos);
+            Simulation->BoxCollision(*Box, *Bounds, LocalPos, GetWorld());
         }
         else if (USphereComponent* Sphere = Cast<USphereComponent>(Comp)) {
             // To be implemented

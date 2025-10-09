@@ -33,7 +33,6 @@ void FFluidSimulationSystem::StepSimulation(float DeltaTime, const UBoxComponent
 
     FTransform WorldTransform = Bounds.GetComponentTransform().Inverse();
     FVector WorldGravity = WorldTransform.TransformVectorNoScale(Gravity);// * WorldTransform.TransformVectorNoScale(FVector::DownVector);
-    GEngine->AddOnScreenDebugMessage(10, 5.f, FColor::Green, (FString::Printf(TEXT("World gravity: %f %f %f"), WorldGravity.X, WorldGravity.Y, WorldGravity.Z)));
     for (int i = 0; i < Particles.Num(); i++) {
         Particles[i].Velocity += (ExternalForces[i] + WorldGravity) * DeltaTime;
         Particles[i].PredictedPosition = Particles[i].Position + Particles[i].Velocity * LookAheadTimeStep;
@@ -245,16 +244,19 @@ void FFluidSimulationSystem::ApplyExternalForce(const FVector& Location, const f
     }
 }
 
-void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos) {
+void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos, UWorld* World) {
     // Transform other to local
-    FVector WorldScaleBounds = Bounds.GetComponentScale();
-    FVector TranslatedCenter = OtherComp.GetComponentLocation() - Bounds.GetComponentLocation();
-    FVector LocalCenter = TranslatedCenter / WorldScaleBounds;
-    FVector LocalScale = OtherComp.GetComponentScale() / WorldScaleBounds;
+    FTransform InvWorldTransform = Bounds.GetComponentTransform().Inverse();
+    FTransform OtherTransform = OtherComp.GetComponentTransform();
+    FTransform LocalTransform = OtherTransform * InvWorldTransform;
+
+    FVector LocalCenter = InvWorldTransform.TransformPosition(OtherComp.GetComponentLocation());
+    FVector LocalScale = OtherComp.GetComponentScale() / Bounds.GetComponentScale();
 
     FVector ObjectExtent = OtherComp.GetUnscaledBoxExtent() * LocalScale;
-    FVector ObjMinBounds = LocalCenter - ObjectExtent;
-    FVector ObjMaxBounds = LocalCenter + ObjectExtent;
+    FVector RotatedExtent = GetRotatedBoxAABBExtent(ObjectExtent, LocalTransform.GetRotation());
+    FVector ObjMinBounds = LocalCenter - RotatedExtent;
+    FVector ObjMaxBounds = LocalCenter + RotatedExtent;
 
     FVector ThisExtent = Bounds.GetUnscaledBoxExtent();
     FVector LocalMin = -ThisExtent;
@@ -269,6 +271,10 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
                                       FMath::Min(ObjMaxBounds.Z, LocalMax.Z));
     FIntVector MinCoords = PositionToCellCoords(IntersectionMin, SmoothingRadius);
     FIntVector MaxCoords = PositionToCellCoords(IntersectionMax, SmoothingRadius);
+    
+    DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), RotatedExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
+    FTransform OtherLocalTransform = OtherTransform.GetRelativeTransform(Bounds.GetComponentTransform());
+    FVector OtherLocalExtent = OtherComp.GetUnscaledBoxExtent();
 
     for (int CellX = MinCoords.X; CellX <= MaxCoords.X; CellX++)
     for (int CellY = MinCoords.Y; CellY <= MaxCoords.Y; CellY++)
@@ -280,46 +286,36 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
             if (SpatialLookup[i].Key != Key) break;
             int ParticleIndex = SpatialLookup[i].ParticleIndex;
             FVector& Pos = Particles[ParticleIndex].Position;
-            if (CheckBoxCollision(Pos, IntersectionMin, IntersectionMax)) {
+            FVector Offset = OtherLocalTransform.InverseTransformPosition(Pos);
+            if (CheckBoxCollision(Offset, -OtherLocalExtent, OtherLocalExtent)) {
                 GEngine->AddOnScreenDebugMessage(4, 1.f, FColor::Yellow, (FString::Printf(TEXT("Box collision detected"))));
                 FVector& Vel = Particles[ParticleIndex].Velocity;
-                FVector DistToMin = Pos - ObjMinBounds;
-                FVector DistToMax = ObjMaxBounds - Pos;
+                FVector Direction = Offset/Offset.Size();
 
-                float MinPenX = FMath::Min(FMath::Abs(DistToMin.X), FMath::Abs(DistToMax.X));
-                float MinPenY = FMath::Min(FMath::Abs(DistToMin.Y), FMath::Abs(DistToMax.Y));
-                float MinPenZ = FMath::Min(FMath::Abs(DistToMin.Z), FMath::Abs(DistToMax.Z));
-
-                float SmallestPen = MinPenX;
-                FVector PushDir = FVector::ZeroVector;
-
-                if (MinPenY < SmallestPen) { SmallestPen = MinPenY; }
-                if (MinPenZ < SmallestPen) { SmallestPen = MinPenZ; }
-
-                if (SmallestPen == MinPenX) {
-                    if (FMath::Abs(DistToMin.X) < FMath::Abs(DistToMax.X)) {
-                        PushDir = FVector::BackwardVector;
-                    }
-                    else {
-                        PushDir = FVector::ForwardVector;
-                    }
-                } else if (SmallestPen == MinPenY) {
-                    if (FMath::Abs(DistToMin.Y) < FMath::Abs(DistToMax.Y)) {
-                        PushDir = FVector::LeftVector;
-                    }
-                    else {
-                        PushDir = FVector::RightVector;
-                    }
-                } else {
-                    if (FMath::Abs(DistToMin.Z) < FMath::Abs(DistToMax.Z)) {
-                        PushDir = FVector::DownVector;
-                    }
-                    else {
-                        PushDir = FVector::UpVector;
-                    }
+                FVector AbsDir = Direction.GetAbs();
+                float AxisBound = 0.f;
+                float Distance = 0.f;
+                if (AbsDir.X > AbsDir.Y && AbsDir.X > AbsDir.Z) {
+                    Direction = OtherLocalTransform.TransformVector(FVector(FMath::Sign(Direction.X), 0, 0));
+                    AxisBound = OtherLocalExtent.X;
+                    Distance = FMath::Abs(Offset.X);
                 }
-                Pos += PushDir * SmallestPen;
-                Vel = ReflectVelocity(Vel, PushDir);
+                else if (AbsDir.Y > AbsDir.Z) {
+                    Direction = OtherLocalTransform.TransformVector(FVector(0, FMath::Sign(Direction.Y), 0));
+                    AxisBound = OtherLocalExtent.Y;
+                    Distance = FMath::Abs(Offset.Y);
+                }
+                else {
+                    Direction = OtherLocalTransform.TransformVector(FVector(0, 0, FMath::Sign(Direction.Z)));
+                    AxisBound = OtherLocalExtent.Z;
+                    Distance = FMath::Abs(Offset.Z);
+                }
+                FVector OnSurfaceWorld = OnSurfaceWorld = ((AxisBound - Distance)) * LocalScale * Direction;;
+                Pos += OnSurfaceWorld;
+                Vel = ReflectVelocity(Vel, Direction);
+                FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
+                DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
+                GEngine->AddOnScreenDebugMessage(10, 5.f, FColor::Green, (FString::Printf(TEXT("World gravity: %f %f %f"), Direction.X, Direction.Y, Direction.Z)));
             }
         }
     }
@@ -464,4 +460,13 @@ bool FFluidSimulationSystem::CheckSphereCollision(const float& Distance, const f
 
 FVector FFluidSimulationSystem::ReflectVelocity(const FVector& Vel, const FVector& Normal) {
     return Vel - 2.f * FVector::DotProduct(Vel, Normal) * (Normal * CollisionDampening);
+}
+
+FVector FFluidSimulationSystem::GetRotatedBoxAABBExtent(const FVector& Extent, const FQuat& Rotation) {
+    const FMatrix R = FRotationMatrix::Make(Rotation);
+    FVector NewExtent;
+    NewExtent.X = FMath::Abs(R.M[0][0]) * Extent.X + FMath::Abs(R.M[0][1]) * Extent.Y + FMath::Abs(R.M[0][2]) * Extent.Z;
+    NewExtent.Y = FMath::Abs(R.M[1][0]) * Extent.X + FMath::Abs(R.M[1][1]) * Extent.Y + FMath::Abs(R.M[1][2]) * Extent.Z;
+    NewExtent.Z = FMath::Abs(R.M[2][0]) * Extent.X + FMath::Abs(R.M[2][1]) * Extent.Y + FMath::Abs(R.M[2][2]) * Extent.Z;
+    return NewExtent;
 }
