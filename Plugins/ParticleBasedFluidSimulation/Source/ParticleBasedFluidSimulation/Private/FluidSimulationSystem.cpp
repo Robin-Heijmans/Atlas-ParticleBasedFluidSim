@@ -310,30 +310,33 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
                     AxisBound = OtherLocalExtent.Z;
                     Distance = FMath::Abs(Offset.Z);
                 }
-                FVector OnSurfaceWorld = OnSurfaceWorld = ((AxisBound - Distance)) * LocalScale * Direction;;
+                FVector OnSurfaceWorld = ((AxisBound - Distance)) * LocalScale * Direction;
                 Pos += OnSurfaceWorld;
                 Vel = ReflectVelocity(Vel, Direction);
                 FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
                 DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
-                GEngine->AddOnScreenDebugMessage(10, 5.f, FColor::Green, (FString::Printf(TEXT("World gravity: %f %f %f"), Direction.X, Direction.Y, Direction.Z)));
             }
         }
     }
 }
 
 void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos, UWorld* World) {
-    FVector WorldScaleBounds = Bounds.GetComponentScale();
-    FVector TranslatedCenter = OtherComp.GetComponentLocation() - Bounds.GetComponentLocation();
-    FVector LocalCenter = TranslatedCenter / WorldScaleBounds;
-    FVector LocalScale = OtherComp.GetComponentScale() / WorldScaleBounds;
+    FTransform InvWorldTransform = Bounds.GetComponentTransform().Inverse();
+    FTransform OtherTransform = OtherComp.GetComponentTransform();
+    FTransform LocalTransform = OtherTransform * InvWorldTransform;
 
-    FVector SphereRadius3D = OtherComp.GetUnscaledSphereRadius() * LocalScale;
-    FVector ObjMinBounds = LocalCenter - SphereRadius3D;
-    FVector ObjMaxBounds = LocalCenter + SphereRadius3D;
+    FVector LocalCenter = InvWorldTransform.TransformPosition(OtherComp.GetComponentLocation());
+    FVector LocalScale = OtherComp.GetComponentScale() / Bounds.GetComponentScale();
+
+    FVector ObjectExtent = OtherComp.GetUnscaledSphereRadius() * LocalScale;
+    FVector RotatedExtent = GetRotatedBoxAABBExtent(ObjectExtent, LocalTransform.GetRotation());
+    FVector ObjMinBounds = LocalCenter - RotatedExtent;
+    FVector ObjMaxBounds = LocalCenter + RotatedExtent;
 
     FVector ThisExtent = Bounds.GetUnscaledBoxExtent();
     FVector LocalMin = -ThisExtent;
 	FVector LocalMax = ThisExtent;
+    GEngine->AddOnScreenDebugMessage(11, 5.f, FColor::Green, (FString::Printf(TEXT("Sphere radius 3D: %f %f %f"), ObjectExtent.X, ObjectExtent.Y, ObjectExtent.Z)));
 
     FVector IntersectionMin = FVector(FMath::Max(ObjMinBounds.X, LocalMin.X),
                                       FMath::Max(ObjMinBounds.Y, LocalMin.Y),
@@ -342,10 +345,14 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
     FVector IntersectionMax = FVector(FMath::Min(ObjMaxBounds.X, LocalMax.X),
                                       FMath::Min(ObjMaxBounds.Y, LocalMax.Y),
                                       FMath::Min(ObjMaxBounds.Z, LocalMax.Z));
-    FVector SafetyMargin = FVector(0.5f * SmoothingRadius);
-    FIntVector MinCoords = PositionToCellCoords(IntersectionMin - SafetyMargin, SmoothingRadius);
-    FIntVector MaxCoords = PositionToCellCoords(IntersectionMax + SafetyMargin, SmoothingRadius);
-    
+
+    FIntVector MinCoords = PositionToCellCoords(IntersectionMin, SmoothingRadius);
+    FIntVector MaxCoords = PositionToCellCoords(IntersectionMax, SmoothingRadius);
+
+    DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), RotatedExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
+    FTransform OtherLocalTransform = OtherTransform.GetRelativeTransform(Bounds.GetComponentTransform());
+    float OtherLocalExtent = OtherComp.GetUnscaledSphereRadius();
+
     for (int CellX = MinCoords.X; CellX <= MaxCoords.X; CellX++)
     for (int CellY = MinCoords.Y; CellY <= MaxCoords.Y; CellY++)
     for (int CellZ = MinCoords.Z; CellZ <= MaxCoords.Z; CellZ++) {
@@ -359,15 +366,15 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
             if (SpatialLookup[i].Key != Key) break;
             int ParticleIndex = SpatialLookup[i].ParticleIndex;
             FVector& Pos = Particles[ParticleIndex].Position;
-            FVector Offset = (Pos - LocalCenter) / SphereRadius3D;
+            FVector Offset = OtherLocalTransform.InverseTransformPosition(Pos) / OtherLocalExtent;
             float Distance = Offset.Size();
             if (CheckSphereCollision(Distance, 1.f)) {
                 FVector& Vel = Particles[ParticleIndex].Velocity;
-                FVector Direction = Offset / Distance;
-                FVector OnSurfaceWorld = ((1.f - Distance) * SphereRadius3D) * Direction;
+                FVector Direction = OtherLocalTransform.TransformVector(Offset / Distance);
+                FVector OnSurfaceWorld = (1.f - Distance) * OtherLocalExtent * Direction;
                 Pos += OnSurfaceWorld;
                 Vel = ReflectVelocity(Vel, Direction);
-                FVector WorldPos = Pos * WorldScaleBounds + Bounds.GetComponentLocation();
+                FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
                 DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
             }
         }
