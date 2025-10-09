@@ -321,7 +321,7 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
     }
 }
 
-void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos) {
+void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos, UWorld* World) {
     FVector WorldScaleBounds = Bounds.GetComponentScale();
     FVector TranslatedCenter = OtherComp.GetComponentLocation() - Bounds.GetComponentLocation();
     FVector LocalCenter = TranslatedCenter / WorldScaleBounds;
@@ -367,12 +367,14 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
                 FVector OnSurfaceWorld = ((1.f - Distance) * SphereRadius3D) * Direction;
                 Pos += OnSurfaceWorld;
                 Vel = ReflectVelocity(Vel, Direction);
+                FVector WorldPos = Pos * WorldScaleBounds + Bounds.GetComponentLocation();
+                DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
             }
         }
     }
 }
 
-void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos) {
+void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos, UWorld* World) {
     FVector WorldScaleBounds = Bounds.GetComponentScale();
     FVector TranslatedCenter = OtherComp.GetComponentLocation() - Bounds.GetComponentLocation();
     FVector LocalCenter = TranslatedCenter / WorldScaleBounds;
@@ -426,6 +428,8 @@ void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp
                 FVector OnSurfaceWorld = ((1.f - Distance) * SphereRadius) * Direction;
                 Pos += OnSurfaceWorld;
                 Vel = ReflectVelocity(Vel, Direction);
+                FVector WorldPos = Pos * WorldScaleBounds + Bounds.GetComponentLocation();
+                DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
             }
         }
     }

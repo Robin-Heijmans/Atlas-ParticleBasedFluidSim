@@ -40,8 +40,8 @@ public:
     void ApplySettings(FFluidSimSettings& settings);
     void ApplyExternalForce(const FVector& Location, const float& ForceAmplifier, const float& radius);
     void BoxCollision(const class UBoxComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos);
-    void SphereCollision(const class USphereComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos);
-    void CapsuleCollision(const class UCapsuleComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos);
+    void SphereCollision(const class USphereComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos, UWorld* World);
+    void CapsuleCollision(const class UCapsuleComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos, UWorld* World);
 
     const TArray<FParticle>& GetParticles() const { return Particles; }
 private:
