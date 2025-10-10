@@ -296,17 +296,17 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
                 float AxisBound = 0.f;
                 float Distance = 0.f;
                 if (AbsDir.X > AbsDir.Y && AbsDir.X > AbsDir.Z) {
-                    Direction = OtherLocalTransform.TransformVector(FVector(FMath::Sign(Direction.X), 0, 0));
+                    Direction = OtherLocalTransform.TransformVector(FVector(FMath::Sign(Direction.X), 0, 0)).GetSafeNormal();
                     AxisBound = OtherLocalExtent.X;
                     Distance = FMath::Abs(Offset.X);
                 }
                 else if (AbsDir.Y > AbsDir.Z) {
-                    Direction = OtherLocalTransform.TransformVector(FVector(0, FMath::Sign(Direction.Y), 0));
+                    Direction = OtherLocalTransform.TransformVector(FVector(0, FMath::Sign(Direction.Y), 0)).GetSafeNormal();
                     AxisBound = OtherLocalExtent.Y;
                     Distance = FMath::Abs(Offset.Y);
                 }
                 else {
-                    Direction = OtherLocalTransform.TransformVector(FVector(0, 0, FMath::Sign(Direction.Z)));
+                    Direction = OtherLocalTransform.TransformVector(FVector(0, 0, FMath::Sign(Direction.Z))).GetSafeNormal();
                     AxisBound = OtherLocalExtent.Z;
                     Distance = FMath::Abs(Offset.Z);
                 }
@@ -352,6 +352,7 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
     DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), RotatedExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
     FTransform OtherLocalTransform = OtherTransform.GetRelativeTransform(Bounds.GetComponentTransform());
     float OtherLocalExtent = OtherComp.GetUnscaledSphereRadius();
+    FMatrix NormalMatrix = OtherLocalTransform.ToMatrixWithScale().Inverse().GetTransposed();
 
     for (int CellX = MinCoords.X; CellX <= MaxCoords.X; CellX++)
     for (int CellY = MinCoords.Y; CellY <= MaxCoords.Y; CellY++)
@@ -370,8 +371,8 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
             float Distance = Offset.Size();
             if (CheckSphereCollision(Distance, 1.f)) {
                 FVector& Vel = Particles[ParticleIndex].Velocity;
-                FVector Direction = OtherLocalTransform.TransformVector(Offset / Distance);
-                FVector OnSurfaceWorld = (1.f - Distance) * OtherLocalExtent * Direction;
+                FVector Direction = NormalMatrix.TransformVector(Offset/Distance).GetSafeNormal();
+                FVector OnSurfaceWorld = (1.f - Distance) * ObjectExtent * Direction;
                 Pos += OnSurfaceWorld;
                 Vel = ReflectVelocity(Vel, Direction);
                 FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
