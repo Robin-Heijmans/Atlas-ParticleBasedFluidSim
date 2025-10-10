@@ -273,7 +273,7 @@ void UFluidBoundingVolumeComponent::GetExternalForce() {
 void UFluidBoundingVolumeComponent::CollisionsCheck() {
     TArray<FOverlapResult> Overlaps;
     FCollisionQueryParams Params;
-    Params.AddIgnoredActor(GetOwner());
+    Params.AddIgnoredComponent(Bounds);
 
     FVector Center = Bounds->GetComponentLocation();
     FVector Extent = Bounds->GetScaledBoxExtent();

@@ -383,19 +383,25 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
 }
 
 void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos, UWorld* World) {
-    FVector WorldScaleBounds = Bounds.GetComponentScale();
-    FVector TranslatedCenter = OtherComp.GetComponentLocation() - Bounds.GetComponentLocation();
-    FVector LocalCenter = TranslatedCenter / WorldScaleBounds;
-    FVector LocalScale = OtherComp.GetComponentScale() / WorldScaleBounds;
+    FTransform InvWorldTransform = Bounds.GetComponentTransform().Inverse();
+    FTransform OtherTransform = OtherComp.GetComponentTransform();
+    FTransform LocalTransform = OtherTransform * InvWorldTransform;
+
+    FVector LocalCenter = InvWorldTransform.TransformPosition(OtherComp.GetComponentLocation());
+    FVector LocalScale = OtherComp.GetComponentScale() / Bounds.GetComponentScale();
 
     // Assume scale is uniform
-    float SphereRadius = OtherComp.GetUnscaledCapsuleRadius() * LocalScale.X;
-    float HalfHeight = OtherComp.GetUnscaledCapsuleHalfHeight() * LocalScale.X;
-    float HalfHeightCylinder = HalfHeight - SphereRadius;
+    float SphereRadius = OtherComp.GetUnscaledCapsuleRadius() * (LocalScale.X + LocalScale.Y) * 0.5f;
     FVector UpCapsule = OtherComp.GetUpVector();
-    FVector ObjMinBounds = LocalCenter - SphereRadius - (UpCapsule * HalfHeightCylinder);
-    FVector ObjMaxBounds = LocalCenter + SphereRadius + (UpCapsule * HalfHeightCylinder);
-
+    float ScaleUp = FVector::DotProduct(LocalScale, UpCapsule.GetAbs());
+    float HalfHeight = OtherComp.GetUnscaledCapsuleHalfHeight() * LocalScale.Z;//FMath::Abs(ScaleUp);
+    float HalfHeightCylinder = HalfHeight - SphereRadius;
+    
+    FVector ObjectExtent = (FVector(SphereRadius) + (UpCapsule * HalfHeightCylinder)).GetAbs();
+    FVector RotatedExtent = GetRotatedBoxAABBExtent(ObjectExtent, LocalTransform.GetRotation());
+    FVector ObjMinBounds = LocalCenter - ObjectExtent;
+    FVector ObjMaxBounds = LocalCenter + ObjectExtent;
+    
     FVector ThisExtent = Bounds.GetUnscaledBoxExtent();
     FVector LocalMin = -ThisExtent;
 	FVector LocalMax = ThisExtent;
@@ -409,6 +415,11 @@ void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp
                                       FMath::Min(ObjMaxBounds.Z, LocalMax.Z));
     FIntVector MinCoords = PositionToCellCoords(IntersectionMin, SmoothingRadius);
     FIntVector MaxCoords = PositionToCellCoords(IntersectionMax, SmoothingRadius);
+
+    DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), ObjectExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
+    FTransform OtherLocalTransform = OtherTransform.GetRelativeTransform(Bounds.GetComponentTransform());
+    float OtherLocalExtent = OtherComp.GetUnscaledCapsuleRadius();
+    FMatrix NormalMatrix = OtherLocalTransform.ToMatrixWithScale().Inverse().GetTransposed();
 
     for (int CellX = MinCoords.X; CellX <= MaxCoords.X; CellX++)
     for (int CellY = MinCoords.Y; CellY <= MaxCoords.Y; CellY++)
@@ -430,13 +441,14 @@ void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp
             FVector ClosestPoint = Bottom + T * AB;
             FVector Offset = (Pos - ClosestPoint) / SphereRadius;
             float Distance = Offset.Size();
+            GEngine->AddOnScreenDebugMessage(12, 1.f, FColor::Yellow, (FString::Printf(TEXT("Distance to capsule backbone: %f"), Distance)));
             if (CheckSphereCollision(Distance, 1.f)) {
                 FVector& Vel = Particles[ParticleIndex].Velocity;
-                FVector Direction = Offset / Distance;
-                FVector OnSurfaceWorld = ((1.f - Distance) * SphereRadius) * Direction;
+                FVector Direction = Offset/Distance;
+                FVector OnSurfaceWorld = (1.f - Distance) * SphereRadius * Direction;
                 Pos += OnSurfaceWorld;
                 Vel = ReflectVelocity(Vel, Direction);
-                FVector WorldPos = Pos * WorldScaleBounds + Bounds.GetComponentLocation();
+                FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
                 DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
             }
         }
