@@ -1,7 +1,7 @@
 #include "/Engine/Public/Platform.ush"
 #include "/Engine/Private/Common.ush"
 
-#define STEP_VISUAL
+//#define STEP_VISUAL
 //#define TWO_LEVEL_STEPPING
 #define MARCH_STEP_ADJUSTMENT
 #define DENSITY_STEP_ADJUSTMENT
@@ -48,11 +48,11 @@ static const float volumeValueOffset = 0.01;
 static const uint MaxSteps = 1500;
 
 #ifdef TWO_LEVEL_STEPPING
-static const uint StepLevel = 4;
+static const float StepLevel = 4;
 #endif
 
 #ifdef MARCH_STEP_ADJUSTMENT
-static const float MarchStepAdjustment = 0.2;
+static const float MarchStepAdjustment = 0.002;
 #endif
 
 #ifdef DENSITY_STEP_ADJUSTMENT
@@ -238,7 +238,8 @@ SurfaceInfo FindNextSurface(float3 origin, float3 RayDir, bool findNextFluidEntr
 
     float dstToTest = boundsDstInfo[1] - (TinyNudge) * 2;
 
-    for (float dst = 0; dst < dstToTest && num_steps < MaxSteps; dst += stepSize)
+    uint localSteps = 0;
+    for (float dst = 0; dst < dstToTest && num_steps + localSteps < MaxSteps; dst += stepSize)
     {
         bool isLastStep = dst + stepSize >= dstToTest;
         float3 samplePos = origin + RayDir * dst;
@@ -274,7 +275,7 @@ SurfaceInfo FindNextSurface(float3 origin, float3 RayDir, bool findNextFluidEntr
 #ifdef MARCH_STEP_ADJUSTMENT
         else
         {
-            stepSize += MarchStepAdjustment;
+            stepSize += MarchStepAdjustment * localSteps;
         }
 #endif
 
@@ -291,9 +292,10 @@ SurfaceInfo FindNextSurface(float3 origin, float3 RayDir, bool findNextFluidEntr
             break;
         }
         
-        num_steps++;
+        localSteps++;
     }
     
+    num_steps += localSteps;
     return info;
 }
 

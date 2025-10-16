@@ -37,7 +37,7 @@ AFluidBoundingVolume::AFluidBoundingVolume()
         }
     }
 
-    GenerateParticleBuffers();
+    //GenerateParticleBuffers();
 }
 
 void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)

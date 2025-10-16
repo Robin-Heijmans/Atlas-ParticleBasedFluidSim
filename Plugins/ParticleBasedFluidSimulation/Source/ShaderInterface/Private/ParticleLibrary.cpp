@@ -136,6 +136,8 @@ void UParticleBuffers::Register(FRDGBuilder& GraphBuilder)
         DensitiesRef            = GraphBuilder.RegisterExternalBuffer(Densities, TEXT("Atlas Densities"));
         SpatialIndicesRef       = GraphBuilder.RegisterExternalBuffer(SpatialIndices, TEXT("Atlas SpatialIndices"));
         SpatialOffsetsRef       = GraphBuilder.RegisterExternalBuffer(SpatialOffsets, TEXT("Atlas SpatialOffsets"));  
+        
+        ParentVolume = GetOwner<AFluidBoundingVolume>();
     }
 }
 

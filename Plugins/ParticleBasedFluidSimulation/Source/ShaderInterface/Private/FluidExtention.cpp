@@ -49,14 +49,10 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
     if(World == nullptr) return;
 
     // Advance simulation
-    if(CVarSimulation.GetValueOnRenderThread() == 1) 
+    //if(CVarSimulation.GetValueOnRenderThread() == 1) 
     {
         TotalTime += World->GetDeltaSeconds();
     }
-
-    FFluidVolume FluidVolume;
-    FFluidVolumeLocal VolumeBounds;
-    FFluidEnvironment FluidEnvironment;
 
     for (TActorIterator<AFluidBoundingVolume> FluidVolumes(World); FluidVolumes; ++FluidVolumes)
     {
@@ -112,6 +108,8 @@ void FFluidExtention::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSce
         // Particle Simlation
         if(TotalTime > FixedTimeStep)
         {
+            if(CVarSimulation.GetValueOnRenderThread() == 0) ParticleBuffers->SimulationSettings.DeltaTime = 0;
+            else ParticleBuffers->SimulationSettings.DeltaTime = FixedTimeStep;
             ParticleBuffers->DispatchFluidMath(GraphBuilder, GlobalShaderMap);
             TotalTime = 0.f;
         }
