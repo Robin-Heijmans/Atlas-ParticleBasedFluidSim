@@ -36,6 +36,8 @@ AFluidBoundingVolume::AFluidBoundingVolume()
             ParticleMesh->SetMaterial(0, ParticleMat.Object);
         }
     }
+
+    GenerateParticleBuffers();
 }
 
 void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)

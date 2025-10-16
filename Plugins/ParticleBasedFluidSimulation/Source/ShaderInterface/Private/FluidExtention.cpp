@@ -22,7 +22,7 @@ namespace
 {
 	TAutoConsoleVariable<int32> CVarRendering(
 		TEXT("Atlas.Rendering"),
-		0,
+		1,
 		TEXT("Enable Fluid Rendering \n")
 		TEXT(" 0: OFF;")
 		TEXT(" 1: ON."),
@@ -49,14 +49,10 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
     if(World == nullptr) return;
 
     // Advance simulation
-    #if WITH_EDITOR
-        if(CVarSimulation.GetValueOnRenderThread() == 1) 
-        {
-            TotalTime += World->GetDeltaSeconds();
-        }
-    #else
+    if(CVarSimulation.GetValueOnRenderThread() == 1) 
+    {
         TotalTime += World->GetDeltaSeconds();
-    #endif
+    }
 
     FFluidVolume FluidVolume;
     FFluidVolumeLocal VolumeBounds;
@@ -89,7 +85,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
                 continue;
             }
 
-            UParticleBuffers* ParticleBuffers = NewObject<UParticleBuffers>(*FluidVolumes,UParticleBuffers::StaticClass(), TEXT("Particle Buffers"));
+            UParticleBuffers* ParticleBuffers = NewObject<UParticleBuffers>(*FluidVolumes, UParticleBuffers::StaticClass(), TEXT("Particle Buffers"));
 
             ParticleBuffers->RegisterComponent();
             ParticleBuffers->AttachToComponent(FluidVolumes->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
@@ -106,19 +102,17 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
 void FFluidExtention::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) 
 {  
     // Simulate
-    if (CVarSimulation.GetValueOnRenderThread() == 0) return;
-
+    FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
     for (TObjectIterator<UParticleBuffers> ParticleBuffers; ParticleBuffers; ++ParticleBuffers)
     {
-        if(!ParticleBuffers->bInitialized) continue;
         ParticleBuffers->Register(GraphBuilder);
-        FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
+
+        if(!ParticleBuffers->bInitialized) continue;
 
         // Particle Simlation
         if(TotalTime > FixedTimeStep)
         {
             ParticleBuffers->DispatchFluidMath(GraphBuilder, GlobalShaderMap);
-
             TotalTime = 0.f;
         }
     }
@@ -133,6 +127,8 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
     for (TObjectIterator<UParticleBuffers> ParticleBuffers; ParticleBuffers; ++ParticleBuffers)
     {
         if(!ParticleBuffers->bInitialized) continue;
+
+        // Particle Rendering
         FRDGTexture* SceneColor = Inputs.SceneTextures->GetContents()->SceneColorTexture;
         ParticleBuffers->DispatchFluidRender(GraphBuilder, GlobalShaderMap, SceneColor, InView);
     }

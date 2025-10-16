@@ -24,8 +24,10 @@
 
 void UParticleBuffers::Initialize(AFluidBoundingVolume* Volume)
 {
+    ParentVolume = Volume;
+
     ENQUEUE_RENDER_COMMAND(ParticleBufferInit)(
-    [this, Volume](FRHICommandListImmediate& RHICmdList) {
+    [this](FRHICommandListImmediate& RHICmdList) {
         FRDGBuilder GraphBuilder(RHICmdList);
 
         // Creating Density Map
@@ -41,7 +43,7 @@ void UParticleBuffers::Initialize(AFluidBoundingVolume* Volume)
 
         // Create External Particle Buffers | make them persistent :3
         
-        SimulationSettings.NumParticles = Volume->Simulation->GetParticles().Num();
+        SimulationSettings.NumParticles = ParentVolume->Simulation->GetParticles().Num();
         FRDGBufferDesc PositionsDesc            = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f),       SimulationSettings.NumParticles);
         FRDGBufferDesc PredictedPositionsDesc   = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f),       SimulationSettings.NumParticles);
         FRDGBufferDesc VelocitiesDesc           = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f),       SimulationSettings.NumParticles);
@@ -79,7 +81,7 @@ void UParticleBuffers::Initialize(AFluidBoundingVolume* Volume)
         TArray<uint32> _spatialoffsets;
 
         // Upload Initial Vlaues
-        for (const FParticle& Particle : Volume->Simulation->GetParticles())
+        for (const FParticle& Particle : ParentVolume->Simulation->GetParticles())
         {
             _positions.Add(FVector3f(Particle.Position));
             _preditctedpositions.Add(FVector3f(Particle.PredictedPosition));
@@ -96,35 +98,6 @@ void UParticleBuffers::Initialize(AFluidBoundingVolume* Volume)
         GraphBuilder.QueueBufferUpload(SpatialIndicesRef,_spatialindicies.GetData(), _spatialindicies.NumBytes());
         GraphBuilder.QueueBufferUpload(SpatialOffsetsRef,_spatialoffsets.GetData(), _spatialoffsets.NumBytes());
 
-        //Create UBs
-        FFluidEnvironment FluidEnvironment;
-        FFluidVolumeLocal FluidVolumeLocal;
-        FFluidVolume FluidVolume;
-        
-        TArray<FVector> Bounds = Volume->GetVolumeBounds();
-        FluidVolumeLocal.MinBounds = FVector3f(Bounds[0]);
-        FluidVolumeLocal.MaxBounds = FVector3f(Bounds[1]);
-        
-        FluidVolume.BoundsPosition = FVector3f(Volume->Bounds->GetComponentLocation());
-        FluidVolume.BoundsSize = FVector3f(Volume->Bounds->GetScaledBoxExtent());
-        
-        FTransform Cube(Volume->Bounds->GetComponentRotation(), Volume->Bounds->GetComponentLocation(), Volume->Bounds->GetComponentScale());
-
-        FluidEnvironment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
-        FluidEnvironment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
-
-        FluidEnvironment.ExtinctionCoeff = FVector3f(Volume->ExtinctionCoeff);
-        FluidEnvironment.MarchStepSize = Volume->MarchStepSize;
-        FluidEnvironment.LightStepSize = Volume->LightStepSize;
-        FluidEnvironment.DensityStepSize = Volume->DensityStepSize;
-        FluidEnvironment.DensityMultiplier = Volume->DensityMultiplier;
-        FluidEnvironment.indexOfRefraction = Volume->indexOfRefraction;
-        FluidEnvironment.NumRefractions = Volume->NumRefraction;
-
-        UBFluidEnvironment = TUniformBufferRef<FFluidEnvironment>::CreateUniformBufferImmediate(FluidEnvironment, EUniformBufferUsage::UniformBuffer_MultiFrame);  
-        UBFluidBounds = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(FluidVolumeLocal, EUniformBufferUsage::UniformBuffer_MultiFrame);  
-        UBFluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_MultiFrame);  
-        
         // Generate Spatial indices and offsets
         FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
         DispatchFluidMath(GraphBuilder, GlobalShaderMap);
@@ -137,6 +110,11 @@ void UParticleBuffers::Initialize(AFluidBoundingVolume* Volume)
 
 UParticleBuffers::~UParticleBuffers()
 {
+
+}
+
+void UParticleBuffers::OnUnregister()
+{
     if(Positions && Positions.IsValid())                    Positions->Release();
 	if(PredictedPositions && PredictedPositions.IsValid())  PredictedPositions->Release();
 	if(Velocities && Velocities.IsValid())                  Velocities->Release();
@@ -144,6 +122,8 @@ UParticleBuffers::~UParticleBuffers()
 	if(SpatialIndices && SpatialIndices.IsValid())          SpatialIndices->Release();
 	if(SpatialOffsets && SpatialOffsets.IsValid())          SpatialOffsets->Release();
     bInitialized = false;
+
+    Super::OnUnregister();
 }
 
 void UParticleBuffers::Register(FRDGBuilder& GraphBuilder)
@@ -161,6 +141,21 @@ void UParticleBuffers::Register(FRDGBuilder& GraphBuilder)
 
 void UParticleBuffers::DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap)
 {
+    //Update UBs
+    FFluidVolumeLocal FluidVolumeLocal;
+    FFluidVolume FluidVolume;
+    
+    TArray<FVector> VolumeBounds = ParentVolume->GetVolumeBounds();
+    FluidVolumeLocal.MinBounds = FVector3f(VolumeBounds[0]);
+    FluidVolumeLocal.MaxBounds = FVector3f(VolumeBounds[1]);
+    
+    FluidVolume.BoundsPosition = FVector3f(ParentVolume->Bounds->GetComponentLocation());
+    FluidVolume.BoundsSize = FVector3f(ParentVolume->Bounds->GetScaledBoxExtent());
+    
+    UBFluidBounds = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(FluidVolumeLocal, EUniformBufferUsage::UniformBuffer_SingleFrame);  
+    UBFluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
+        
+    // Fluid Math
     FFluidMathParams FluidMath;
     FluidMath.Positions = GraphBuilder.CreateUAV(PositionsRef);
     FluidMath.PredictedPositions = GraphBuilder.CreateUAV(PredictedPositionsRef);
@@ -191,6 +186,23 @@ void UParticleBuffers::DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShade
 
 void UParticleBuffers::DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRDGTexture* SceneColor, const FSceneView& InView)
 {
+    //Update UBs
+    FFluidEnvironment FluidEnvironment;
+
+    FluidEnvironment.ExtinctionCoeff = FVector3f(ParentVolume->ExtinctionCoeff);
+    FluidEnvironment.MarchStepSize = ParentVolume->MarchStepSize;
+    FluidEnvironment.LightStepSize = ParentVolume->LightStepSize;
+    FluidEnvironment.DensityStepSize = ParentVolume->DensityStepSize;
+    FluidEnvironment.DensityMultiplier = ParentVolume->DensityMultiplier;
+    FluidEnvironment.indexOfRefraction = ParentVolume->indexOfRefraction;
+    FluidEnvironment.NumRefractions = ParentVolume->NumRefraction;
+
+    FTransform Cube(ParentVolume->Bounds->GetComponentRotation(), ParentVolume->Bounds->GetComponentLocation(), ParentVolume->Bounds->GetComponentScale());
+    FluidEnvironment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
+    FluidEnvironment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
+
+    UBFluidEnvironment = TUniformBufferRef<FFluidEnvironment>::CreateUniformBufferImmediate(FluidEnvironment, EUniformBufferUsage::UniformBuffer_SingleFrame);  
+        
     // Render Prep
     FRenderPrepParams RenderPrep;
     
