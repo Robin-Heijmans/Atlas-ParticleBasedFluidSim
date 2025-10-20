@@ -397,7 +397,7 @@ void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp
     float HalfHeight = OtherComp.GetUnscaledCapsuleHalfHeight() * LocalScale.Z;//FMath::Abs(ScaleUp);
     float HalfHeightCylinder = HalfHeight - SphereRadius;
     
-    FVector ObjectExtent = (FVector(SphereRadius) + (UpCapsule * HalfHeightCylinder)).GetAbs();
+    FVector ObjectExtent = (FVector(SphereRadius) + (UpCapsule.GetAbs() * HalfHeightCylinder)).GetAbs();
     FVector RotatedExtent = GetRotatedBoxAABBExtent(ObjectExtent, LocalTransform.GetRotation());
     FVector ObjMinBounds = LocalCenter - ObjectExtent;
     FVector ObjMaxBounds = LocalCenter + ObjectExtent;
