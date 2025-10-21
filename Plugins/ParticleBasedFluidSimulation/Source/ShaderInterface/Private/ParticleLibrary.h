@@ -22,7 +22,7 @@ public:
 	UParticleBuffers() = default;
 	~UParticleBuffers();
 
-	void Initialize(TUniformBufferRef<FFluidVolumeLocal> VolumeBounds, const class UFluidBoundingVolumeComponent* Volume);
+	void Initialize(const class UFluidBoundingVolumeComponent* Volume);
 	
 	// Call this at the beginning of the frame
 	void Register(FRDGBuilder& GraphBuilder);

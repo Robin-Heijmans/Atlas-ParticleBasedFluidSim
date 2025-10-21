@@ -22,10 +22,7 @@
 
 #include "FluidBoundingVolume.h"
 
-void UParticleBuffers::Initialize( 
-    TUniformBufferRef<FFluidVolumeLocal> VolumeBounds,
-    const UFluidBoundingVolumeComponent* Volume
-)
+void UParticleBuffers::Initialize(const UFluidBoundingVolumeComponent* Volume)
 {
     ENQUEUE_RENDER_COMMAND(ParticleBufferInit)(
     [this, Volume](FRHICommandListImmediate& RHICmdList) {
@@ -104,9 +101,13 @@ void UParticleBuffers::Initialize(
         FFluidVolumeLocal FluidVolumeLocal;
         FFluidVolume FluidVolume;
         
-        TArray<FVector> Bounds = Volume->GetVolumeBounds();
-        FluidVolumeLocal.MinBounds = FVector3f(Bounds[0]);
-        FluidVolumeLocal.MaxBounds = FVector3f(Bounds[1]);
+        FVector Extent = Volume->Bounds->GetScaledBoxExtent();
+	    FVector WorldScale = Volume->Bounds->GetComponentScale();
+
+        FVector LocalMin = -Extent / WorldScale;
+	    FVector LocalMax = Extent / WorldScale;
+        FluidVolumeLocal.MinBounds = FVector3f(LocalMin);
+        FluidVolumeLocal.MaxBounds = FVector3f(LocalMax);
         
         FluidVolume.BoundsPosition = FVector3f(Volume->Bounds->GetComponentLocation());
         FluidVolume.BoundsSize = FVector3f(Volume->Bounds->GetScaledBoxExtent());

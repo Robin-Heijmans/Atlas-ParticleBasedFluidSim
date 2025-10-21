@@ -14,6 +14,7 @@
 #include "UnifiedBuffer.h"	
 #include "GameFramework/Actor.h"
 #include "UObject/UObjectGlobals.h"
+#include "Components/BoxComponent.h"
 
 #include "FluidBoundingVolume.h"
 
@@ -58,10 +59,6 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
         TotalTime += World->GetDeltaSeconds();
     #endif
 
-    FFluidVolume FluidVolume;
-    FFluidVolumeLocal VolumeBounds;
-    FFluidEnvironment FluidEnvironment;
-
     for (TActorIterator<AActor> ActorItr(World); ActorItr; ++ActorItr)
     {
         AActor* Actor = *ActorItr;
@@ -73,31 +70,6 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
 
         for (UFluidBoundingVolumeComponent* FluidComp : FluidComponents)
         {
-            // Update UBOs continously
-            TArray<FVector> bounds = FluidComp->GetVolumeBounds();
-            VolumeBounds.MinBounds = FVector3f(bounds[0]);
-            VolumeBounds.MaxBounds = FVector3f(bounds[1]);
-            
-            FluidVolume.BoundsPosition = FVector3f(FluidComp->Bounds->GetComponentLocation());
-            FluidVolume.BoundsSize = FVector3f(FluidComp->Bounds->GetScaledBoxExtent());
-            
-            FTransform Cube(FluidComp->Bounds->GetComponentRotation(), FluidComp->Bounds->GetComponentLocation(), FluidComp->Bounds->GetComponentScale());
-
-            FluidEnvironment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
-            FluidEnvironment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
-
-            FluidEnvironment.ExtinctionCoeff = FVector3f(FluidComp->ExtinctionCoeff);
-            FluidEnvironment.MarchStepSize = FluidComp->MarchStepSize;
-            FluidEnvironment.LightStepSize = FluidComp->LightStepSize;
-            FluidEnvironment.DensityStepSize = FluidComp->DensityStepSize;
-            FluidEnvironment.DensityMultiplier = FluidComp->DensityMultiplier;
-            FluidEnvironment.indexOfRefraction = FluidComp->indexOfRefraction;
-            FluidEnvironment.NumRefractions = FluidComp->NumRefraction;
-
-            UBFluidEnvironment = TUniformBufferRef<FFluidEnvironment>::CreateUniformBufferImmediate(FluidEnvironment, EUniformBufferUsage::UniformBuffer_SingleFrame);  
-            UBFluidBounds = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(VolumeBounds, EUniformBufferUsage::UniformBuffer_SingleFrame);  
-            UBFluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
-        
             // Initialize ParticleBuffers
             if(!FluidComp->HasParticles)
             {   
@@ -126,7 +98,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
                     NewParticleBuffers->AttachToComponent(FluidComp, FAttachmentTransformRules::KeepRelativeTransform);
 
                     // Allocate Particle Buffer
-                    NewParticleBuffers->Initialize(UBFluidBounds, FluidComp);
+                    NewParticleBuffers->Initialize(FluidComp);
                     NewParticleBuffers->SimulationSettings.DeltaTime = FixedTimeStep;
                     FluidComp->HasParticles = true;
                     return;
@@ -145,28 +117,28 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
                 ParticleBuffers->AttachToComponent(FluidComp, FAttachmentTransformRules::KeepRelativeTransform);
 
                 // Allocate Particle Buffer
-                ParticleBuffers->Initialize(UBFluidBounds, FluidComp);
+                ParticleBuffers->Initialize(FluidComp);
                 ParticleBuffers->SimulationSettings.DeltaTime = FixedTimeStep;
                 FluidComp->HasParticles = true;
                 return;
             }
 
-            const uint32 NumParticles = FluidVolumes->NumParticlesX * FluidVolumes->NumParticlesY * FluidVolumes->NumParticlesZ;
+            const uint32 NumParticles = FluidComp->NumParticlesX * FluidComp->NumParticlesY * FluidComp->NumParticlesZ;
             if(NumParticles > 5000 || NumParticles == 0)     
             {
                 UE_LOG(LogTemp, Warning, TEXT("Illegal NumParticles: %d"), NumParticles);
                 continue;
             }
 
-            UParticleBuffers* ParticleBuffers = NewObject<UParticleBuffers>(*FluidVolumes,UParticleBuffers::StaticClass(), TEXT("Particle Buffers"));
+            UParticleBuffers* ParticleBuffers = NewObject<UParticleBuffers>(FluidComp, UParticleBuffers::StaticClass(), TEXT("Particle Buffers"));
 
             ParticleBuffers->RegisterComponent();
-            ParticleBuffers->AttachToComponent(FluidVolumes->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+            ParticleBuffers->AttachToComponent(FluidComp, FAttachmentTransformRules::KeepRelativeTransform);
 
             // Allocate Particle Buffer
-            ParticleBuffers->Initialize(*FluidVolumes);
+            ParticleBuffers->Initialize(FluidComp);
             ParticleBuffers->SimulationSettings.DeltaTime = FixedTimeStep;
-            FluidVolumes->HasParticles = true;
+            FluidComp->HasParticles = true;
             return;
         }
     }
