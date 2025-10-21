@@ -95,38 +95,33 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
         FluidVolume.BoundsPosition = FVector3f(FluidVolumes->Bounds->GetComponentLocation());
         FluidVolume.BoundsSize = FVector3f(FluidVolumes->Bounds->GetScaledBoxExtent());
         
-        FTransform Cube(FluidVolumes->Bounds->GetComponentRotation(), FluidVolumes->Bounds->GetComponentLocation(), FluidVolumes->Bounds->GetComponentScale());
 
-        FluidEnvironment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
-        FluidEnvironment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
-
-        FluidEnvironment.ExtinctionCoeff = FVector3f(FluidVolumes->ExtinctionCoeff);
-        FluidEnvironment.MarchStepSize = FluidVolumes->MarchStepSize;
-        FluidEnvironment.LightStepSize = FluidVolumes->LightStepSize;
-        FluidEnvironment.DensityStepSize = FluidVolumes->DensityStepSize;
-        FluidEnvironment.DensityMultiplier = FluidVolumes->DensityMultiplier;
-        FluidEnvironment.indexOfRefraction = FluidVolumes->indexOfRefraction;
-        FluidEnvironment.NumRefractions = FluidVolumes->NumRefraction;
+        //FluidEnviroment.ExtinctionCoeff = FVector3f(FluidComp->ExtinctionCoeff);
+        //FluidEnviroment.MarchStepSize = FluidComp->MarchStepSize;
+        //FluidEnviroment.LightStepSize = FluidComp->LightStepSize;
+        //FluidEnviroment.DensityStepSize = FluidComp->DensityStepSize;
+        //FluidEnviroment.DensityMultiplier = FluidComp->DensityMultiplier;
+        //FluidEnviroment.indexOfRefraction = FluidComp->indexOfRefraction;
+        //FluidEnviroment.iorAir = FluidComp->iorAir;
 
         UBFluidEnvironment = TUniformBufferRef<FFluidEnvironment>::CreateUniformBufferImmediate(FluidEnvironment, EUniformBufferUsage::UniformBuffer_SingleFrame);  
         UBFluidBounds = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(VolumeBounds, EUniformBufferUsage::UniformBuffer_SingleFrame);  
-        UBFluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
-    
-        // Initialize ParticleBuffers
-        if(!FluidVolumes->HasParticles)
-        {   
-            TArray<USceneComponent*> Children;
-            FluidVolumes->GetRootComponent()->GetChildrenComponents(true, Children);
-            for(USceneComponent* Child : Children)
-            {
-                UParticleBuffers* ParticleBuffers = nullptr;
-                ParticleBuffers = dynamic_cast<UParticleBuffers*>(Child);
-                if(ParticleBuffers && ParticleBuffers->bInitialized)
+            UBFluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
+        
+            // Initialize ParticleBuffers
+            if(!FluidComp->HasParticles)
+            {   
+                TArray<USceneComponent*> Children;
+                FluidComp->GetChildrenComponents(true, Children);
+                for(USceneComponent* Child : Children)
                 {
-                    ParticleBuffers->UnregisterComponent(); // doesnt working, but doesnt break anything either
-                    
+                    UParticleBuffers* ParticleBuffers = nullptr;
+                    ParticleBuffers = reinterpret_cast<UParticleBuffers*>(Child);
+                    if(ParticleBuffers != nullptr)
+                    {
+                        ParticleBuffers->UnregisterComponent(); // Not working
+                    }
                 }
-            }
 
                 const uint32 NumParticles = FluidComp->NumParticlesX * FluidComp->NumParticlesY * FluidComp->NumParticlesZ;
                 if(NumParticles > 5000 || NumParticles == 0)     
@@ -148,7 +143,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& ViewFamily)
             }
         }
     }
-
+    
     for (TObjectIterator<UParticleBuffers> ParticleBuffers; ParticleBuffers; ++ParticleBuffers)
     {
         if(!ParticleBuffers->bInitialized) continue;
