@@ -22,7 +22,7 @@ public:
 	UParticleBuffers() = default;
 	~UParticleBuffers();
 
-	void Initialize(const class UFluidBoundingVolumeComponent* Volume);
+	void Initialize(class UFluidBoundingVolumeComponent* Volume);
 	
 	// Call this at the beginning of the frame
 	void Register(FRDGBuilder& GraphBuilder);
@@ -69,5 +69,5 @@ private:
 	FRDGBufferRef SpatialIndicesRef = nullptr;
 	FRDGBufferRef SpatialOffsetsRef = nullptr;
 	
-	class AFluidBoundingVolume* ParentVolume;
+	class UFluidBoundingVolumeComponent* ParentVolume;
 };
