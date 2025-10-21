@@ -256,7 +256,7 @@ void UParticleBuffers::DispatchPOCollisionResolution(FRDGBuilder& GraphBuilder, 
             FTransform OtherLocalTransform = Sphere->GetComponentTransform().GetRelativeTransform(ParentVolume->Bounds->GetComponentTransform());
             
             FluidMath.OtherLocalTransform = static_cast<FMatrix44f>(OtherLocalTransform.ToMatrixWithScale().Inverse().GetTransposed());
-            FluidMath.OtherLocalTransformInverse = static_cast<FMatrix44f>(OtherLocalTransform.Inverse().ToMatrixWithScale());
+            FluidMath.OtherLocalTransformInverse = static_cast<FMatrix44f>(OtherLocalTransform.ToMatrixWithScale().Inverse());
             FluidMath.OtherLocalExtent = static_cast<FVector3f>(Sphere->GetUnscaledSphereRadius());
             FluidMath.LocalScale = static_cast<FVector3f>(Sphere->GetUnscaledSphereRadius() * (Sphere->GetComponentScale() / ParentVolume->Bounds->GetComponentScale()));
 
