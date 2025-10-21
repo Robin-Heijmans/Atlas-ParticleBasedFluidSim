@@ -3,26 +3,37 @@
 
 #include "FluidBoundingVolume.h"
 #include "Components/BoxComponent.h"
+#include "Components/SphereComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
+
+#include "PhysicsEngine/BodyInstance.h"
 
 #include "Engine/TextureRenderTarget2D.h"
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "SceneView.h"
 #include "Engine/World.h"
+#include "ExternalForceObject.h"
+#include "Engine/OverlapResult.h"
 
 // Sets default values
-AFluidBoundingVolume::AFluidBoundingVolume()
+UFluidBoundingVolumeComponent::UFluidBoundingVolumeComponent()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = true;
 
 
 	Bounds = CreateDefaultSubobject<UBoxComponent>(TEXT("Bounds"));
-    RootComponent = Bounds;
+    Bounds->SetupAttachment(this);
+    Bounds->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    Bounds->SetCollisionObjectType(ECC_WorldDynamic);
+    Bounds->SetCollisionResponseToAllChannels(ECR_Ignore);
+    Bounds->SetCollisionResponseToChannel(ECC_PhysicsBody, ECR_Overlap);
+    Bounds->SetGenerateOverlapEvents(true);
 
 	ParticleMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ParticleMesh"));
-    ParticleMesh->SetupAttachment(RootComponent);
+    ParticleMesh->SetupAttachment(this);
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMeshObj(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
     if (SphereMeshObj.Succeeded())
@@ -38,9 +49,9 @@ AFluidBoundingVolume::AFluidBoundingVolume()
     }
 }
 
-void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
+void UFluidBoundingVolumeComponent::OnRegister()
 {
-    Super::OnConstruction(Transform);
+    Super::OnRegister();
     UpdateVolumeBounds();
     if (!IsInitialized) {
         InitializeParticles();
@@ -49,12 +60,12 @@ void AFluidBoundingVolume::OnConstruction(const FTransform& Transform)
     }
 }
 
-void AFluidBoundingVolume::GenerateParticleBuffers()
+void UFluidBoundingVolumeComponent::GenerateParticleBuffers()
 {
     HasParticles = false;
 }
 
-void AFluidBoundingVolume::InitializeParticles()
+void UFluidBoundingVolumeComponent::InitializeParticles()
 {
     Particles.Empty();
     MeshPositions.Empty();
@@ -104,7 +115,7 @@ void AFluidBoundingVolume::InitializeParticles()
 	Simulation->InitializeParticles(Particles, LocalMin, LocalMax);
 }
 
-void AFluidBoundingVolume::UpdateVolumeBounds() {
+void UFluidBoundingVolumeComponent::UpdateVolumeBounds() {
     if (!Simulation) return;
     FVector Extent = Bounds->GetScaledBoxExtent();
 	FVector WorldScale = Bounds->GetComponentScale();
@@ -115,7 +126,7 @@ void AFluidBoundingVolume::UpdateVolumeBounds() {
 }
 
 // Called when the game starts or when spawned
-void AFluidBoundingVolume::BeginPlay()
+void UFluidBoundingVolumeComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	InitializeParticles();
@@ -126,19 +137,20 @@ void AFluidBoundingVolume::BeginPlay()
 }
 
 // Called every frame
-void AFluidBoundingVolume::Tick(float DeltaTime)
+void UFluidBoundingVolumeComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-    
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	TotalTime += DeltaTime;
-	Super::Tick(DeltaTime);
-
+	
     if (RunCPU)
     {
         if (FrameCount > SetPositionsCount) FrameCount = 0;
 
         if (TotalTime >= FixedTimeStep)
         {
+            GetExternalForce();
             Simulation->StepSimulation(FixedTimeStep);
+            CollisionsCheck();
             Particles = Simulation->GetParticles();
             TotalTime = 0.0f;
             UpdateInstances(false);
@@ -148,7 +160,7 @@ void AFluidBoundingVolume::Tick(float DeltaTime)
     }
 }
 
-void AFluidBoundingVolume::UpdateMaterials()
+void UFluidBoundingVolumeComponent::UpdateMaterials()
 {
     if (!DefaultSphereMesh || Particles.Num() == 0) return;
     FVector WorldScale = Bounds->GetComponentScale();
@@ -167,7 +179,7 @@ void AFluidBoundingVolume::UpdateMaterials()
     }
 }
 
-void AFluidBoundingVolume::UpdateInstances(const bool AllInstances) {
+void UFluidBoundingVolumeComponent::UpdateInstances(const bool AllInstances) {
     if (!DefaultSphereMesh || Particles.Num() == 0) return;
     int32 startIndex = 0;
     int32 endIndex = Particles.Num();
@@ -194,7 +206,7 @@ void AFluidBoundingVolume::UpdateInstances(const bool AllInstances) {
     ParticleMesh->MarkRenderStateDirty();
 }
 
-FLinearColor AFluidBoundingVolume::VelocityToColor(const float& Speed) {
+FLinearColor UFluidBoundingVolumeComponent::VelocityToColor(const float& Speed) {
     float Alpha = FMath::Clamp(Speed / MaxSpeedGradient, 0.0f, 1.0f);
 
     if (Alpha < 0.5f) // interpolate from blue to green
@@ -214,25 +226,25 @@ FLinearColor AFluidBoundingVolume::VelocityToColor(const float& Speed) {
 }
 
 #if WITH_EDITOR
-void AFluidBoundingVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+void UFluidBoundingVolumeComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
     Super::PostEditChangeProperty(PropertyChangedEvent);
 
     const FName PropertyName = PropertyChangedEvent.GetPropertyName();
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(AFluidBoundingVolume, NumParticlesX) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(AFluidBoundingVolume, NumParticlesY) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(AFluidBoundingVolume, NumParticlesZ))
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UFluidBoundingVolumeComponent, NumParticlesX) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UFluidBoundingVolumeComponent, NumParticlesY) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UFluidBoundingVolumeComponent, NumParticlesZ))
     {
-        InitializeParticles();
-        UpdateInstances(true);
-        UpdateMaterials();
+        //InitializeParticles();
+        //UpdateInstances(true);
+        //UpdateMaterials();
     }
     // Update simulation only when values are changed in editor
-    Simulation->ApplySettings(Settings);
+    //Simulation->ApplySettings(Settings);
 }
 #endif
 
-TArray<FVector> AFluidBoundingVolume::GetVolumeBounds() {
+TArray<FVector> UFluidBoundingVolumeComponent::GetVolumeBounds() {
     FVector Extent = Bounds->GetScaledBoxExtent();
 	FVector WorldScale = Bounds->GetComponentScale();
 
@@ -240,4 +252,67 @@ TArray<FVector> AFluidBoundingVolume::GetVolumeBounds() {
 	FVector LocalMax = Extent / WorldScale;
     TArray<FVector> bounds = {LocalMin, LocalMax};
     return bounds;
+}
+
+void UFluidBoundingVolumeComponent::GetExternalForce() {
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    for (TObjectIterator<UExternalForceComponent> It; It; ++It)
+    {
+        UExternalForceComponent* ForceComp = *It;
+        if (!ForceComp || !ForceComp->GetWorld() || ForceComp->GetWorld() != World)
+            continue;
+
+        FVector WorldPos = ForceComp->GetComponentLocation();
+        FVector LocalPos = GetComponentTransform().InverseTransformPosition(WorldPos);
+        Simulation->ApplyExternalForce(LocalPos, ForceComp->ForceAmplifier, ForceComp->Radius);
+    }
+}
+
+void UFluidBoundingVolumeComponent::CollisionsCheck() {
+    TArray<FOverlapResult> Overlaps;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(GetOwner());
+
+    FVector Center = Bounds->GetComponentLocation();
+    FVector Extent = Bounds->GetScaledBoxExtent();
+
+    GetWorld()->OverlapMultiByChannel(
+        Overlaps,
+        Center,
+        FQuat::Identity,
+        ECC_PhysicsBody,
+        FCollisionShape::MakeBox(Extent),
+        Params
+    );
+
+    for (auto& Overlap : Overlaps)
+    {
+        UPrimitiveComponent* Comp = Overlap.GetComponent();
+        if (!Comp) continue;
+        FVector LocalPos = GetComponentTransform().InverseTransformPosition(Comp->GetComponentLocation());
+
+        if (UBoxComponent* Box = Cast<UBoxComponent>(Comp)) {
+            // To be implemented
+            Simulation->BoxCollision(*Box, *Bounds, LocalPos);
+        }
+        else if (USphereComponent* Sphere = Cast<USphereComponent>(Comp)) {
+            // To be implemented
+            Simulation->SphereCollision(*Sphere, *Bounds, LocalPos, GetWorld());
+        }
+        else if (UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Comp)) {
+            // To be implemented
+            Simulation->CapsuleCollision(*Capsule, *Bounds, LocalPos, GetWorld());
+        }
+        else {
+            UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>(Comp);
+            GEngine->AddOnScreenDebugMessage(3, 5.f, FColor::Yellow, (FString::Printf(TEXT("RIP: Static mesh detected"))));
+            if (MeshComp && MeshComp->GetBodyInstance())
+            {
+                FBodyInstance* Body = MeshComp->GetBodyInstance();
+                // To be implemented (complex shapes)
+            }
+        }
+    }
 }

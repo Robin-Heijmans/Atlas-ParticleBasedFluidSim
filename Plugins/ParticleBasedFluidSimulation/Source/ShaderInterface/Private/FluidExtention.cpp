@@ -131,6 +131,24 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
                     FluidComp->HasParticles = true;
                     return;
                 }
+
+                const uint32 NumParticles = FluidComp->NumParticlesX * FluidComp->NumParticlesY * FluidComp->NumParticlesZ;
+                if(NumParticles > 5000 || NumParticles == 0)     
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("Illegal NumParticles: %d"), NumParticles);
+                    continue;
+                }
+
+                UParticleBuffers* ParticleBuffers = NewObject<UParticleBuffers>(FluidComp,UParticleBuffers::StaticClass(), TEXT("Particle Buffers"));
+
+                ParticleBuffers->RegisterComponent();
+                ParticleBuffers->AttachToComponent(FluidComp, FAttachmentTransformRules::KeepRelativeTransform);
+
+                // Allocate Particle Buffer
+                ParticleBuffers->Initialize(UBFluidBounds, FluidComp);
+                ParticleBuffers->SimulationSettings.DeltaTime = FixedTimeStep;
+                FluidComp->HasParticles = true;
+                return;
             }
 
             const uint32 NumParticles = FluidVolumes->NumParticlesX * FluidVolumes->NumParticlesY * FluidVolumes->NumParticlesZ;

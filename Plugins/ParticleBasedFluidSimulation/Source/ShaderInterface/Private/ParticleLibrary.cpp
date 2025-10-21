@@ -22,7 +22,10 @@
 
 #include "FluidBoundingVolume.h"
 
-void UParticleBuffers::Initialize(AFluidBoundingVolume* Volume)
+void UParticleBuffers::Initialize( 
+    TUniformBufferRef<FFluidVolumeLocal> VolumeBounds,
+    const UFluidBoundingVolumeComponent* Volume
+)
 {
     ENQUEUE_RENDER_COMMAND(ParticleBufferInit)(
     [this, Volume](FRHICommandListImmediate& RHICmdList) {
