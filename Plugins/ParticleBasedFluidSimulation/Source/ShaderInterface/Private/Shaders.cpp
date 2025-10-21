@@ -42,7 +42,7 @@ namespace Shaders
 }
 
 // Global Shader Buffers
-//IMPLEMENT_STATIC_AND_SHADER_UNIFORM_BUFFER_STRUCT
+//IMPLEMENT_STATIC_AND_SHADER_UNIFORM_BUFFER_STRUCT()
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolume, "FluidVolume");
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidVolumeLocal, "Bounds");
 IMPLEMENT_UNIFORM_BUFFER_STRUCT(FFluidEnvironment, "Environment");
@@ -63,7 +63,7 @@ namespace RenderDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute Atlas RenderPrep"),
-            ERDGPassFlags::AsyncCompute,
+            ERDGPassFlags::Compute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -83,13 +83,13 @@ namespace RenderDispatch
         *PassParameters = Params;
 
         const FIntPoint ViewSize = PassParameters->SceneColor->Desc.Extent;
-        const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, FComputeShaderUtils::kGolden2DGroupSize);
+        const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, 32);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
 
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute Atlas FluidMarch %dx%d", ViewSize.X, ViewSize.Y),
-            ERDGPassFlags::AsyncCompute,
+            ERDGPassFlags::Compute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -112,7 +112,7 @@ namespace FluidMathDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute ExternalForces"), 
-            ERDGPassFlags::AsyncCompute,
+            ERDGPassFlags::Compute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -131,7 +131,7 @@ namespace FluidMathDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute UpdateSpatialLookup"), 
-            ERDGPassFlags::AsyncCompute,
+            ERDGPassFlags::Compute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -194,7 +194,7 @@ namespace FluidMathDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute UpdateSpatialLookup"), 
-            ERDGPassFlags::AsyncCompute,
+            ERDGPassFlags::Compute,
             OffsetComputeShader,
             PassParametersOffset,
             DispatchCount);
@@ -213,7 +213,7 @@ namespace FluidMathDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute CalculateDensity"), 
-            ERDGPassFlags::AsyncCompute,
+            ERDGPassFlags::Compute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -232,7 +232,7 @@ namespace FluidMathDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute CalculatePressureForce"), 
-            ERDGPassFlags::AsyncCompute,
+            ERDGPassFlags::Compute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -251,7 +251,7 @@ namespace FluidMathDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute CalculateViscosityForce"), 
-            ERDGPassFlags::AsyncCompute,
+            ERDGPassFlags::Compute,
             ComputeShader,
             PassParameters,
             DispatchCount);
@@ -270,7 +270,7 @@ namespace FluidMathDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute UpdatePositions"), 
-            ERDGPassFlags::AsyncCompute,
+            ERDGPassFlags::Compute,
             ComputeShader,
             PassParameters,
             DispatchCount);

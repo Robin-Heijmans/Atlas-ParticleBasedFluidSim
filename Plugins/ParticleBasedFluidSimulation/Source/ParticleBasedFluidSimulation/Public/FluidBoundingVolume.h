@@ -41,19 +41,19 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
     int NumParticlesZ = 5;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
+    UPROPERTY(EditAnywhere, Category = "Particles")
 	FVector3f ExtinctionCoeff = FVector3f(1.f,0.55f,0.35f);
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
+    UPROPERTY(EditAnywhere, Category = "Particles")
 	float MarchStepSize = 0.02f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
+    UPROPERTY(EditAnywhere, Category = "Particles")
 	float LightStepSize = 0.4f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
+    UPROPERTY(EditAnywhere, Category = "Particles")
 	float DensityStepSize = 0.5f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
+    UPROPERTY(EditAnywhere, Category = "Particles")
 	float DensityMultiplier = 25.f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
+    UPROPERTY(EditAnywhere, Category = "Particles")
 	float indexOfRefraction = 1.33f;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
+    UPROPERTY(EditAnywhere, Category = "Particles")
 	int32 NumRefraction = 4;
 
     UFUNCTION(CallInEditor, Category = "Particles")

@@ -26,6 +26,7 @@ public:
 	
 	// Call this at the beginning of the frame
 	void Register(FRDGBuilder& GraphBuilder);
+	virtual void OnUnregister() override;
 
 	void DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap);
 	void DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRDGTexture* SceneColor, const FSceneView& InView);
@@ -68,4 +69,5 @@ private:
 	FRDGBufferRef SpatialIndicesRef = nullptr;
 	FRDGBufferRef SpatialOffsetsRef = nullptr;
 	
+	class AFluidBoundingVolume* ParentVolume;
 };
