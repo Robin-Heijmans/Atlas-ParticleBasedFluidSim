@@ -62,12 +62,14 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
     FFluidVolumeLocal VolumeBounds;
     FFluidEnvironment FluidEnvironment;
 
-    for (TActorIterator<AFluidBoundingVolume> FluidVolumes(World); FluidVolumes; ++FluidVolumes)
+    for (TActorIterator<AActor> ActorItr(World); ActorItr; ++ActorItr)
     {
-        // Update UBOs continously
+        AActor* Actor = *ActorItr;
+        if (!Actor) continue;
 
         TArray<UFluidBoundingVolumeComponent*> FluidComponents;
         Actor->GetComponents<UFluidBoundingVolumeComponent>(FluidComponents);
+
 
         for (UFluidBoundingVolumeComponent* FluidComp : FluidComponents)
         {
