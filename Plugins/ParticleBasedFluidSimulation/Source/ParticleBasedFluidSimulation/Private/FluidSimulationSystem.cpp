@@ -393,7 +393,6 @@ void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp
     // Assume scale is uniform
     float SphereRadius = OtherComp.GetUnscaledCapsuleRadius() * (LocalScale.X + LocalScale.Y) * 0.5f;
     FVector UpCapsule = OtherComp.GetUpVector();
-    float ScaleUp = FVector::DotProduct(LocalScale, UpCapsule.GetAbs());
     float HalfHeight = OtherComp.GetUnscaledCapsuleHalfHeight() * LocalScale.Z;//FMath::Abs(ScaleUp);
     float HalfHeightCylinder = HalfHeight - SphereRadius;
     

@@ -273,6 +273,36 @@ void UFluidBoundingVolumeComponent::GetExternalForce() {
 }
 
 void UFluidBoundingVolumeComponent::CollisionsCheck() {
+    TArray<FOverlapResult> Overlaps = GetCollisionOverlaps();
+
+    for (auto& Overlap : Overlaps)
+    {
+        UPrimitiveComponent* Comp = Overlap.GetComponent();
+        if (!Comp) continue;
+        FVector LocalPos = GetComponentTransform().InverseTransformPosition(Comp->GetComponentLocation());
+
+        if (UBoxComponent* Box = Cast<UBoxComponent>(Comp)) {
+            Simulation->BoxCollision(*Box, *Bounds, LocalPos, GetWorld());
+        }
+        else if (USphereComponent* Sphere = Cast<USphereComponent>(Comp)) {
+            Simulation->SphereCollision(*Sphere, *Bounds, LocalPos, GetWorld());
+        }
+        else if (UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Comp)) {
+            Simulation->CapsuleCollision(*Capsule, *Bounds, LocalPos, GetWorld());
+        }
+        else {
+            UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>(Comp);
+            GEngine->AddOnScreenDebugMessage(3, 5.f, FColor::Yellow, (FString::Printf(TEXT("RIP: Static mesh detected"))));
+            if (MeshComp && MeshComp->GetBodyInstance())
+            {
+                FBodyInstance* Body = MeshComp->GetBodyInstance();
+                // To be implemented (complex shapes)
+            }
+        }
+    }
+}
+
+TArray<FOverlapResult> UFluidBoundingVolumeComponent::GetCollisionOverlaps() {
     TArray<FOverlapResult> Overlaps;
     FCollisionQueryParams Params;
     Params.AddIgnoredComponent(Bounds);
@@ -288,33 +318,5 @@ void UFluidBoundingVolumeComponent::CollisionsCheck() {
         FCollisionShape::MakeBox(Extent),
         Params
     );
-
-    for (auto& Overlap : Overlaps)
-    {
-        UPrimitiveComponent* Comp = Overlap.GetComponent();
-        if (!Comp) continue;
-        FVector LocalPos = GetComponentTransform().InverseTransformPosition(Comp->GetComponentLocation());
-
-        if (UBoxComponent* Box = Cast<UBoxComponent>(Comp)) {
-            // To be implemented
-            Simulation->BoxCollision(*Box, *Bounds, LocalPos, GetWorld());
-        }
-        else if (USphereComponent* Sphere = Cast<USphereComponent>(Comp)) {
-            // To be implemented
-            Simulation->SphereCollision(*Sphere, *Bounds, LocalPos, GetWorld());
-        }
-        else if (UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Comp)) {
-            // To be implemented
-            Simulation->CapsuleCollision(*Capsule, *Bounds, LocalPos, GetWorld());
-        }
-        else {
-            UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>(Comp);
-            GEngine->AddOnScreenDebugMessage(3, 5.f, FColor::Yellow, (FString::Printf(TEXT("RIP: Static mesh detected"))));
-            if (MeshComp && MeshComp->GetBodyInstance())
-            {
-                FBodyInstance* Body = MeshComp->GetBodyInstance();
-                // To be implemented (complex shapes)
-            }
-        }
-    }
+    return Overlaps;
 }

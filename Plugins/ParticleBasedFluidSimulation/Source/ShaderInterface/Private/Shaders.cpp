@@ -25,18 +25,21 @@
 namespace Shaders
 {
     // Implementations ... 
-    IMPLEMENT_GLOBAL_SHADER(FRenderPrepShader,                  "/Shaders/Compute/RenderPrep.usf", "Compute", SF_Compute);
-    IMPLEMENT_GLOBAL_SHADER(FFluidMarchShader,                  "/Shaders/Compute/FluidMarch.usf", "Compute", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FRenderPrepShader,                          "/Shaders/Compute/RenderPrep.usf", "Compute", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMarchShader,                          "/Shaders/Compute/FluidMarch.usf", "Compute", SF_Compute);
 
     // Fluid Math Kernels
-    IMPLEMENT_GLOBAL_SHADER(FFluidMathExternalForces,           "/Shaders/Compute/FluidMath.usf", "ExternalForces", SF_Compute);
-    IMPLEMENT_GLOBAL_SHADER(FFluidMathUpdateSpatialLookup,      "/Shaders/Compute/FluidMath.usf", "UpdateSpatialLookup", SF_Compute);
-    IMPLEMENT_GLOBAL_SHADER(FFluidMathSortSpatialLookup,        "/Shaders/Compute/BitonicMergeSort.usf", "Sort", SF_Compute);
-    IMPLEMENT_GLOBAL_SHADER(FFluidMathCalculateOffsets,         "/Shaders/Compute/BitonicMergeSort.usf", "CalculateOffsets", SF_Compute);
-    IMPLEMENT_GLOBAL_SHADER(FFluidMathCalculateDensity,         "/Shaders/Compute/FluidMath.usf", "CalculateDensity", SF_Compute);
-    IMPLEMENT_GLOBAL_SHADER(FFluidMathCalculatePressureForce,   "/Shaders/Compute/FluidMath.usf", "CalculatePressureForce", SF_Compute);
-    IMPLEMENT_GLOBAL_SHADER(FFluidMathCalculateViscosityForce,  "/Shaders/Compute/FluidMath.usf", "CalculateViscosityForce", SF_Compute);
-    IMPLEMENT_GLOBAL_SHADER(FFluidMathUpdatePositions,          "/Shaders/Compute/FluidMath.usf", "UpdatePositions", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathExternalForces,                   "/Shaders/Compute/FluidMath.usf", "ExternalForces", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathUpdateSpatialLookup,              "/Shaders/Compute/FluidMath.usf", "UpdateSpatialLookup", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathSortSpatialLookup,                "/Shaders/Compute/BitonicMergeSort.usf", "Sort", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathCalculateOffsets,                 "/Shaders/Compute/BitonicMergeSort.usf", "CalculateOffsets", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathCalculateDensity,                 "/Shaders/Compute/FluidMath.usf", "CalculateDensity", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathCalculatePressureForce,           "/Shaders/Compute/FluidMath.usf", "CalculatePressureForce", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathCalculateViscosityForce,          "/Shaders/Compute/FluidMath.usf", "CalculateViscosityForce", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathUpdatePositions,                  "/Shaders/Compute/FluidMath.usf", "UpdatePositions", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathResolveBoxCollision,              "/Shaders/Compute/FluidMath.usf", "ResolveBoxCollisions", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathResolveSphereCollision,           "/Shaders/Compute/FluidMath.usf", "ResolveSphereCollisions", SF_Compute);
+    IMPLEMENT_GLOBAL_SHADER(FFluidMathResolveCapsuleCollision,          "/Shaders/Compute/FluidMath.usf", "ResolveCapsuleCollisions", SF_Compute);
 
     // ... add new implemenations here
 }
@@ -270,6 +273,65 @@ namespace FluidMathDispatch
         return FComputeShaderUtils::AddPass(
             GraphBuilder,
             RDG_EVENT_NAME("Execute UpdatePositions"), 
+            ERDGPassFlags::Compute,
+            ComputeShader,
+            PassParameters,
+            DispatchCount);
+    }
+    FRDGPassRef ResolveBoxCollision(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params) 
+    {
+        RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation Resolve box collision");
+
+        using ShaderType = Shaders::FFluidMathResolveBoxCollision;
+        ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
+        *PassParameters = Params;
+
+        const FIntVector DispatchCount(FMath::DivideAndRoundUp(Params.NumParticles, uint32(32)), 1, 1);
+        TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
+
+        return FComputeShaderUtils::AddPass(
+            GraphBuilder,
+            RDG_EVENT_NAME("Execute Box collision resolution"), 
+            ERDGPassFlags::Compute,
+            ComputeShader,
+            PassParameters,
+            DispatchCount);
+    }
+
+    FRDGPassRef ResolveSphereCollision(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params) 
+    {
+        RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation Resolve sphere collision");
+
+        using ShaderType = Shaders::FFluidMathResolveSphereCollision;
+        ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
+        *PassParameters = Params;
+
+        const FIntVector DispatchCount(FMath::DivideAndRoundUp(Params.NumParticles, uint32(32)), 1, 1);
+        TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
+
+        return FComputeShaderUtils::AddPass(
+            GraphBuilder,
+            RDG_EVENT_NAME("Execute Sphere collision resolution"), 
+            ERDGPassFlags::Compute,
+            ComputeShader,
+            PassParameters,
+            DispatchCount);
+    }
+
+    FRDGPassRef ResolveCapsuleCollision(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params) 
+    {
+        RDG_EVENT_SCOPE(GraphBuilder, "ParticleSimulation Resolve capsule collision");
+
+        using ShaderType = Shaders::FFluidMathResolveCapsuleCollision;
+        ShaderType::FParameters* PassParameters = GraphBuilder.AllocParameters<Shaders::FFluidMathExternalForces::FParameters>();
+        *PassParameters = Params;
+
+        const FIntVector DispatchCount(FMath::DivideAndRoundUp(Params.NumParticles, uint32(32)), 1, 1);
+        TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
+
+        return FComputeShaderUtils::AddPass(
+            GraphBuilder,
+            RDG_EVENT_NAME("Execute Capsule collision resolution"), 
             ERDGPassFlags::Compute,
             ComputeShader,
             PassParameters,
