@@ -13,7 +13,6 @@
 #include "MeshPassUtils.h"
 #include "MaterialShader.h"
 
-#include "Shaders.generated.h"
 
 /// look at these comments for naming conventions pls
 
@@ -121,70 +120,20 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidMarchParams, )
     SHADER_PARAMETER_STRUCT_REF(FFluidEnvironment, Enviroment)
     SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
     
-    SHADER_PARAMETER_RDG_TEXTURE_SRV(RWTexture3D<float3>, DensityMap)
-    SHADER_PARAMETER(FUintVector3, DensityMapSize)
-
-    SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SceneColor)
     SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float3>, Target)
+    SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SceneColor)
+    
+    SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture3D<float>, DensityMap)
+    SHADER_PARAMETER(FUintVector3, DensityMapSize)
 END_SHADER_PARAMETER_STRUCT()
 
 
 
-// ---------
-// USTRUCT() struct F*ShaderName*DispatchParams
-// int x,y,z for numthreads
-// members... (dont forget to add UPROPERT())
-// needs default constructor
-//  
-// IMPORTANT add function decleration:
-// void Dispatch(FRDGBuilder& GraphBuilder); -> defined in Shaders.cpp
-// ---------
-
-// Cannot be in a namespace, generated_body() is being skipped (???)
-
-// Fluid March // Actually rendering to screen
-USTRUCT(BlueprintType)
-struct SHADERINTERFACE_API FFluidMarchDispatchParams
-{	
-    GENERATED_BODY()
-public:
-    int X = 1;
-    int Y = 1;
-    int Z = 1;
-
-    FFluidMarchDispatchParams() = default;
-    FFluidMarchDispatchParams(int x, int y, int z)
-        : X(x)
-        , Y(y)
-        , Z(z)
-    {
-    }
-    void Dispatch(FRDGBuilder& GraphBuilder, 
-        FGlobalShaderMap* GlobalShaderMap, 
-        FFluidMarchParams Params);
-};
-
-// GenerateDensityMap
-USTRUCT(BlueprintType)
-struct SHADERINTERFACE_API FRenderPrepDispatchParams
-{	
-GENERATED_BODY()
-    public:
-    int X = 1;
-    int Y = 1;
-    int Z = 1;
-
-    FRenderPrepDispatchParams() = default;
-    FRenderPrepDispatchParams(int x, int y, int z)
-        : X(x)
-        , Y(y)
-        , Z(z)
-    {
-    }    
-    
-    void Dispatch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRenderPrepParams Params);
-};
-
+namespace RenderDispatch
+{
+    FRDGPassRef GenerateDensityMap(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRenderPrepParams Params);
+    FRDGPassRef Raymarch(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMarchParams Params);
+}
 
 namespace FluidMathDispatch
 {
@@ -411,8 +360,8 @@ namespace Shaders
 
     	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
     	{
-    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 48);
-    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 16);
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 32);
     		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
     	}
     };

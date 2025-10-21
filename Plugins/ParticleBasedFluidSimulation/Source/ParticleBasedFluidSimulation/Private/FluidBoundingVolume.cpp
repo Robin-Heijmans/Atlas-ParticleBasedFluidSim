@@ -47,6 +47,8 @@ UFluidBoundingVolumeComponent::UFluidBoundingVolumeComponent()
             ParticleMesh->SetMaterial(0, ParticleMat.Object);
         }
     }
+
+    //GenerateParticleBuffers();
 }
 
 void UFluidBoundingVolumeComponent::OnRegister()
