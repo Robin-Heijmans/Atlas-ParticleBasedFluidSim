@@ -38,6 +38,10 @@ public:
     void SetVolumeBounds(FVector& MinB, FVector& MaxB);
     void StepSimulation(float DeltaTime);
     void ApplySettings(FFluidSimSettings& settings);
+    void ApplyExternalForce(const FVector& Location, const float& ForceAmplifier, const float& radius);
+    void BoxCollision(const class UBoxComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos);
+    void SphereCollision(const class USphereComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos, UWorld* World);
+    void CapsuleCollision(const class UCapsuleComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos, UWorld* World);
 
     const TArray<FParticle>& GetParticles() const { return Particles; }
 private:
@@ -52,10 +56,18 @@ private:
     FVector CalculatePressureForce(const FVector& Position, const int Index);
     FVector CalculateViscosityForce(const FVector& Position, const int Index);
     FIntVector PositionToCellCoords(const FVector& Position, const float& Radius);
+    FVector CellToPosition(const FIntVector& Cell, const float& Radius);
     uint32 HashCell(const FIntVector& CellCoords);
     uint32 GetKeyFromHash(const uint32& Hash);
 
+    bool CheckBoxCollision(const FVector& Position, const FVector& IntersectionMinBounds, const FVector& IntersectionMaxBounds);
+    bool CheckSphereCellCollision(const FIntVector& CellCoords, const FVector& SphereCenter, const FVector& Radius3D);
+    bool CheckSphereCollision(const float& Distance, const float& Radius);
+    FVector ReflectVelocity(const FVector& Vel, const FVector& Normal);
+
+
     TArray<FParticle> Particles;
+    TArray<FVector> ExternalForces;
     TArray<FSpatialLookupEntry> SpatialLookup;
     TArray<uint32> StartIndices;
     FVector MinBounds = FVector::ZeroVector;
@@ -68,6 +80,7 @@ private:
     float CollisionDampening = 0.6f;
     float SmoothingRadius = 4.f;
     float ViscosityStrength = 1.f;
+    float Sven = 0.1f;
 
     uint32 TableSize = 0; 
     const uint32 HashKey1 = 467;

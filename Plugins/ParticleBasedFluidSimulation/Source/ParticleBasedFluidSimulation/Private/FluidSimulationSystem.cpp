@@ -1,4 +1,8 @@
 #include "FluidSimulationSystem.h"
+#include "Components/BoxComponent.h"
+#include "Components/SphereComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 
 FFluidSimulationSystem::FFluidSimulationSystem() {
 
@@ -9,9 +13,12 @@ void FFluidSimulationSystem::InitializeParticles(TArray<FParticle>& InParticles,
     TableSize = Particles.Num();
     SpatialLookup.SetNum(TableSize);
     StartIndices.SetNum(TableSize);
+    ExternalForces.Init(FVector::ZeroVector, TableSize);
 
     MinBounds = MinB;
     MaxBounds = MaxB;
+
+    UpdateSpatialLookup(SmoothingRadius);
 }
 
 void FFluidSimulationSystem::SetVolumeBounds(FVector& MinB, FVector& MaxB) {
@@ -23,11 +30,12 @@ void FFluidSimulationSystem::StepSimulation(float DeltaTime) {
     if (Particles.IsEmpty()) return;
     // GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Particles exist in system"));
     const float LookAheadTimeStep = 1.f / 120.f;
-    for (auto& particle : Particles) {
-        particle.Velocity += Gravity * DeltaTime;
-        particle.PredictedPosition = particle.Position + particle.Velocity * LookAheadTimeStep;
+    for (int i = 0; i < Particles.Num(); i++) {
+        Particles[i].Velocity += (ExternalForces[i] + Gravity) * DeltaTime;
+        Particles[i].PredictedPosition = Particles[i].Position + Particles[i].Velocity * LookAheadTimeStep;
     }
-
+    // Reset external forces
+    ExternalForces.Init(FVector::ZeroVector, TableSize);
     UpdateSpatialLookup(SmoothingRadius);
 
     for (int i = 0; i < Particles.Num(); i++) {
@@ -40,13 +48,11 @@ void FFluidSimulationSystem::StepSimulation(float DeltaTime) {
         FVector PressureAcceleration = -PressureForce / Particles[i].Density;
         Particles[i].Velocity += PressureAcceleration * DeltaTime;
     }
-    GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Red, (FString::Printf(TEXT("Particle[0] Velocity after pressure forces: X=%f Y=%f Z=%f"), Particles[0].Velocity.X, Particles[0].Velocity.Y, Particles[0].Velocity.Z)));
 
     for (int i = 0; i < Particles.Num(); i++) {
         FVector ViscosityForce = CalculateViscosityForce(Particles[i].PredictedPosition, i);
         Particles[i].Velocity += ViscosityForce * DeltaTime;
     }
-    GEngine->AddOnScreenDebugMessage(2, 5.f, FColor::Blue, (FString::Printf(TEXT("Particle[0] Velocity after viscosity forces: X=%f Y=%f Z=%f"), Particles[0].Velocity.X, Particles[0].Velocity.Y, Particles[0].Velocity.Z)));
 
     for (auto& particle : Particles) {
         particle.Position += particle.Velocity * DeltaTime;
@@ -166,7 +172,7 @@ FVector FFluidSimulationSystem::CalculatePressureForce(const FVector& Position, 
                 float Slope = SmoothingKernelDerivative(Distance, SmoothingRadius);
                 float Density = Particles[ParticleIndex].Density;
                 float SharedPressure = CalculateSharedPressure(Density, Particles[Index].Density);
-                PressureForce += SharedPressure * Direction * Slope * Particles[ParticleIndex].Mass / FMath::Min(Density, 0.2f);
+                PressureForce += SharedPressure * Direction * Slope * Particles[ParticleIndex].Mass / FMath::Min(Density, Sven);
             }
         }
     }
@@ -203,10 +209,255 @@ FIntVector FFluidSimulationSystem::PositionToCellCoords(const FVector& Position,
     return FIntVector(CellX, CellY, CellZ);
 }
 
+FVector FFluidSimulationSystem::CellToPosition(const FIntVector& Cell, const float& Radius) {
+    return FVector(Cell.X, Cell.Y, Cell.Z) * Radius;
+}
+
 uint32 FFluidSimulationSystem::HashCell(const FIntVector& CellCoords) {
     return CellCoords.X * HashKey1 + CellCoords.Y * HashKey2 + CellCoords.Z * HashKey3; // Multiply with 3 prime numbers
 }
 
 uint32 FFluidSimulationSystem::GetKeyFromHash(const uint32& Hash) {
     return Hash % TableSize;
+}
+
+void FFluidSimulationSystem::ApplyExternalForce(const FVector& Location, const float& ForceAmplifier, const float& radius) {
+    FIntVector CentreCoords = PositionToCellCoords(Location, SmoothingRadius);
+    
+    for (const auto& cellOffset : Offsets3D) {
+        uint32 Key = GetKeyFromHash(HashCell(CentreCoords + cellOffset));
+        uint32 StartIndex = StartIndices[Key];
+        for (uint32 i = StartIndex; i < TableSize; i++) {
+            if (SpatialLookup[i].Key != Key) break;
+            int ParticleIndex = SpatialLookup[i].ParticleIndex;
+            FVector Offset = Particles[ParticleIndex].PredictedPosition - Location;
+            float SqrDistance = FVector::DotProduct(Offset, Offset);
+            if (SqrDistance <= (radius * radius)) {
+                float Distance = FMath::Sqrt(SqrDistance);
+                FVector Direction = Distance == 0 ? FVector::UpVector : Offset / Distance;
+                ExternalForces[ParticleIndex] += ForceAmplifier * Direction;
+            }
+        }
+    }
+}
+
+void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos) {
+    // Transform other to local
+    FVector WorldScaleBounds = Bounds.GetComponentScale();
+    FVector TranslatedCenter = OtherComp.GetComponentLocation() - Bounds.GetComponentLocation();
+    FVector LocalCenter = TranslatedCenter / WorldScaleBounds;
+    FVector LocalScale = OtherComp.GetComponentScale() / WorldScaleBounds;
+
+    FVector ObjectExtent = OtherComp.GetUnscaledBoxExtent() * LocalScale;
+    FVector ObjMinBounds = LocalCenter - ObjectExtent;
+    FVector ObjMaxBounds = LocalCenter + ObjectExtent;
+
+    FVector ThisExtent = Bounds.GetUnscaledBoxExtent();
+    FVector LocalMin = -ThisExtent;
+	FVector LocalMax = ThisExtent;
+
+    FVector IntersectionMin = FVector(FMath::Max(ObjMinBounds.X, LocalMin.X),
+                                      FMath::Max(ObjMinBounds.Y, LocalMin.Y),
+                                      FMath::Max(ObjMinBounds.Z, LocalMin.Z));
+    
+    FVector IntersectionMax = FVector(FMath::Min(ObjMaxBounds.X, LocalMax.X),
+                                      FMath::Min(ObjMaxBounds.Y, LocalMax.Y),
+                                      FMath::Min(ObjMaxBounds.Z, LocalMax.Z));
+    FIntVector MinCoords = PositionToCellCoords(IntersectionMin, SmoothingRadius);
+    FIntVector MaxCoords = PositionToCellCoords(IntersectionMax, SmoothingRadius);
+
+    for (int CellX = MinCoords.X; CellX <= MaxCoords.X; CellX++)
+    for (int CellY = MinCoords.Y; CellY <= MaxCoords.Y; CellY++)
+    for (int CellZ = MinCoords.Z; CellZ <= MaxCoords.Z; CellZ++) {
+        FIntVector CellCoords = FIntVector(CellX, CellY, CellZ);
+        uint32 Key = GetKeyFromHash(HashCell(CellCoords));
+        uint32 StartIndex = StartIndices[Key];
+        for (uint32 i = StartIndex; i < TableSize; i++) {
+            if (SpatialLookup[i].Key != Key) break;
+            int ParticleIndex = SpatialLookup[i].ParticleIndex;
+            FVector& Pos = Particles[ParticleIndex].Position;
+            if (CheckBoxCollision(Pos, IntersectionMin, IntersectionMax)) {
+                GEngine->AddOnScreenDebugMessage(4, 1.f, FColor::Yellow, (FString::Printf(TEXT("Box collision detected"))));
+                FVector& Vel = Particles[ParticleIndex].Velocity;
+                FVector DistToMin = Pos - ObjMinBounds;
+                FVector DistToMax = ObjMaxBounds - Pos;
+
+                float MinPenX = FMath::Min(FMath::Abs(DistToMin.X), FMath::Abs(DistToMax.X));
+                float MinPenY = FMath::Min(FMath::Abs(DistToMin.Y), FMath::Abs(DistToMax.Y));
+                float MinPenZ = FMath::Min(FMath::Abs(DistToMin.Z), FMath::Abs(DistToMax.Z));
+
+                float SmallestPen = MinPenX;
+                FVector PushDir = FVector::ZeroVector;
+
+                if (MinPenY < SmallestPen) { SmallestPen = MinPenY; }
+                if (MinPenZ < SmallestPen) { SmallestPen = MinPenZ; }
+
+                if (SmallestPen == MinPenX) {
+                    if (FMath::Abs(DistToMin.X) < FMath::Abs(DistToMax.X)) {
+                        PushDir = FVector::BackwardVector;
+                    }
+                    else {
+                        PushDir = FVector::ForwardVector;
+                    }
+                } else if (SmallestPen == MinPenY) {
+                    if (FMath::Abs(DistToMin.Y) < FMath::Abs(DistToMax.Y)) {
+                        PushDir = FVector::LeftVector;
+                    }
+                    else {
+                        PushDir = FVector::RightVector;
+                    }
+                } else {
+                    if (FMath::Abs(DistToMin.Z) < FMath::Abs(DistToMax.Z)) {
+                        PushDir = FVector::DownVector;
+                    }
+                    else {
+                        PushDir = FVector::UpVector;
+                    }
+                }
+                Pos += PushDir * SmallestPen;
+                Vel = ReflectVelocity(Vel, PushDir);
+            }
+        }
+    }
+}
+
+void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos, UWorld* World) {
+    FVector WorldScaleBounds = Bounds.GetComponentScale();
+    FVector TranslatedCenter = OtherComp.GetComponentLocation() - Bounds.GetComponentLocation();
+    FVector LocalCenter = TranslatedCenter / WorldScaleBounds;
+    FVector LocalScale = OtherComp.GetComponentScale() / WorldScaleBounds;
+
+    FVector SphereRadius3D = OtherComp.GetUnscaledSphereRadius() * LocalScale;
+    FVector ObjMinBounds = LocalCenter - SphereRadius3D;
+    FVector ObjMaxBounds = LocalCenter + SphereRadius3D;
+
+    FVector ThisExtent = Bounds.GetUnscaledBoxExtent();
+    FVector LocalMin = -ThisExtent;
+	FVector LocalMax = ThisExtent;
+
+    FVector IntersectionMin = FVector(FMath::Max(ObjMinBounds.X, LocalMin.X),
+                                      FMath::Max(ObjMinBounds.Y, LocalMin.Y),
+                                      FMath::Max(ObjMinBounds.Z, LocalMin.Z));
+    
+    FVector IntersectionMax = FVector(FMath::Min(ObjMaxBounds.X, LocalMax.X),
+                                      FMath::Min(ObjMaxBounds.Y, LocalMax.Y),
+                                      FMath::Min(ObjMaxBounds.Z, LocalMax.Z));
+    FVector SafetyMargin = FVector(0.5f * SmoothingRadius);
+    FIntVector MinCoords = PositionToCellCoords(IntersectionMin - SafetyMargin, SmoothingRadius);
+    FIntVector MaxCoords = PositionToCellCoords(IntersectionMax + SafetyMargin, SmoothingRadius);
+    
+    for (int CellX = MinCoords.X; CellX <= MaxCoords.X; CellX++)
+    for (int CellY = MinCoords.Y; CellY <= MaxCoords.Y; CellY++)
+    for (int CellZ = MinCoords.Z; CellZ <= MaxCoords.Z; CellZ++) {
+        FIntVector CellCoords = FIntVector(CellX, CellY, CellZ);
+        GEngine->AddOnScreenDebugMessage(5, 1.f, FColor::Yellow, (FString::Printf(TEXT("Sphere collision detected"))));
+        //if (!CheckSphereCellCollision(CellCoords, LocalCenter, SphereRadius3D)) continue;
+
+        uint32 Key = GetKeyFromHash(HashCell(CellCoords));
+        uint32 StartIndex = StartIndices[Key];
+        for (uint32 i = StartIndex; i < TableSize; i++) {
+            if (SpatialLookup[i].Key != Key) break;
+            int ParticleIndex = SpatialLookup[i].ParticleIndex;
+            FVector& Pos = Particles[ParticleIndex].Position;
+            FVector Offset = (Pos - LocalCenter) / SphereRadius3D;
+            float Distance = Offset.Size();
+            if (CheckSphereCollision(Distance, 1.f)) {
+                FVector& Vel = Particles[ParticleIndex].Velocity;
+                FVector Direction = Offset / Distance;
+                FVector OnSurfaceWorld = ((1.f - Distance) * SphereRadius3D) * Direction;
+                Pos += OnSurfaceWorld;
+                Vel = ReflectVelocity(Vel, Direction);
+                FVector WorldPos = Pos * WorldScaleBounds + Bounds.GetComponentLocation();
+                DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
+            }
+        }
+    }
+}
+
+void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp, const UBoxComponent& Bounds, const FVector& LocalPos, UWorld* World) {
+    FVector WorldScaleBounds = Bounds.GetComponentScale();
+    FVector TranslatedCenter = OtherComp.GetComponentLocation() - Bounds.GetComponentLocation();
+    FVector LocalCenter = TranslatedCenter / WorldScaleBounds;
+    FVector LocalScale = OtherComp.GetComponentScale() / WorldScaleBounds;
+
+    // Assume scale is uniform
+    float SphereRadius = OtherComp.GetUnscaledCapsuleRadius() * LocalScale.X;
+    float HalfHeight = OtherComp.GetUnscaledCapsuleHalfHeight() * LocalScale.X;
+    float HalfHeightCylinder = HalfHeight - SphereRadius;
+    FVector UpCapsule = OtherComp.GetUpVector();
+    FVector ObjMinBounds = LocalCenter - SphereRadius - (UpCapsule * HalfHeightCylinder);
+    FVector ObjMaxBounds = LocalCenter + SphereRadius + (UpCapsule * HalfHeightCylinder);
+
+    FVector ThisExtent = Bounds.GetUnscaledBoxExtent();
+    FVector LocalMin = -ThisExtent;
+	FVector LocalMax = ThisExtent;
+
+    FVector IntersectionMin = FVector(FMath::Max(ObjMinBounds.X, LocalMin.X),
+                                      FMath::Max(ObjMinBounds.Y, LocalMin.Y),
+                                      FMath::Max(ObjMinBounds.Z, LocalMin.Z));
+    
+    FVector IntersectionMax = FVector(FMath::Min(ObjMaxBounds.X, LocalMax.X),
+                                      FMath::Min(ObjMaxBounds.Y, LocalMax.Y),
+                                      FMath::Min(ObjMaxBounds.Z, LocalMax.Z));
+    FIntVector MinCoords = PositionToCellCoords(IntersectionMin, SmoothingRadius);
+    FIntVector MaxCoords = PositionToCellCoords(IntersectionMax, SmoothingRadius);
+
+    for (int CellX = MinCoords.X; CellX <= MaxCoords.X; CellX++)
+    for (int CellY = MinCoords.Y; CellY <= MaxCoords.Y; CellY++)
+    for (int CellZ = MinCoords.Z; CellZ <= MaxCoords.Z; CellZ++) {
+        FIntVector CellCoords = FIntVector(CellX, CellY, CellZ);
+        GEngine->AddOnScreenDebugMessage(6, 1.f, FColor::Yellow, (FString::Printf(TEXT("Capsule collision detected"))));
+        uint32 Key = GetKeyFromHash(HashCell(CellCoords));
+        uint32 StartIndex = StartIndices[Key];
+        for (uint32 i = StartIndex; i < TableSize; i++) {
+            if (SpatialLookup[i].Key != Key) break;
+            int ParticleIndex = SpatialLookup[i].ParticleIndex;
+            FVector& Pos = Particles[ParticleIndex].Position;
+            FVector Bottom = LocalCenter - UpCapsule * HalfHeightCylinder;
+            FVector Top = LocalCenter + UpCapsule * HalfHeightCylinder;
+
+            FVector AB = Top - Bottom;
+            FVector AP = Pos - Bottom;
+            float T = FMath::Clamp(FVector::DotProduct(AP, AB) / FVector::DotProduct(AB, AB), 0.f, 1.f);
+            FVector ClosestPoint = Bottom + T * AB;
+            FVector Offset = (Pos - ClosestPoint) / SphereRadius;
+            float Distance = Offset.Size();
+            if (CheckSphereCollision(Distance, 1.f)) {
+                FVector& Vel = Particles[ParticleIndex].Velocity;
+                FVector Direction = Offset / Distance;
+                FVector OnSurfaceWorld = ((1.f - Distance) * SphereRadius) * Direction;
+                Pos += OnSurfaceWorld;
+                Vel = ReflectVelocity(Vel, Direction);
+                FVector WorldPos = Pos * WorldScaleBounds + Bounds.GetComponentLocation();
+                DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
+            }
+        }
+    }
+}
+
+bool FFluidSimulationSystem::CheckBoxCollision(const FVector& Position, const FVector& IntersectionMinBounds, const FVector& IntersectionMaxBounds) {
+    if (Position.X < IntersectionMinBounds.X || Position.X > IntersectionMaxBounds.X
+    || Position.Y < IntersectionMinBounds.Y || Position.Y > IntersectionMaxBounds.Y
+    || Position.Z < IntersectionMinBounds.Z || Position.Z > IntersectionMaxBounds.Z) {
+        return false;
+    }
+    return true;
+}
+
+bool FFluidSimulationSystem::CheckSphereCellCollision(const FIntVector& CellCoords, const FVector& SphereCenter, const FVector& Radius3D) {
+    FVector CellCenter = CellToPosition(CellCoords, SmoothingRadius);
+    FVector CellMin = CellCenter - SmoothingRadius;
+    FVector CellMax = CellCenter + SmoothingRadius;
+    FVector PosToCheck = FVector((CellMin.X < SphereCenter.X ? CellMin.X : CellMax.X, 
+                               CellMin.Y < SphereCenter.Y ? CellMin.Y : CellMax.Y, 
+                               CellMin.Z < SphereCenter.Z ? CellMin.Z : CellMax.Z));
+    return CheckSphereCollision(((PosToCheck - SphereCenter) / Radius3D).Size(), 1.f);
+}
+
+bool FFluidSimulationSystem::CheckSphereCollision(const float& Distance, const float& Radius) {
+    return Distance <= Radius;
+}
+
+FVector FFluidSimulationSystem::ReflectVelocity(const FVector& Vel, const FVector& Normal) {
+    return Vel - 2.f * FVector::DotProduct(Vel, Normal) * (Normal * CollisionDampening);
 }

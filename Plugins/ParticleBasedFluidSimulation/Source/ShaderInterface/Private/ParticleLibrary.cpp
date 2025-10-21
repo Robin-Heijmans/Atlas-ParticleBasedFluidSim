@@ -23,7 +23,7 @@
 
 void UParticleBuffers::Initialize( 
     TUniformBufferRef<FFluidVolumeLocal> VolumeBounds,
-    const AFluidBoundingVolume* Volume
+    const UFluidBoundingVolumeComponent* Volume
 )
 {
     ENQUEUE_RENDER_COMMAND(ParticleBufferInit)(
