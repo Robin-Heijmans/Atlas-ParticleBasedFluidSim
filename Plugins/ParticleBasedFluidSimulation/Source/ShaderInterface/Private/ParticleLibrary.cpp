@@ -141,13 +141,16 @@ void UParticleBuffers::Initialize(const UFluidBoundingVolumeComponent* Volume)
 
 UParticleBuffers::~UParticleBuffers()
 {
-    if(Positions && Positions.IsValid())                    Positions->Release();
-	if(PredictedPositions && PredictedPositions.IsValid())  PredictedPositions->Release();
-	if(Velocities && Velocities.IsValid())                  Velocities->Release();
-	if(Densities && Densities.IsValid())                    Densities->Release();
-	if(SpatialIndices && SpatialIndices.IsValid())          SpatialIndices->Release();
-	if(SpatialOffsets && SpatialOffsets.IsValid())          SpatialOffsets->Release();
-    bInitialized = false;
+    if(bInitialized)
+    {
+        if(Positions && Positions.IsValid())                    Positions->Release();
+        if(PredictedPositions && PredictedPositions.IsValid())  PredictedPositions->Release();
+        if(Velocities && Velocities.IsValid())                  Velocities->Release();
+        if(Densities && Densities.IsValid())                    Densities->Release();
+        if(SpatialIndices && SpatialIndices.IsValid())          SpatialIndices->Release();
+        if(SpatialOffsets && SpatialOffsets.IsValid())          SpatialOffsets->Release();
+        bInitialized = false;
+    }
 }
 
 void UParticleBuffers::Register(FRDGBuilder& GraphBuilder)

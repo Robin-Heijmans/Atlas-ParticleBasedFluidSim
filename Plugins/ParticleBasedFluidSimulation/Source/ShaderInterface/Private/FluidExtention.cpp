@@ -84,44 +84,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
                         ParticleBuffers->UnregisterComponent(); // doesnt working, but doesnt break anything either
                         
                     }
-
-                    const uint32 NumParticles = FluidComp->NumParticlesX * FluidComp->NumParticlesY * FluidComp->NumParticlesZ;
-                    if(NumParticles > 5000 || NumParticles == 0)     
-                    {
-                        UE_LOG(LogTemp, Warning, TEXT("Illegal NumParticles: %d"), NumParticles);
-                        continue;
-                    }
-
-                    UParticleBuffers* NewParticleBuffers = NewObject<UParticleBuffers>(FluidComp,UParticleBuffers::StaticClass(), TEXT("Particle Buffers"));
-
-                    NewParticleBuffers->RegisterComponent();
-                    NewParticleBuffers->AttachToComponent(FluidComp, FAttachmentTransformRules::KeepRelativeTransform);
-
-                    // Allocate Particle Buffer
-                    NewParticleBuffers->Initialize(FluidComp);
-                    NewParticleBuffers->SimulationSettings.DeltaTime = FixedTimeStep;
-                    FluidComp->HasParticles = true;
-                    return;
                 }
-
-                const uint32 NumParticles = FluidComp->NumParticlesX * FluidComp->NumParticlesY * FluidComp->NumParticlesZ;
-                if(NumParticles > 5000 || NumParticles == 0)     
-                {
-                    UE_LOG(LogTemp, Warning, TEXT("Illegal NumParticles: %d"), NumParticles);
-                    continue;
-                }
-
-                UParticleBuffers* ParticleBuffers = NewObject<UParticleBuffers>(FluidComp,UParticleBuffers::StaticClass(), TEXT("Particle Buffers"));
-
-                ParticleBuffers->RegisterComponent();
-                ParticleBuffers->AttachToComponent(FluidComp, FAttachmentTransformRules::KeepRelativeTransform);
-
-                // Allocate Particle Buffer
-                ParticleBuffers->Initialize(FluidComp);
-                ParticleBuffers->SimulationSettings.DeltaTime = FixedTimeStep;
-                FluidComp->HasParticles = true;
-                return;
-            }
 
             const uint32 NumParticles = FluidComp->NumParticlesX * FluidComp->NumParticlesY * FluidComp->NumParticlesZ;
             if(NumParticles > 5000 || NumParticles == 0)     
@@ -130,16 +93,17 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
                 continue;
             }
 
-            UParticleBuffers* ParticleBuffers = NewObject<UParticleBuffers>(FluidComp, UParticleBuffers::StaticClass(), TEXT("Particle Buffers"));
+            UParticleBuffers* NewParticleBuffers = NewObject<UParticleBuffers>(FluidComp,UParticleBuffers::StaticClass(), TEXT("Particle Buffers"));
 
-            ParticleBuffers->RegisterComponent();
-            ParticleBuffers->AttachToComponent(FluidComp, FAttachmentTransformRules::KeepRelativeTransform);
+            NewParticleBuffers->RegisterComponent();
+            NewParticleBuffers->AttachToComponent(FluidComp, FAttachmentTransformRules::KeepRelativeTransform);
 
             // Allocate Particle Buffer
-            ParticleBuffers->Initialize(FluidComp);
-            ParticleBuffers->SimulationSettings.DeltaTime = FixedTimeStep;
+            NewParticleBuffers->Initialize(FluidComp);
+            NewParticleBuffers->SimulationSettings.DeltaTime = FixedTimeStep;
             FluidComp->HasParticles = true;
             return;
+            }
         }
     }
 }

@@ -176,7 +176,6 @@ namespace FluidMathDispatch
                     FIntVector(FMath::RoundUpToPowerOfTwo(bufferCount) / 128, 1, 1));
                 if (oldPassRef) {
                     GraphBuilder.AddPassDependency(oldPassRef, currentPassRef);
-                    UE_LOG(LogTemp, Warning, TEXT("Jow"));
                 }
                 oldPassRef = currentPassRef;
                 //ComputeHelper.Dispatch(sortCompute, FMath::RoundUpToPowerOfTwo(bufferCount) / 2);
