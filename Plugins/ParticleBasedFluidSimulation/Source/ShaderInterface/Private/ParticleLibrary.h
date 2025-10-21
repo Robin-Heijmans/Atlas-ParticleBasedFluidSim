@@ -36,7 +36,7 @@ public:
 	{
     	float CollisionDampening = 0.6f;
     	float DeltaTime = 1.f/60.f;
-    	float Gravity = -98.1f;
+    	FVector Gravity = FVector(0, 0, -98.1f);
     	float PressureAmplifier = 100.f;
     	float SmoothingRadius = 3.f;
     	float TargetDensity = 5.f;

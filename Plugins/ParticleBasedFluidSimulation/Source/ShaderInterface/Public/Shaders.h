@@ -78,7 +78,7 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidMathParams, )
     SHADER_PARAMETER(float, SmoothingRadius)
     SHADER_PARAMETER(float, ViscosityStrength)
     SHADER_PARAMETER(float, DeltaTime)
-    SHADER_PARAMETER(float, Gravity)
+    SHADER_PARAMETER(FVector3f, Gravity)
     SHADER_PARAMETER(uint32, NumParticles)
 
     SHADER_PARAMETER(FMatrix44f, OtherLocalTransform)

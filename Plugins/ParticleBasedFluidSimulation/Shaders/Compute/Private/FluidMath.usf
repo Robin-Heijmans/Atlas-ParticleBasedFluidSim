@@ -28,7 +28,7 @@ float CollisionDampening;
 float SmoothingRadius;
 float ViscosityStrength;
 float DeltaTime;
-float Gravity;
+float3 Gravity;
 uint NumParticles;
 
 // Collision Params
@@ -79,7 +79,7 @@ bool CheckSphereCollision(float Distance, float Radius) {
 void ExternalForces (uint3 id : SV_DispatchThreadID) {
     if (id.x >= NumParticles) return;
 
-    Velocities[id.x] += float3(0, 0, Gravity) * DeltaTime;
+    Velocities[id.x] += Gravity * DeltaTime;
 
     PredictedPositions[id.x] = Positions[id.x] + Velocities[id.x] * 1.0 / 120.0; // Fixed LookAheadTimeStep
 }
@@ -253,8 +253,10 @@ void ResolveSphereCollisions (uint3 id : SV_DispatchThreadID) {
     float Distance = length(Offset);
     if (CheckSphereCollision(Distance, 1.f)) {
         float3 Vel = Velocities[id.x];
-        float3 Direction = normalize(mul(float4(Offset/Distance, 0), OtherLocalTransform).xyz); // OtherLocalTransform == NormalMatrix
-        float3 OnSurfaceWorld = (1.f - Distance) * LocalScale * Direction; // LocalScale = ObjectExtent
+        // OtherLocalTransform == NormalMatrix
+        float3 Direction = normalize(mul(float4(Offset/Distance, 0), OtherLocalTransform).xyz); 
+        // LocalScale = ObjectExtent
+        float3 OnSurfaceWorld = (1.f - Distance) * LocalScale * Direction; 
         Positions[id.x] += OnSurfaceWorld;
         Velocities[id.x] = ReflectVelocity(Vel, Direction);
     }

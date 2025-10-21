@@ -206,6 +206,9 @@ void UParticleBuffers::DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShade
     UBFluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
         
     // Fluid Math
+    FTransform WorldTransform = ParentVolume->Bounds->GetComponentTransform().Inverse();
+    FVector3f WorldGravity = static_cast<FVector3f>(WorldTransform.TransformVectorNoScale(SimulationSettings.Gravity));
+
     FFluidMathParams FluidMath;
     FluidMath.Positions = GraphBuilder.CreateUAV(PositionsRef);
     FluidMath.PredictedPositions = GraphBuilder.CreateUAV(PredictedPositionsRef);
@@ -216,7 +219,7 @@ void UParticleBuffers::DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShade
 
     FluidMath.CollisionDampening    = SimulationSettings.CollisionDampening;
     FluidMath.DeltaTime             = SimulationSettings.DeltaTime;
-    FluidMath.Gravity               = SimulationSettings.Gravity;
+    FluidMath.Gravity               = WorldGravity;
     FluidMath.NumParticles          = SimulationSettings.NumParticles;
     FluidMath.PressureAmplifier     = SimulationSettings.PressureAmplifier;
     FluidMath.SmoothingRadius       = SimulationSettings.SmoothingRadius;
