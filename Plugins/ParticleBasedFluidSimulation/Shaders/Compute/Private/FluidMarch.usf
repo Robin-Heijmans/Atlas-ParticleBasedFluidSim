@@ -216,7 +216,7 @@ HitInfo RayBoxWithMatrix(float3 RayPos, float3 RayDir, float4x4 LocalToWorld, fl
     return hitInfo;
 }
 
-SurfaceInfo FindNextSurface(float3 origin, float3 RayDir, bool findNextFluidEntryPoint, uint RNG, float rngWeight, float maxDst, inout uint num_steps)
+SurfaceInfo FindNextSurface(float3 origin, float3 RayDir, bool findNextFluidEntryPoint, inout uint RNG, float rngWeight, float maxDst, inout uint num_steps)
 {
     SurfaceInfo info = (SurfaceInfo)0;
     if (dot(RayDir, RayDir) < 0.5) return info;
@@ -504,8 +504,7 @@ float3 Light(float3 pos, float3 dir, float3 Scene)
     return SampleEnvironment(pos, dir,Scene);
 }
 
-static uint RNG = 15484135;
-float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene)
+float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, uint UVRNG)
 {
     bool bInsideFluid = FluidContains(RayPos);
 
@@ -518,9 +517,9 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene)
     {
         float densityStepSize = Environment.DensityStepSize * (i + 1); // increase step size with each iteration
         bool searchForNextFluidEntryPoint = !bInsideFluid;
-        
+    
         HitInfo CubeHit = RayBoxWithMatrix(RayPos, RayDir, Environment.CubeLocalToWorld, Environment.CubeWorldToLocal);
-        SurfaceInfo surfaceInfo = FindNextSurface(RayPos, RayDir, searchForNextFluidEntryPoint, RNG, i == 0 ? 1 : 0, CubeHit.dst, num_steps);
+        SurfaceInfo surfaceInfo = FindNextSurface(RayPos, RayDir, searchForNextFluidEntryPoint, UVRNG, i == 0 ? 1 : 0, CubeHit.dst, num_steps);
         bool useCubeHit = CubeHit.didHit && CubeHit.dst < length(surfaceInfo.pos - RayPos);
         
         if (!surfaceInfo.foundSurface) break;
@@ -607,6 +606,6 @@ void Compute(
     float3 RayOrigin = GetRayOrigin();
     float3 RayDirection = GetRayDirection(UV);
 
-    float3 FluidColor = FluidMarch(RayOrigin, RayDirection, SceneColor[DispatchThreadId.xy]);
+    float3 FluidColor = FluidMarch(RayOrigin, RayDirection, SceneColor[DispatchThreadId.xy], (uint)(UV.x * 1243 + UV.y * 96456));
     Target[DispatchThreadId.xy] = FluidColor;
 }
