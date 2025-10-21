@@ -59,7 +59,6 @@ float CalcDensity(float3 pos)
         for (int i = currIndex; i < NumParticles; i++) {
             uint3 indexData = SpatialIndices[i];
             if (indexData[2] != key) break;
-            if (indexData[1] != hash) continue;
             uint particleIndex = indexData[0];
             float3 offset = PredictedPositions[particleIndex] - pos;
             float sqrDistance = dot(offset, offset);
