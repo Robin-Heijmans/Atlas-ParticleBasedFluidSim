@@ -114,8 +114,6 @@ float2 RayBoxDst(float3 boundsMin, float3 boundsMax, float3 rayOrigin, float3 ra
     // Adapted from: http://jcgt.org/published/0007/03/04/
     float3 t0 = (boundsMin - rayOrigin) * invRayDir;
     float3 t1 = (boundsMax - rayOrigin) * invRayDir;
-    float3 t0 = (boundsMin - rayOrigin) * invRayDir;
-    float3 t1 = (boundsMax - rayOrigin) * invRayDir;
     float3 tmin = min(t0, t1);
     float3 tmax = max(t0, t1);
 
