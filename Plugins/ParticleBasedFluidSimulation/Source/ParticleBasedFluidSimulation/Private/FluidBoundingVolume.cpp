@@ -92,6 +92,7 @@ void UFluidBoundingVolumeComponent::InitializeParticles()
     FVector LocalMin = -Extent / WorldScale;
 	FVector LocalMax = Extent / WorldScale;
 	FVector SpawnMin = -AdjustedExtent / WorldScale;
+    FVector ParticleSize = FVector(SphereRadius/50.0f)/WorldScale;
     for (int x = 0; x < NumParticlesX; x++)
     {
         for (int y = 0; y < NumParticlesY; y++)
@@ -104,7 +105,7 @@ void UFluidBoundingVolumeComponent::InitializeParticles()
                 MeshPositions.Add(LocalPos);
                 int CurrentNumParticles = Particles.Num();
                 if (CurrentNumParticles > PreviousNumParticles) {
-                    FTransform InstanceTransform(FRotator::ZeroRotator, LocalPos, FVector(SphereRadius/50.0f));
+                    FTransform InstanceTransform(FRotator::ZeroRotator, LocalPos, ParticleSize);
                     ParticleMesh->AddInstance(InstanceTransform);
                 }
             }
@@ -122,8 +123,8 @@ void UFluidBoundingVolumeComponent::UpdateVolumeBounds() {
     FVector Extent = Bounds->GetScaledBoxExtent();
 	FVector WorldScale = Bounds->GetComponentScale();
 
-    FVector LocalMin = -Extent / WorldScale;
-	FVector LocalMax = Extent / WorldScale;
+    FVector LocalMin = -Extent;
+	FVector LocalMax = Extent;
     Simulation->SetVolumeBounds(LocalMin, LocalMax);
 }
 
@@ -190,7 +191,9 @@ void UFluidBoundingVolumeComponent::UpdateInstances(const bool AllInstances) {
         startIndex = FrameCount * numParticlesToUpdate;
         endIndex = startIndex + numParticlesToUpdate;
     }
-    
+
+    FVector CompScale = Bounds->GetComponentScale();
+    FVector ParticleSize = FVector(SphereRadius / 50.0f)/CompScale;
     for (int32 i = startIndex; i < endIndex; i++) {
         if (i >= Particles.Num()) break;
         const FParticle& particle = Particles[i];
@@ -198,7 +201,7 @@ void UFluidBoundingVolumeComponent::UpdateInstances(const bool AllInstances) {
         FTransform InstanceTransform(
             FRotator::ZeroRotator,
             particle.Position,
-            FVector(SphereRadius / 50.0f)
+            ParticleSize
         );
 
         ParticleMesh->UpdateInstanceTransform(i, InstanceTransform, false, true);
@@ -231,18 +234,6 @@ FLinearColor UFluidBoundingVolumeComponent::VelocityToColor(const float& Speed) 
 void UFluidBoundingVolumeComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
     Super::PostEditChangeProperty(PropertyChangedEvent);
-
-    const FName PropertyName = PropertyChangedEvent.GetPropertyName();
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(UFluidBoundingVolumeComponent, NumParticlesX) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UFluidBoundingVolumeComponent, NumParticlesY) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UFluidBoundingVolumeComponent, NumParticlesZ))
-    {
-        //InitializeParticles();
-        //UpdateInstances(true);
-        //UpdateMaterials();
-    }
-    // Update simulation only when values are changed in editor
-    //Simulation->ApplySettings(Settings);
 }
 #endif
 
@@ -250,8 +241,8 @@ TArray<FVector> UFluidBoundingVolumeComponent::GetVolumeBounds() {
     FVector Extent = Bounds->GetScaledBoxExtent();
 	FVector WorldScale = Bounds->GetComponentScale();
 
-    FVector LocalMin = -Extent / WorldScale;
-	FVector LocalMax = Extent / WorldScale;
+    FVector LocalMin = -Extent;
+	FVector LocalMax = Extent;
     TArray<FVector> bounds = {LocalMin, LocalMax};
     return bounds;
 }

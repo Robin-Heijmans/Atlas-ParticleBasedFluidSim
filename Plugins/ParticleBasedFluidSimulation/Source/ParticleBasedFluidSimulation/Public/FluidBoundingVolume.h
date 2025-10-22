@@ -32,40 +32,40 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Bounds")
 	class UBoxComponent* Bounds;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas Particles")
     int NumParticlesX = 5;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas Particles")
     int NumParticlesY = 5;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particles")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas Particles")
     int NumParticlesZ = 5;
 
-    UPROPERTY(EditAnywhere, Category = "Particles")
+    UPROPERTY(EditAnywhere, Category = "Atlas Particles")
 	FVector3f ExtinctionCoeff = FVector3f(1.f,0.55f,0.35f);
-    UPROPERTY(EditAnywhere, Category = "Particles")
+    UPROPERTY(EditAnywhere, Category = "Atlas Particles")
 	float MarchStepSize = 0.02f;
-    UPROPERTY(EditAnywhere, Category = "Particles")
+    UPROPERTY(EditAnywhere, Category = "Atlas Particles")
 	float LightStepSize = 0.4f;
-    UPROPERTY(EditAnywhere, Category = "Particles")
+    UPROPERTY(EditAnywhere, Category = "Atlas Particles")
 	float DensityStepSize = 0.5f;
-    UPROPERTY(EditAnywhere, Category = "Particles")
+    UPROPERTY(EditAnywhere, Category = "Atlas Particles")
 	float DensityMultiplier = 25.f;
-    UPROPERTY(EditAnywhere, Category = "Particles")
+    UPROPERTY(EditAnywhere, Category = "Atlas Particles")
 	float indexOfRefraction = 1.33f;
-    UPROPERTY(EditAnywhere, Category = "Particles")
+    UPROPERTY(EditAnywhere, Category = "Atlas Particles")
 	int32 NumRefraction = 4;
 
-    UFUNCTION(CallInEditor, Category = "Particles")
+    UFUNCTION(CallInEditor, Category = "Atlas Particles")
     void GenerateParticleBuffers();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fluid system")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas Fluid system")
     float MaxSpeedGradient = 30.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid system")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Atlas Fluid system")
 	FFluidSimSettings Settings;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid system")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Atlas Fluid system")
 	bool RunCPU = true;
 
 	TUniquePtr<FFluidSimulationSystem> Simulation;
