@@ -36,10 +36,10 @@ public:
     FFluidSimulationSystem();
     void InitializeParticles(TArray<FParticle>& InParticles, FVector& MinB, FVector& MaxB);
     void SetVolumeBounds(FVector& MinB, FVector& MaxB);
-    void StepSimulation(float DeltaTime);
+    void StepSimulation(float DeltaTime, const class UBoxComponent& Bounds);
     void ApplySettings(FFluidSimSettings& settings);
     void ApplyExternalForce(const FVector& Location, const float& ForceAmplifier, const float& radius);
-    void BoxCollision(const class UBoxComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos);
+    void BoxCollision(const class UBoxComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos, UWorld* World);
     void SphereCollision(const class USphereComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos, UWorld* World);
     void CapsuleCollision(const class UCapsuleComponent& OtherComp, const class UBoxComponent& Bounds, const FVector& LocalPos, UWorld* World);
 
@@ -64,6 +64,7 @@ private:
     bool CheckSphereCellCollision(const FIntVector& CellCoords, const FVector& SphereCenter, const FVector& Radius3D);
     bool CheckSphereCollision(const float& Distance, const float& Radius);
     FVector ReflectVelocity(const FVector& Vel, const FVector& Normal);
+    FVector GetRotatedBoxAABBExtent(const FVector& Extent, const FQuat& Rotation);
 
 
     TArray<FParticle> Particles;

@@ -58,7 +58,6 @@ float CalcDensity(float3 pos)
 
         for (int i = currIndex; i < NumParticles; i++) {
             uint3 indexData = SpatialIndices[i];
-
             if (indexData[2] != key) break;
             uint particleIndex = indexData[0];
             float3 offset = PredictedPositions[particleIndex] - pos;

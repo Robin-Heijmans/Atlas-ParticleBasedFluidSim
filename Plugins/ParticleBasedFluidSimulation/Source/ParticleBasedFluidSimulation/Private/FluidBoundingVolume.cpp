@@ -151,7 +151,7 @@ void UFluidBoundingVolumeComponent::TickComponent(float DeltaTime, ELevelTick Ti
         if (TotalTime >= FixedTimeStep)
         {
             GetExternalForce();
-            Simulation->StepSimulation(FixedTimeStep);
+            Simulation->StepSimulation(FixedTimeStep, *Bounds);
             CollisionsCheck();
             Particles = Simulation->GetParticles();
             TotalTime = 0.0f;
@@ -165,10 +165,10 @@ void UFluidBoundingVolumeComponent::TickComponent(float DeltaTime, ELevelTick Ti
 void UFluidBoundingVolumeComponent::UpdateMaterials()
 {
     if (!DefaultSphereMesh || Particles.Num() == 0) return;
-    FVector WorldScale = Bounds->GetComponentScale();
+    FTransform WorldTransfom = Bounds->GetComponentTransform();
     for (int32 i = 0; i < Particles.Num(); i++) {
         const FParticle& particle = Particles[i];
-        FVector posOffset = (particle.Position - MeshPositions[i]) * WorldScale;
+        FVector posOffset = WorldTransfom.TransformVector(particle.Position - MeshPositions[i]);
 
         FLinearColor Color = VelocityToColor(particle.Velocity.Length());
 
@@ -275,7 +275,7 @@ void UFluidBoundingVolumeComponent::GetExternalForce() {
 void UFluidBoundingVolumeComponent::CollisionsCheck() {
     TArray<FOverlapResult> Overlaps;
     FCollisionQueryParams Params;
-    Params.AddIgnoredActor(GetOwner());
+    Params.AddIgnoredComponent(Bounds);
 
     FVector Center = Bounds->GetComponentLocation();
     FVector Extent = Bounds->GetScaledBoxExtent();
@@ -297,7 +297,7 @@ void UFluidBoundingVolumeComponent::CollisionsCheck() {
 
         if (UBoxComponent* Box = Cast<UBoxComponent>(Comp)) {
             // To be implemented
-            Simulation->BoxCollision(*Box, *Bounds, LocalPos);
+            Simulation->BoxCollision(*Box, *Bounds, LocalPos, GetWorld());
         }
         else if (USphereComponent* Sphere = Cast<USphereComponent>(Comp)) {
             // To be implemented
