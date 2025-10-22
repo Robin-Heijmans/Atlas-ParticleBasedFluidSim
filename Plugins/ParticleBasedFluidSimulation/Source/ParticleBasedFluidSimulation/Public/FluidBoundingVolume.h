@@ -76,6 +76,7 @@ public:
 
 public:
 	TArray<FVector> GetVolumeBounds();
+	TArray<FOverlapResult> GetCollisionOverlaps();
 private:
 	void InitializeParticles();
 	void UpdateVolumeBounds();

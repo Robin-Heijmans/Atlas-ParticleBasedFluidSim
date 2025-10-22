@@ -19,6 +19,9 @@
 #include "GlobalShader.h"
 #include "RenderGraphUtils.h"
 #include "Components/BoxComponent.h"
+#include "Components/SphereComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Engine/OverlapResult.h"
 
 #include "FluidBoundingVolume.h"
 
@@ -203,6 +206,9 @@ void UParticleBuffers::DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShade
     UBFluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
         
     // Fluid Math
+    FTransform WorldTransform = ParentVolume->Bounds->GetComponentTransform().Inverse();
+    FVector3f WorldGravity = static_cast<FVector3f>(WorldTransform.TransformVectorNoScale(SimulationSettings.Gravity));
+
     FFluidMathParams FluidMath;
     FluidMath.Positions = GraphBuilder.CreateUAV(PositionsRef);
     FluidMath.PredictedPositions = GraphBuilder.CreateUAV(PredictedPositionsRef);
@@ -213,7 +219,7 @@ void UParticleBuffers::DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShade
 
     FluidMath.CollisionDampening    = SimulationSettings.CollisionDampening;
     FluidMath.DeltaTime             = SimulationSettings.DeltaTime;
-    FluidMath.Gravity               = SimulationSettings.Gravity;
+    FluidMath.Gravity               = WorldGravity;
     FluidMath.NumParticles          = SimulationSettings.NumParticles;
     FluidMath.PressureAmplifier     = SimulationSettings.PressureAmplifier;
     FluidMath.SmoothingRadius       = SimulationSettings.SmoothingRadius;
@@ -229,6 +235,60 @@ void UParticleBuffers::DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShade
     FluidMathDispatch::CalculatePressureForce(GraphBuilder, GlobalShaderMap, FluidMath);
     FluidMathDispatch::CalculateViscosityForce(GraphBuilder, GlobalShaderMap, FluidMath);
     FluidMathDispatch::UpdatePositions(GraphBuilder, GlobalShaderMap, FluidMath);
+    DispatchPOCollisionResolution(GraphBuilder, GlobalShaderMap, FluidMath);
+}
+
+void UParticleBuffers::DispatchPOCollisionResolution(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams& FluidMath) {
+    TArray<FOverlapResult> Overlaps = ParentVolume->GetCollisionOverlaps();
+
+    for (auto& Overlap : Overlaps)
+    {
+        UPrimitiveComponent* Comp = Overlap.GetComponent();
+        if (!Comp) continue;
+        FVector LocalPos = GetComponentTransform().InverseTransformPosition(Comp->GetComponentLocation());
+
+        if (UBoxComponent* Box = Cast<UBoxComponent>(Comp)) {
+            FluidMath.OtherLocalTransform = static_cast<FMatrix44f>(Box->GetComponentTransform().GetRelativeTransform(ParentVolume->Bounds->GetComponentTransform()).ToMatrixWithScale());
+            FluidMath.OtherLocalTransformInverse = static_cast<FMatrix44f>(FluidMath.OtherLocalTransform.Inverse());
+            FluidMath.OtherLocalExtent = static_cast<FVector3f>(Box->GetUnscaledBoxExtent());
+            FluidMath.LocalScale = static_cast<FVector3f>(Box->GetComponentScale() / ParentVolume->Bounds->GetComponentScale());
+            
+            FluidMathDispatch::ResolveBoxCollision(GraphBuilder, GlobalShaderMap, FluidMath);
+        }
+        else if (USphereComponent* Sphere = Cast<USphereComponent>(Comp)) {
+            FTransform OtherLocalTransform = Sphere->GetComponentTransform().GetRelativeTransform(ParentVolume->Bounds->GetComponentTransform());
+            
+            FluidMath.OtherLocalTransform = static_cast<FMatrix44f>(OtherLocalTransform.ToMatrixWithScale().Inverse().GetTransposed());
+            FluidMath.OtherLocalTransformInverse = static_cast<FMatrix44f>(OtherLocalTransform.ToMatrixWithScale().Inverse());
+            FluidMath.OtherLocalExtent = static_cast<FVector3f>(Sphere->GetUnscaledSphereRadius());
+            FluidMath.LocalScale = static_cast<FVector3f>(Sphere->GetUnscaledSphereRadius() * (Sphere->GetComponentScale() / ParentVolume->Bounds->GetComponentScale()));
+
+            FluidMathDispatch::ResolveSphereCollision(GraphBuilder, GlobalShaderMap, FluidMath);
+        }
+        else if (UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Comp)) {
+            FVector LocalScale = Capsule->GetComponentScale() / ParentVolume->Bounds->GetComponentScale();
+            float SphereRadius = Capsule->GetUnscaledCapsuleRadius() * (LocalScale.X + LocalScale.Y) * 0.5f;
+            FVector LocalCenter = ParentVolume->Bounds->GetComponentTransform().Inverse().TransformPosition(Capsule->GetComponentLocation());
+            FVector UpCapsule = Capsule->GetUpVector();
+            float HalfHeight = Capsule->GetUnscaledCapsuleHalfHeight() * LocalScale.Z;
+            float HalfHeightCylinder = HalfHeight - SphereRadius;
+
+            FluidMath.OtherLocalExtent = static_cast<FVector3f>(UpCapsule * HalfHeightCylinder);
+            FluidMath.LocalScale = FVector3f(SphereRadius);
+            FluidMath.LocalCenter = static_cast<FVector3f>(LocalCenter);
+
+            FluidMathDispatch::ResolveCapsuleCollision(GraphBuilder, GlobalShaderMap, FluidMath);
+        }
+        else {
+            UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>(Comp);
+            GEngine->AddOnScreenDebugMessage(3, 5.f, FColor::Yellow, (FString::Printf(TEXT("RIP: Static mesh detected"))));
+            if (MeshComp && MeshComp->GetBodyInstance())
+            {
+                FBodyInstance* Body = MeshComp->GetBodyInstance();
+                // To be implemented (complex shapes)
+            }
+        }
+    }
 }
 
 void UParticleBuffers::DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRDGTexture* SceneColor, const FSceneView& InView)

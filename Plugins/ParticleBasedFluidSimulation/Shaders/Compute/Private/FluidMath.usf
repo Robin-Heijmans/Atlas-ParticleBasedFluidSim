@@ -28,8 +28,15 @@ float CollisionDampening;
 float SmoothingRadius;
 float ViscosityStrength;
 float DeltaTime;
-float Gravity;
+float3 Gravity;
 uint NumParticles;
+
+// Collision Params
+float4x4 OtherLocalTransform;
+float4x4 OtherLocalTransformInverse;
+float3 OtherLocalExtent;
+float3 LocalScale;
+float3 LocalCenter;
 
 float ConvertDensityToPressure(float Density) {
     return (Density - TargetDensity) * PressureAmplifier;
@@ -51,11 +58,28 @@ void ResolveCollisions(uint ParticleIndex) {
     }
 }
 
+float3 ReflectVelocity(float3 Vel, float3 Normal) {
+    return Vel - 2.f * dot(Vel, Normal) * (Normal * CollisionDampening);
+}
+
+bool CheckBoxCollision(float3 Position, float3 IntersectionMinBounds, float3 IntersectionMaxBounds) {
+    if (Position.x < IntersectionMinBounds.x || Position.x > IntersectionMaxBounds.x
+    || Position.y < IntersectionMinBounds.y || Position.y > IntersectionMaxBounds.y
+    || Position.z < IntersectionMinBounds.z || Position.z > IntersectionMaxBounds.z) {
+        return false;
+    }
+    return true;
+}
+
+bool CheckSphereCollision(float Distance, float Radius) {
+    return Distance <= Radius;
+}
+
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void ExternalForces (uint3 id : SV_DispatchThreadID) {
     if (id.x >= NumParticles) return;
 
-    Velocities[id.x] += float3(0, 0, Gravity) * DeltaTime;
+    Velocities[id.x] += Gravity * DeltaTime;
 
     PredictedPositions[id.x] = Positions[id.x] + Velocities[id.x] * 1.0 / 120.0; // Fixed LookAheadTimeStep
 }
@@ -181,4 +205,85 @@ void UpdatePositions (uint3 id : SV_DispatchThreadID) {
 
     Positions[id.x] += Velocities[id.x] * DeltaTime;
     ResolveCollisions(id.x);
+}
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void ResolveBoxCollisions (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= NumParticles) return;
+
+    float3 Pos = Positions[id.x];
+    float3 Offset = mul(float4(Pos, 1.0f), OtherLocalTransformInverse).xyz;
+    if (CheckBoxCollision(Offset, -OtherLocalExtent, OtherLocalExtent)) {
+        float3 Vel = Velocities[id.x];
+        float3 Direction = normalize(Offset);
+
+        float3 AbsDir = abs(Direction);
+        float AxisBound = 0.f;
+        float Distance = 0.f;
+        if (AbsDir.x > AbsDir.y && AbsDir.x > AbsDir.z) {
+            float3 localAxis = float3(sign(Direction.x), 0, 0);
+            Direction = normalize(mul(float4(localAxis, 0), OtherLocalTransform).xyz);
+            AxisBound = OtherLocalExtent.x;
+            Distance = abs(Offset.x);
+        }
+        else if (AbsDir.y > AbsDir.z) {
+            float3 localAxis = float3(0, sign(Direction.y), 0);
+            Direction = normalize(mul(float4(localAxis, 0), OtherLocalTransform).xyz);
+            AxisBound = OtherLocalExtent.y;
+            Distance = abs(Offset.y);
+        }
+        else {
+            float3 localAxis = float3(0, 0, sign(Direction.z));
+            Direction = normalize(mul(float4(localAxis, 0), OtherLocalTransform).xyz);
+            AxisBound = OtherLocalExtent.z;
+            Distance = abs(Offset.z);
+        }
+        float3 OnSurfaceWorld = ((AxisBound - Distance)) * LocalScale * Direction;
+        Positions[id.x] += OnSurfaceWorld;
+        Velocities[id.x] = ReflectVelocity(Vel, Direction);
+    }
+}
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void ResolveSphereCollisions (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= NumParticles) return;
+
+    float3 Pos = Positions[id.x];
+    float3 Offset = mul(float4(Pos, 1.0f), OtherLocalTransformInverse).xyz / OtherLocalExtent;
+    float Distance = length(Offset);
+    if (CheckSphereCollision(Distance, 1.f)) {
+        float3 Vel = Velocities[id.x];
+        // OtherLocalTransform == NormalMatrix
+        float3 Direction = normalize(mul(float4(Offset/Distance, 0), OtherLocalTransform).xyz); 
+        // LocalScale = ObjectExtent
+        float3 OnSurfaceWorld = (1.f - Distance) * LocalScale * Direction; 
+        Positions[id.x] += OnSurfaceWorld;
+        Velocities[id.x] = ReflectVelocity(Vel, Direction);
+    }
+}
+
+[numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
+void ResolveCapsuleCollisions (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= NumParticles) return;
+
+    float3 Pos = Positions[id.x];
+    // OtherLocalExtent = UpCapsule * HalfHeightCylinder
+    float3 Bottom = LocalCenter - OtherLocalExtent;
+    float3 Top = LocalCenter + OtherLocalExtent;
+
+    float3 AB = Top - Bottom;
+    float3 AP = Pos - Bottom;
+    float T = clamp(dot(AP, AB) / dot(AB, AB), 0.f, 1.f);
+    float3 ClosestPoint = Bottom + T * AB;
+
+    // LocalScale.x = SphereRadius
+    float3 Offset = (Pos - ClosestPoint) / LocalScale.x; 
+    float Distance = length(Offset);
+    if (CheckSphereCollision(Distance, 1.f)) {
+        float3 Vel = Velocities[id.x];
+        float3 Direction = Offset/Distance;
+        float3 OnSurfaceWorld = (1.f - Distance) * LocalScale.x * Direction;
+        Positions[id.x] += OnSurfaceWorld;
+        Velocities[id.x] = ReflectVelocity(Vel, Direction);
+    }
 }

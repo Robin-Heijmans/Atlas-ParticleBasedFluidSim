@@ -78,8 +78,14 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidMathParams, )
     SHADER_PARAMETER(float, SmoothingRadius)
     SHADER_PARAMETER(float, ViscosityStrength)
     SHADER_PARAMETER(float, DeltaTime)
-    SHADER_PARAMETER(float, Gravity)
+    SHADER_PARAMETER(FVector3f, Gravity)
     SHADER_PARAMETER(uint32, NumParticles)
+
+    SHADER_PARAMETER(FMatrix44f, OtherLocalTransform)
+    SHADER_PARAMETER(FMatrix44f, OtherLocalTransformInverse)
+    SHADER_PARAMETER(FVector3f, OtherLocalExtent)
+    SHADER_PARAMETER(FVector3f, LocalScale)
+    SHADER_PARAMETER(FVector3f, LocalCenter)
 
 END_SHADER_PARAMETER_STRUCT()
 
@@ -144,6 +150,9 @@ namespace FluidMathDispatch
     FRDGPassRef CalculatePressureForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params);
     FRDGPassRef CalculateViscosityForce(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params);
     FRDGPassRef UpdatePositions(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params);
+    FRDGPassRef ResolveBoxCollision(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params);
+    FRDGPassRef ResolveSphereCollision(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params);
+    FRDGPassRef ResolveCapsuleCollision(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams Params);
 }
 
 
@@ -308,6 +317,69 @@ namespace Shaders
     public:
     	DECLARE_GLOBAL_SHADER(FFluidMathUpdatePositions);
     	SHADER_USE_PARAMETER_STRUCT(FFluidMathUpdatePositions, FGlobalShader);
+
+    	using FParameters = FFluidMathParams;
+
+        // Basic shader initialization
+        static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+            return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+        }
+
+    	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+    	{
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+    	}
+    };
+
+    class FFluidMathResolveBoxCollision : public FGlobalShader
+    {
+    public:
+    	DECLARE_GLOBAL_SHADER(FFluidMathResolveBoxCollision);
+    	SHADER_USE_PARAMETER_STRUCT(FFluidMathResolveBoxCollision, FGlobalShader);
+
+    	using FParameters = FFluidMathParams;
+
+        // Basic shader initialization
+        static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+            return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+        }
+
+    	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+    	{
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+    	}
+    };
+
+    class FFluidMathResolveSphereCollision : public FGlobalShader
+    {
+    public:
+    	DECLARE_GLOBAL_SHADER(FFluidMathResolveSphereCollision);
+    	SHADER_USE_PARAMETER_STRUCT(FFluidMathResolveSphereCollision, FGlobalShader);
+
+    	using FParameters = FFluidMathParams;
+
+        // Basic shader initialization
+        static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+            return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+        }
+
+    	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+    	{
+    		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
+    		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+    	}
+    };
+
+    class FFluidMathResolveCapsuleCollision : public FGlobalShader
+    {
+    public:
+    	DECLARE_GLOBAL_SHADER(FFluidMathResolveCapsuleCollision);
+    	SHADER_USE_PARAMETER_STRUCT(FFluidMathResolveCapsuleCollision, FGlobalShader);
 
     	using FParameters = FFluidMathParams;
 
