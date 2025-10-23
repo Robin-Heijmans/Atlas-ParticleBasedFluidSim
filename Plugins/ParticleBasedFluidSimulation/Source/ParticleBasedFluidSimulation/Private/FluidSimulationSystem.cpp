@@ -44,7 +44,7 @@ void FFluidSimulationSystem::StepSimulation(float DeltaTime, const UBoxComponent
     for (int i = 0; i < Particles.Num(); i++) {
         Particles[i].Density = CalculateDensity(Particles[i].PredictedPosition, i);
     }
-    GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, (FString::Printf(TEXT("Particle[0] Density: %f"), Particles[0].Density)));
+    //GEngine->AddOnScreenDebugMessage(0, 5.f, FColor::Green, (FString::Printf(TEXT("Particle[0] Density: %f"), Particles[0].Density)));
 
     for (int i = 0; i < Particles.Num(); i++) {
         FVector PressureForce = CalculatePressureForce(Particles[i].PredictedPosition, i);
@@ -272,7 +272,7 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
     FIntVector MinCoords = PositionToCellCoords(IntersectionMin, SmoothingRadius);
     FIntVector MaxCoords = PositionToCellCoords(IntersectionMax, SmoothingRadius);
     
-    DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), RotatedExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
+    //DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), RotatedExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
     FTransform OtherLocalTransform = OtherTransform.GetRelativeTransform(Bounds.GetComponentTransform());
     FVector OtherLocalExtent = OtherComp.GetUnscaledBoxExtent();
 
@@ -288,7 +288,7 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
             FVector& Pos = Particles[ParticleIndex].Position;
             FVector Offset = OtherLocalTransform.InverseTransformPosition(Pos);
             if (CheckBoxCollision(Offset, -OtherLocalExtent, OtherLocalExtent)) {
-                GEngine->AddOnScreenDebugMessage(4, 1.f, FColor::Yellow, (FString::Printf(TEXT("Box collision detected"))));
+                //GEngine->AddOnScreenDebugMessage(4, 1.f, FColor::Yellow, (FString::Printf(TEXT("Box collision detected"))));
                 FVector& Vel = Particles[ParticleIndex].Velocity;
                 FVector Direction = Offset/Offset.Size();
 
@@ -314,7 +314,7 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
                 Pos += OnSurfaceWorld;
                 Vel = ReflectVelocity(Vel, Direction);
                 FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
-                DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
+                //DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
             }
         }
     }
@@ -336,7 +336,6 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
     FVector ThisExtent = Bounds.GetUnscaledBoxExtent();
     FVector LocalMin = -ThisExtent;
 	FVector LocalMax = ThisExtent;
-    GEngine->AddOnScreenDebugMessage(11, 5.f, FColor::Green, (FString::Printf(TEXT("Sphere radius 3D: %f %f %f"), ObjectExtent.X, ObjectExtent.Y, ObjectExtent.Z)));
 
     FVector IntersectionMin = FVector(FMath::Max(ObjMinBounds.X, LocalMin.X),
                                       FMath::Max(ObjMinBounds.Y, LocalMin.Y),
@@ -349,7 +348,7 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
     FIntVector MinCoords = PositionToCellCoords(IntersectionMin, SmoothingRadius);
     FIntVector MaxCoords = PositionToCellCoords(IntersectionMax, SmoothingRadius);
 
-    DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), RotatedExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
+    //DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), RotatedExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
     FTransform OtherLocalTransform = OtherTransform.GetRelativeTransform(Bounds.GetComponentTransform());
     float OtherLocalExtent = OtherComp.GetUnscaledSphereRadius();
     FMatrix NormalMatrix = OtherLocalTransform.ToMatrixWithScale().Inverse().GetTransposed();
@@ -358,7 +357,7 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
     for (int CellY = MinCoords.Y; CellY <= MaxCoords.Y; CellY++)
     for (int CellZ = MinCoords.Z; CellZ <= MaxCoords.Z; CellZ++) {
         FIntVector CellCoords = FIntVector(CellX, CellY, CellZ);
-        GEngine->AddOnScreenDebugMessage(5, 1.f, FColor::Yellow, (FString::Printf(TEXT("Sphere collision detected"))));
+        //GEngine->AddOnScreenDebugMessage(5, 1.f, FColor::Yellow, (FString::Printf(TEXT("Sphere collision detected"))));
         //if (!CheckSphereCellCollision(CellCoords, LocalCenter, SphereRadius3D)) continue;
 
         uint32 Key = GetKeyFromHash(HashCell(CellCoords));
@@ -376,7 +375,7 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
                 Pos += OnSurfaceWorld;
                 Vel = ReflectVelocity(Vel, Direction);
                 FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
-                DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
+                //DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
             }
         }
     }
@@ -415,7 +414,7 @@ void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp
     FIntVector MinCoords = PositionToCellCoords(IntersectionMin, SmoothingRadius);
     FIntVector MaxCoords = PositionToCellCoords(IntersectionMax, SmoothingRadius);
 
-    DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), ObjectExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
+    //DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), ObjectExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
     FTransform OtherLocalTransform = OtherTransform.GetRelativeTransform(Bounds.GetComponentTransform());
     float OtherLocalExtent = OtherComp.GetUnscaledCapsuleRadius();
     FMatrix NormalMatrix = OtherLocalTransform.ToMatrixWithScale().Inverse().GetTransposed();
@@ -424,7 +423,7 @@ void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp
     for (int CellY = MinCoords.Y; CellY <= MaxCoords.Y; CellY++)
     for (int CellZ = MinCoords.Z; CellZ <= MaxCoords.Z; CellZ++) {
         FIntVector CellCoords = FIntVector(CellX, CellY, CellZ);
-        GEngine->AddOnScreenDebugMessage(6, 1.f, FColor::Yellow, (FString::Printf(TEXT("Capsule collision detected"))));
+        //GEngine->AddOnScreenDebugMessage(6, 1.f, FColor::Yellow, (FString::Printf(TEXT("Capsule collision detected"))));
         uint32 Key = GetKeyFromHash(HashCell(CellCoords));
         uint32 StartIndex = StartIndices[Key];
         for (uint32 i = StartIndex; i < TableSize; i++) {
@@ -440,7 +439,7 @@ void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp
             FVector ClosestPoint = Bottom + T * AB;
             FVector Offset = (Pos - ClosestPoint) / SphereRadius;
             float Distance = Offset.Size();
-            GEngine->AddOnScreenDebugMessage(12, 1.f, FColor::Yellow, (FString::Printf(TEXT("Distance to capsule backbone: %f"), Distance)));
+            //GEngine->AddOnScreenDebugMessage(12, 1.f, FColor::Yellow, (FString::Printf(TEXT("Distance to capsule backbone: %f"), Distance)));
             if (CheckSphereCollision(Distance, 1.f)) {
                 FVector& Vel = Particles[ParticleIndex].Velocity;
                 FVector Direction = Offset/Distance;
@@ -448,7 +447,7 @@ void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp
                 Pos += OnSurfaceWorld;
                 Vel = ReflectVelocity(Vel, Direction);
                 FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
-                DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
+                //DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
             }
         }
     }

@@ -29,46 +29,43 @@ protected:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 public:	
-	UPROPERTY(EditAnywhere, Category = "Bounds")
-	class UBoxComponent* Bounds;
+	TObjectPtr<class UBoxComponent> Bounds;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas Particles")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Bounds")
+	FVector BoxExtents = FVector(32.0f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Particles")
     int NumParticlesX = 5;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas Particles")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Particles")
     int NumParticlesY = 5;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas Particles")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Particles")
     int NumParticlesZ = 5;
-
-    UPROPERTY(EditAnywhere, Category = "Atlas Particles")
+    UPROPERTY(EditAnywhere, Category = "Atlas/Particles")
 	FVector3f ExtinctionCoeff = FVector3f(1.f,0.55f,0.35f);
-    UPROPERTY(EditAnywhere, Category = "Atlas Particles")
+    UPROPERTY(EditAnywhere, Category = "Atlas/Particles")
 	float MarchStepSize = 0.02f;
-    UPROPERTY(EditAnywhere, Category = "Atlas Particles")
+    UPROPERTY(EditAnywhere, Category = "Atlas/Particles")
 	float LightStepSize = 0.4f;
-    UPROPERTY(EditAnywhere, Category = "Atlas Particles")
+    UPROPERTY(EditAnywhere, Category = "Atlas/Particles")
 	float DensityStepSize = 0.5f;
-    UPROPERTY(EditAnywhere, Category = "Atlas Particles")
+    UPROPERTY(EditAnywhere, Category = "Atlas/Particles")
 	float DensityMultiplier = 25.f;
-    UPROPERTY(EditAnywhere, Category = "Atlas Particles")
+    UPROPERTY(EditAnywhere, Category = "Atlas/Particles")
 	float indexOfRefraction = 1.33f;
-    UPROPERTY(EditAnywhere, Category = "Atlas Particles")
+    UPROPERTY(EditAnywhere, Category = "Atlas/Particles")
 	int32 NumRefraction = 4;
+    UFUNCTION(CallInEditor, Category = "Atlas/Particles")
+    void GenerateParticleBuffers();	
 
-    UFUNCTION(CallInEditor, Category = "Atlas Particles")
-    void GenerateParticleBuffers();
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas Fluid system")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Fluid system")
     float MaxSpeedGradient = 30.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Atlas Fluid system")
-	FFluidSimSettings Settings;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Atlas Fluid system")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Atlas/Fluid system")
 	bool RunCPU = true;
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Atlas/Fluid system")
+	FFluidSimSettings Settings;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Atlas/Fluid system")
 	TUniquePtr<FFluidSimulationSystem> Simulation;
+
 	TArray<FParticle> Particles;
 	TArray<FVector3f> InitialPositions;
 	TArray<FVector> MeshPositions;
@@ -88,6 +85,7 @@ private:
 
 	#if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
 	#endif
 
 	UStaticMesh* DefaultSphereMesh;

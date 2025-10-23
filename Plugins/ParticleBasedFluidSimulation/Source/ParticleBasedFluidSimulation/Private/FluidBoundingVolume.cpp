@@ -55,11 +55,6 @@ void UFluidBoundingVolumeComponent::OnRegister()
 {
     Super::OnRegister();
     UpdateVolumeBounds();
-    if (!IsInitialized) {
-        InitializeParticles();
-        UpdateInstances(true);
-        UpdateMaterials();
-    }
 }
 
 void UFluidBoundingVolumeComponent::GenerateParticleBuffers()
@@ -120,8 +115,8 @@ void UFluidBoundingVolumeComponent::InitializeParticles()
 
 void UFluidBoundingVolumeComponent::UpdateVolumeBounds() {
     if (!Simulation) return;
-    FVector Extent = Bounds->GetScaledBoxExtent();
-	FVector WorldScale = Bounds->GetComponentScale();
+    Bounds->SetBoxExtent(BoxExtents, true);
+    FVector Extent = Bounds->GetUnscaledBoxExtent();
 
     FVector LocalMin = -Extent;
 	FVector LocalMax = Extent;
@@ -132,8 +127,14 @@ void UFluidBoundingVolumeComponent::UpdateVolumeBounds() {
 void UFluidBoundingVolumeComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	InitializeParticles();
-    IsInitialized = true;
+
+    if (!IsInitialized) {
+        IsInitialized = true;
+        InitializeParticles();
+        UpdateInstances(true);
+        UpdateMaterials();
+    }
+    
     if (Simulation){
         Simulation->ApplySettings(Settings);
     }
@@ -160,6 +161,7 @@ void UFluidBoundingVolumeComponent::TickComponent(float DeltaTime, ELevelTick Ti
             UpdateMaterials();
             FrameCount++;
         }
+        FVector Extent = Bounds->GetUnscaledBoxExtent();
     }
 }
 
@@ -231,15 +233,17 @@ FLinearColor UFluidBoundingVolumeComponent::VelocityToColor(const float& Speed) 
 }
 
 #if WITH_EDITOR
-void UFluidBoundingVolumeComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
+void UFluidBoundingVolumeComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) {
     Super::PostEditChangeProperty(PropertyChangedEvent);
+}
+
+void UFluidBoundingVolumeComponent::PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) {
+    Super::PostEditChangeChainProperty(PropertyChangedEvent);
 }
 #endif
 
 TArray<FVector> UFluidBoundingVolumeComponent::GetVolumeBounds() {
-    FVector Extent = Bounds->GetScaledBoxExtent();
-	FVector WorldScale = Bounds->GetComponentScale();
+    FVector Extent = Bounds->GetUnscaledBoxExtent();
 
     FVector LocalMin = -Extent;
 	FVector LocalMax = Extent;
@@ -300,11 +304,12 @@ TArray<FOverlapResult> UFluidBoundingVolumeComponent::GetCollisionOverlaps() {
 
     FVector Center = Bounds->GetComponentLocation();
     FVector Extent = Bounds->GetScaledBoxExtent();
+    FQuat Rotation = Bounds->GetComponentQuat();
 
     GetWorld()->OverlapMultiByChannel(
         Overlaps,
         Center,
-        FQuat::Identity,
+        Rotation,
         ECC_PhysicsBody,
         FCollisionShape::MakeBox(Extent),
         Params
