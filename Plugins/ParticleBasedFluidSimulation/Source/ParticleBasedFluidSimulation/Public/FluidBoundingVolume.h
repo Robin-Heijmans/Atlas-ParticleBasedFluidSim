@@ -33,13 +33,15 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Bounds")
 	FVector BoxExtents = FVector(32.0f);
-
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Particles")
     int NumParticlesX = 5;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Particles")
     int NumParticlesY = 5;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Particles")
     int NumParticlesZ = 5;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Particles")
+	FVector SpawnBoxExtents = FVector(10.f);
     UPROPERTY(EditAnywhere, Category = "Atlas/Particles")
 	FVector3f ExtinctionCoeff = FVector3f(1.f,0.55f,0.35f);
     UPROPERTY(EditAnywhere, Category = "Atlas/Particles")
@@ -97,4 +99,6 @@ private:
 	float TotalTime = 0.0f;
 	int FrameCount = 0;
 	bool IsInitialized = false;
+
+	TObjectPtr<class UBoxComponent> SpawnParticlesBounds;
 };
