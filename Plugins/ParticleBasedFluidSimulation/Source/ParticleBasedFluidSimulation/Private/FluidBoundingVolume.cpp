@@ -34,13 +34,14 @@ UFluidBoundingVolumeComponent::UFluidBoundingVolumeComponent()
     Bounds->SetGenerateOverlapEvents(true);
 
     SpawnParticlesBounds = CreateDefaultSubobject<UBoxComponent>(TEXT("SpawnParticleBounds"));
-    SpawnParticlesBounds->SetBoxExtent(SpawnBoxExtents, true);
+    SpawnParticlesBounds->SetBoxExtent(SpawnBoxExtents, false);
     SpawnParticlesBounds->SetupAttachment(this);
     SpawnParticlesBounds->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     SpawnParticlesBounds->SetGenerateOverlapEvents(false);
 
 	ParticleMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ParticleMesh"));
     ParticleMesh->SetupAttachment(this);
+    ParticleMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMeshObj(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
     if (SphereMeshObj.Succeeded())
@@ -62,6 +63,8 @@ void UFluidBoundingVolumeComponent::OnRegister()
 {
     Super::OnRegister();
     UpdateVolumeBounds();
+    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, (FString::Printf(TEXT("On Register"))));
+
 }
 
 void UFluidBoundingVolumeComponent::GenerateParticleBuffers()
@@ -91,8 +94,8 @@ void UFluidBoundingVolumeComponent::InitializeParticles()
 
 	const FTransform BoxTransform = SpawnParticlesBounds->GetComponentTransform().GetRelativeTransform(Bounds->GetComponentTransform());
     
-	FVector SpawnMin = -Extent;
-    FVector ParticleSize = FVector(SphereRadius/50.0f)/WorldScale;
+	FVector SpawnMin = -Extent + SpawnParticlesBounds->GetRelativeLocation();
+    FVector ScaledParticleSize = FVector(ParticleSize)/Bounds->GetComponentScale();
     for (int x = 0; x < NumParticlesX; x++)
     {
         for (int y = 0; y < NumParticlesY; y++)
@@ -105,7 +108,7 @@ void UFluidBoundingVolumeComponent::InitializeParticles()
                 MeshPositions.Add(BoundsPos);
                 int CurrentNumParticles = Particles.Num();
                 if (CurrentNumParticles > PreviousNumParticles) {
-                    FTransform InstanceTransform(FRotator::ZeroRotator, BoundsPos, ParticleSize);
+                    FTransform InstanceTransform(FRotator::ZeroRotator, BoundsPos, ScaledParticleSize);
                     ParticleMesh->AddInstance(InstanceTransform);
                 }
             }
@@ -122,8 +125,10 @@ void UFluidBoundingVolumeComponent::InitializeParticles()
 }
 
 void UFluidBoundingVolumeComponent::UpdateVolumeBounds() {
-    if (!Simulation) return;
-    SpawnParticlesBounds->SetBoxExtent(SpawnBoxExtents, true);
+    if (!Simulation) Simulation = MakeUnique<FFluidSimulationSystem>();
+
+    SpawnParticlesBounds->SetRelativeLocation(SpawnBoxOffset);
+    SpawnParticlesBounds->SetBoxExtent(SpawnBoxExtents, false);
     Bounds->SetBoxExtent(BoxExtents, true);
     FVector Extent = Bounds->GetUnscaledBoxExtent();
 
@@ -136,6 +141,7 @@ void UFluidBoundingVolumeComponent::UpdateVolumeBounds() {
 void UFluidBoundingVolumeComponent::BeginPlay()
 {
 	Super::BeginPlay();
+    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, (FString::Printf(TEXT("Begin play"))));
 
     if (!IsInitialized) {
         IsInitialized = true;
@@ -174,6 +180,17 @@ void UFluidBoundingVolumeComponent::TickComponent(float DeltaTime, ELevelTick Ti
     }
 }
 
+void UFluidBoundingVolumeComponent::PostLoad() {
+    Super::PostLoad();
+    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, (FString::Printf(TEXT("Post load"))));  
+
+    UpdateVolumeBounds();
+
+    if (Simulation) {
+        Simulation->ApplySettings(Settings);
+    }
+}
+
 void UFluidBoundingVolumeComponent::UpdateMaterials()
 {
     if (!DefaultSphereMesh || Particles.Num() == 0) return;
@@ -203,8 +220,7 @@ void UFluidBoundingVolumeComponent::UpdateInstances(const bool AllInstances) {
         endIndex = startIndex + numParticlesToUpdate;
     }
 
-    FVector CompScale = Bounds->GetComponentScale();
-    FVector ParticleSize = FVector(SphereRadius / 50.0f)/CompScale;
+    FVector ScaledParticleSize = FVector(ParticleSize)/Bounds->GetComponentScale();
     for (int32 i = startIndex; i < endIndex; i++) {
         if (i >= Particles.Num()) break;
         const FParticle& particle = Particles[i];
@@ -212,7 +228,7 @@ void UFluidBoundingVolumeComponent::UpdateInstances(const bool AllInstances) {
         FTransform InstanceTransform(
             FRotator::ZeroRotator,
             particle.Position,
-            ParticleSize
+            ScaledParticleSize
         );
 
         ParticleMesh->UpdateInstanceTransform(i, InstanceTransform, false, true);
@@ -244,10 +260,10 @@ FLinearColor UFluidBoundingVolumeComponent::VelocityToColor(const float& Speed) 
 #if WITH_EDITOR
 void UFluidBoundingVolumeComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) {
     Super::PostEditChangeProperty(PropertyChangedEvent);
-}
-
-void UFluidBoundingVolumeComponent::PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) {
-    Super::PostEditChangeChainProperty(PropertyChangedEvent);
+    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, (FString::Printf(TEXT("Post edit change property"))));    
+    //if (Simulation) {
+    //    Simulation->ApplySettings(Settings);
+    //}
 }
 #endif
 
@@ -309,7 +325,7 @@ void UFluidBoundingVolumeComponent::CollisionsCheck() {
 TArray<FOverlapResult> UFluidBoundingVolumeComponent::GetCollisionOverlaps() {
     TArray<FOverlapResult> Overlaps;
     FCollisionQueryParams Params;
-    Params.AddIgnoredComponent(Bounds);
+    Params.AddIgnoredComponent(Bounds.Get());
 
     FVector Center = Bounds->GetComponentLocation();
     FVector Extent = Bounds->GetScaledBoxExtent();

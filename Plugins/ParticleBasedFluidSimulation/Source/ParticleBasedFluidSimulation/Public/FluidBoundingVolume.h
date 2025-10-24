@@ -28,20 +28,27 @@ protected:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	virtual void PostLoad() override;
+
 public:	
 	TObjectPtr<class UBoxComponent> Bounds;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Bounds")
 	FVector BoxExtents = FVector(32.0f);
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Particles")
-    int NumParticlesX = 5;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Particles")
-    int NumParticlesY = 5;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Particles")
-    int NumParticlesZ = 5;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Particles")
+
+	TObjectPtr<class UBoxComponent> SpawnParticlesBounds;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Bounds")
 	FVector SpawnBoxExtents = FVector(10.f);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Bounds")
+	FVector SpawnBoxOffset = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Particles", meta = (ClampMin = "1"))
+    int NumParticlesX = 5;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Particles", meta = (ClampMin = "1"))
+    int NumParticlesY = 5;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Particles", meta = (ClampMin = "1"))
+    int NumParticlesZ = 5;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Atlas/Particles", meta = (ClampMin = "0.0"))
+	float ParticleSize = 0.02f;
     UPROPERTY(EditAnywhere, Category = "Atlas/Particles")
 	FVector3f ExtinctionCoeff = FVector3f(1.f,0.55f,0.35f);
     UPROPERTY(EditAnywhere, Category = "Atlas/Particles")
@@ -87,7 +94,6 @@ private:
 
 	#if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
 	#endif
 
 	UStaticMesh* DefaultSphereMesh;
@@ -100,5 +106,5 @@ private:
 	int FrameCount = 0;
 	bool IsInitialized = false;
 
-	TObjectPtr<class UBoxComponent> SpawnParticlesBounds;
+	
 };
