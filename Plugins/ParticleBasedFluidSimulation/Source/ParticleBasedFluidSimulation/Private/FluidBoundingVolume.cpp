@@ -63,8 +63,12 @@ void UFluidBoundingVolumeComponent::OnRegister()
 {
     Super::OnRegister();
     UpdateVolumeBounds();
-    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, (FString::Printf(TEXT("On Register"))));
+    //GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, (FString::Printf(TEXT("On Register"))));
 
+}
+
+void UFluidBoundingVolumeComponent::OnUnregister() {
+    Super::OnUnregister();
 }
 
 void UFluidBoundingVolumeComponent::GenerateParticleBuffers()
@@ -141,7 +145,7 @@ void UFluidBoundingVolumeComponent::UpdateVolumeBounds() {
 void UFluidBoundingVolumeComponent::BeginPlay()
 {
 	Super::BeginPlay();
-    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, (FString::Printf(TEXT("Begin play"))));
+    //GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, (FString::Printf(TEXT("Begin play"))));
 
     if (!IsInitialized) {
         IsInitialized = true;
@@ -182,13 +186,14 @@ void UFluidBoundingVolumeComponent::TickComponent(float DeltaTime, ELevelTick Ti
 
 void UFluidBoundingVolumeComponent::PostLoad() {
     Super::PostLoad();
-    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, (FString::Printf(TEXT("Post load"))));  
+    //GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, (FString::Printf(TEXT("Post load"))));  
 
     UpdateVolumeBounds();
 
-    if (Simulation) {
-        Simulation->ApplySettings(Settings);
+    if (!Simulation) {
+	    Simulation = MakeUnique<FFluidSimulationSystem>();
     }
+    Simulation->ApplySettings(Settings);
 }
 
 void UFluidBoundingVolumeComponent::UpdateMaterials()
@@ -260,7 +265,7 @@ FLinearColor UFluidBoundingVolumeComponent::VelocityToColor(const float& Speed) 
 #if WITH_EDITOR
 void UFluidBoundingVolumeComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) {
     Super::PostEditChangeProperty(PropertyChangedEvent);
-    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, (FString::Printf(TEXT("Post edit change property"))));    
+    //GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, (FString::Printf(TEXT("Post edit change property"))));    
     //if (Simulation) {
     //    Simulation->ApplySettings(Settings);
     //}

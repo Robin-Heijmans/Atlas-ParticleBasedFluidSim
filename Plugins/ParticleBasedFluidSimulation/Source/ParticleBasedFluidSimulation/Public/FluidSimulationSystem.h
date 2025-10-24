@@ -28,6 +28,9 @@ struct FFluidSimSettings
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid")
     float ViscosityStrength = 1.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fluid")
+    float PenetrationStrength = 10.f;
 };
 
 class FFluidSimulationSystem
@@ -65,6 +68,7 @@ private:
     bool CheckSphereCollision(const float& Distance, const float& Radius);
     FVector ReflectVelocity(const FVector& Vel, const FVector& Normal);
     FVector GetRotatedBoxAABBExtent(const FVector& Extent, const FQuat& Rotation);
+    FVector MomentumFromPhysicsObject(const float& PenDepth, const FVector& Direction);
 
 
     TArray<FParticle> Particles;
@@ -81,6 +85,7 @@ private:
     float CollisionDampening = 0.6f;
     float SmoothingRadius = 4.f;
     float ViscosityStrength = 1.f;
+    float PenetrationStrength = 10.f;
     float Sven = 0.1f;
 
     uint32 TableSize = 0; 

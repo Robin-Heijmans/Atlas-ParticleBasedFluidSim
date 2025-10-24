@@ -70,6 +70,7 @@ void FFluidSimulationSystem::ApplySettings(FFluidSimSettings& settings) {
     CollisionDampening = settings.CollisionDampening;
     SmoothingRadius = settings.SmoothingRadius;
     ViscosityStrength = settings.ViscosityStrength;
+    PenetrationStrength = settings.PenetrationStrength;
 }
 
 void FFluidSimulationSystem::ResolveCollisions(FParticle& particle) {
@@ -312,8 +313,8 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
                 }
                 FVector OnSurfaceWorld = ((AxisBound - Distance)) * LocalScale * Direction;
                 Pos += OnSurfaceWorld;
-                Vel = ReflectVelocity(Vel, Direction);
-                FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
+                Vel = ReflectVelocity(Vel, Direction) + MomentumFromPhysicsObject(Distance, Direction);
+                //FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
                 //DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
             }
         }
@@ -373,8 +374,8 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
                 FVector Direction = NormalMatrix.TransformVector(Offset/Distance).GetSafeNormal();
                 FVector OnSurfaceWorld = (1.f - Distance) * ObjectExtent * Direction;
                 Pos += OnSurfaceWorld;
-                Vel = ReflectVelocity(Vel, Direction);
-                FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
+                Vel = ReflectVelocity(Vel, Direction)  + MomentumFromPhysicsObject(Distance, Direction);
+                //FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
                 //DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
             }
         }
@@ -445,8 +446,8 @@ void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp
                 FVector Direction = Offset/Distance;
                 FVector OnSurfaceWorld = (1.f - Distance) * SphereRadius * Direction;
                 Pos += OnSurfaceWorld;
-                Vel = ReflectVelocity(Vel, Direction);
-                FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
+                Vel = ReflectVelocity(Vel, Direction) + MomentumFromPhysicsObject(Distance, Direction);
+                //FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
                 //DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
             }
         }
@@ -487,4 +488,8 @@ FVector FFluidSimulationSystem::GetRotatedBoxAABBExtent(const FVector& Extent, c
     NewExtent.Y = FMath::Abs(R.M[1][0]) * Extent.X + FMath::Abs(R.M[1][1]) * Extent.Y + FMath::Abs(R.M[1][2]) * Extent.Z;
     NewExtent.Z = FMath::Abs(R.M[2][0]) * Extent.X + FMath::Abs(R.M[2][1]) * Extent.Y + FMath::Abs(R.M[2][2]) * Extent.Z;
     return NewExtent;
+}
+
+FVector FFluidSimulationSystem::MomentumFromPhysicsObject(const float& PenDepth, const FVector& Direction) {
+    return PenetrationStrength * PenDepth * Direction;
 }

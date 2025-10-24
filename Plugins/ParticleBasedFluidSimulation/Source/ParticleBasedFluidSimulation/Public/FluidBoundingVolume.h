@@ -25,6 +25,8 @@ protected:
 
 	virtual void OnRegister() override;
 
+	virtual void OnUnregister() override;
+
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
@@ -96,8 +98,8 @@ private:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	#endif
 
-	UStaticMesh* DefaultSphereMesh;
-	class UInstancedStaticMeshComponent* ParticleMesh;
+	TObjectPtr<UStaticMesh> DefaultSphereMesh;
+	TObjectPtr<class UInstancedStaticMeshComponent> ParticleMesh;
 
 	const float SphereRadius = 1.0f;
 	const float FixedTimeStep = 1.f/60.f;
@@ -105,6 +107,4 @@ private:
 	float TotalTime = 0.0f;
 	int FrameCount = 0;
 	bool IsInitialized = false;
-
-	
 };
