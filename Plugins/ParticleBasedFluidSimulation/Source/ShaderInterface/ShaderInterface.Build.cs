@@ -40,8 +40,6 @@ public class ShaderInterface : ModuleRules
 			{
 				"CoreUObject",
 				"Engine",
-				"Slate",
-				"SlateCore",
 				"Renderer",
 				"RenderCore",
 				"RHI",

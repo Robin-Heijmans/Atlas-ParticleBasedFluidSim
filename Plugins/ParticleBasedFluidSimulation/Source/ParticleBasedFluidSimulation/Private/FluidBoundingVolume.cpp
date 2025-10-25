@@ -73,7 +73,14 @@ void UFluidBoundingVolumeComponent::OnUnregister() {
 
 void UFluidBoundingVolumeComponent::GenerateParticleBuffers()
 {
-    HasParticles = false;
+    if(State == EAtlasVolumeState::EMPTY)
+        State = EAtlasVolumeState::GENERATE;
+}
+
+void UFluidBoundingVolumeComponent::RemoveParticleBuffers()
+{
+    if(State == EAtlasVolumeState::SIMULATE)
+        State = EAtlasVolumeState::RELEASE;
 }
 
 void UFluidBoundingVolumeComponent::InitializeParticles()

@@ -24,6 +24,10 @@
 #include "Engine/OverlapResult.h"
 
 #include "FluidBoundingVolume.h"
+#include "Engine/TextureRenderTarget2D.h"
+
+#include "RenderTargetPool.h"
+int buffer_count = 0;
 
 void UParticleBuffers::Initialize(UFluidBoundingVolumeComponent* Volume)
 {
@@ -34,15 +38,14 @@ void UParticleBuffers::Initialize(UFluidBoundingVolumeComponent* Volume)
         FRDGBuilder GraphBuilder(RHICmdList);
 
         // Creating Density Map
-        FRHITextureCreateDesc Desc = FRHITextureCreateDesc::Create3D(TEXT("Atlas DensityMap"))
-                .SetExtent(DensityMapSize.X, DensityMapSize.Y)
-                .SetDepth(DensityMapSize.Z)
-                .SetFormat(EPixelFormat::PF_R8)
-                .SetFlags(ETextureCreateFlags::UAV | ETextureCreateFlags::ShaderResource)
-                .SetInitialState(ERHIAccess::SRVCompute);
-
-        FTextureRHIRef DensityMapRHI = RHICreateTexture(Desc);
-        DensityMap = CreateRenderTarget(DensityMapRHI, TEXT("Atlas DensityMap"));
+        FRHITextureCreateDesc DensityMapDesc = FRHITextureCreateDesc::Create3D(TEXT("Atlas DensityMap " + (++buffer_count)))
+            .SetExtent(DensityMapSize.X, DensityMapSize.Y)
+            .SetDepth(DensityMapSize.Z)
+            .SetFormat(EPixelFormat::PF_R8)
+            .SetFlags(ETextureCreateFlags::UAV | ETextureCreateFlags::ShaderResource)
+            .SetInitialState(ERHIAccess::SRVCompute);
+        FTextureRHIRef DensityMapRHI = RHICreateTexture(DensityMapDesc);
+        DensityMap = CreateRenderTarget(DensityMapRHI, TEXT("Atlas DensityMap " + (buffer_count)));
 
         // Create External Particle Buffers | make them persistent :3
         
@@ -54,12 +57,12 @@ void UParticleBuffers::Initialize(UFluidBoundingVolumeComponent* Volume)
         FRDGBufferDesc SpatialIndicesDesc       = FRDGBufferDesc::CreateStructuredDesc(sizeof(FUintVector3),    SimulationSettings.NumParticles);
         FRDGBufferDesc SpatialOffsetsDesc       = FRDGBufferDesc::CreateStructuredDesc(sizeof(uint32),          SimulationSettings.NumParticles);
 
-        FRDGBufferRef TmpPositionsRef            = GraphBuilder.CreateBuffer(PositionsDesc,             TEXT("Atlas Positions"));
-        FRDGBufferRef TmpPredictedPositionsRef   = GraphBuilder.CreateBuffer(PredictedPositionsDesc,    TEXT("Atlas PredictedPositions"));
-        FRDGBufferRef TmpVelocitiesRef           = GraphBuilder.CreateBuffer(VelocitiesDesc,            TEXT("Atlas Velocities"));
-        FRDGBufferRef TmpDensitiesRef            = GraphBuilder.CreateBuffer(DensitiesDesc,             TEXT("Atlas Densities"));
-        FRDGBufferRef TmpSpatialIndicesRef       = GraphBuilder.CreateBuffer(SpatialIndicesDesc,        TEXT("Atlas SpatialIndices"));
-        FRDGBufferRef TmpSpatialOffsetsRef       = GraphBuilder.CreateBuffer(SpatialOffsetsDesc,        TEXT("Atlas SpatialOffsets"));
+        FRDGBufferRef TmpPositionsRef            = GraphBuilder.CreateBuffer(PositionsDesc,             TEXT("Atlas Positions " + (buffer_count)));
+        FRDGBufferRef TmpPredictedPositionsRef   = GraphBuilder.CreateBuffer(PredictedPositionsDesc,    TEXT("Atlas PredictedPositions " + (buffer_count)));
+        FRDGBufferRef TmpVelocitiesRef           = GraphBuilder.CreateBuffer(VelocitiesDesc,            TEXT("Atlas Velocities " + (buffer_count)));
+        FRDGBufferRef TmpDensitiesRef            = GraphBuilder.CreateBuffer(DensitiesDesc,             TEXT("Atlas Densities " + (buffer_count)));
+        FRDGBufferRef TmpSpatialIndicesRef       = GraphBuilder.CreateBuffer(SpatialIndicesDesc,        TEXT("Atlas SpatialIndices " + (buffer_count)));
+        FRDGBufferRef TmpSpatialOffsetsRef       = GraphBuilder.CreateBuffer(SpatialOffsetsDesc,        TEXT("Atlas SpatialOffsets " + (buffer_count)));
 
         Positions             = GraphBuilder.ConvertToExternalBuffer(TmpPositionsRef         );
         PredictedPositions    = GraphBuilder.ConvertToExternalBuffer(TmpPredictedPositionsRef);
@@ -68,12 +71,12 @@ void UParticleBuffers::Initialize(UFluidBoundingVolumeComponent* Volume)
         SpatialIndices        = GraphBuilder.ConvertToExternalBuffer(TmpSpatialIndicesRef    );
         SpatialOffsets        = GraphBuilder.ConvertToExternalBuffer(TmpSpatialOffsetsRef    );
 
-        PositionsRef            = GraphBuilder.RegisterExternalBuffer(Positions         ,   TEXT("Atlas Positions"));
-        PredictedPositionsRef   = GraphBuilder.RegisterExternalBuffer(PredictedPositions,   TEXT("Atlas PredictedPositions"));
-        VelocitiesRef           = GraphBuilder.RegisterExternalBuffer(Velocities        ,   TEXT("Atlas Velocities"));
-        DensitiesRef            = GraphBuilder.RegisterExternalBuffer(Densities         ,   TEXT("Atlas Densities"));
-        SpatialIndicesRef       = GraphBuilder.RegisterExternalBuffer(SpatialIndices    ,   TEXT("Atlas SpatialIndices"));
-        SpatialOffsetsRef       = GraphBuilder.RegisterExternalBuffer(SpatialOffsets    ,   TEXT("Atlas SpatialOffsets"));
+        PositionsRef            = GraphBuilder.RegisterExternalBuffer(Positions         ,   TEXT("Atlas Positions " + (buffer_count)));
+        PredictedPositionsRef   = GraphBuilder.RegisterExternalBuffer(PredictedPositions,   TEXT("Atlas PredictedPositions " + (buffer_count)));
+        VelocitiesRef           = GraphBuilder.RegisterExternalBuffer(Velocities        ,   TEXT("Atlas Velocities " + (buffer_count)));
+        DensitiesRef            = GraphBuilder.RegisterExternalBuffer(Densities         ,   TEXT("Atlas Densities " + (buffer_count)));
+        SpatialIndicesRef       = GraphBuilder.RegisterExternalBuffer(SpatialIndices    ,   TEXT("Atlas SpatialIndices " + (buffer_count)));
+        SpatialOffsetsRef       = GraphBuilder.RegisterExternalBuffer(SpatialOffsets    ,   TEXT("Atlas SpatialOffsets " + (buffer_count)));
         
         // Particle Buffer Parameters
         TArray<FVector3f> _positions;
@@ -139,39 +142,57 @@ void UParticleBuffers::Initialize(UFluidBoundingVolumeComponent* Volume)
         DispatchFluidMath(GraphBuilder, GlobalShaderMap);
 
         GraphBuilder.Execute();
+
+        bInitialized = true;
     });
-
-    bInitialized = true;
-}
-
-UParticleBuffers::~UParticleBuffers()
-{
 
 }
 
 void UParticleBuffers::OnUnregister()
 {
-    if(Positions && Positions.IsValid())                    Positions->Release();
-	if(PredictedPositions && PredictedPositions.IsValid())  PredictedPositions->Release();
-	if(Velocities && Velocities.IsValid())                  Velocities->Release();
-	if(Densities && Densities.IsValid())                    Densities->Release();
-	if(SpatialIndices && SpatialIndices.IsValid())          SpatialIndices->Release();
-	if(SpatialOffsets && SpatialOffsets.IsValid())          SpatialOffsets->Release();
+
+    ENQUEUE_RENDER_COMMAND(DeleteResource)([this](FRHICommandListImmediate& RHICmdList)
+    {
+        if(Positions.IsValid())
+        {
+            Positions.SafeRelease();
+            PredictedPositions.SafeRelease();
+            Velocities.SafeRelease();
+            Densities.SafeRelease();
+            SpatialIndices.SafeRelease();
+            SpatialOffsets.SafeRelease();
+        }
+        else
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Atlas: Num Positions Refs in pipeline: %d. Buffers cannot be released"), Positions.GetRefCount());
+        }
+
+        if(DensityMap.IsValid())
+        {
+            DensityMap.SafeRelease();
+        }
+        else
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Atlas: Num DensityMap Refs in pipeline: %d. Texture cannot be released"), DensityMap.GetRefCount());
+        }
+    });
+
+    ParentVolume = nullptr;
     bInitialized = false;
 
     Super::OnUnregister();
 }
 
 void UParticleBuffers::Register(FRDGBuilder& GraphBuilder)
-{
+{   
     if(bInitialized)
     {
-        PositionsRef            = GraphBuilder.RegisterExternalBuffer(Positions, TEXT("Atlas Positions"));
-        PredictedPositionsRef   = GraphBuilder.RegisterExternalBuffer(PredictedPositions, TEXT("Atlas PredictedPositions"));
-        VelocitiesRef           = GraphBuilder.RegisterExternalBuffer(Velocities, TEXT("Atlas Velocities"));
-        DensitiesRef            = GraphBuilder.RegisterExternalBuffer(Densities, TEXT("Atlas Densities"));
-        SpatialIndicesRef       = GraphBuilder.RegisterExternalBuffer(SpatialIndices, TEXT("Atlas SpatialIndices"));
-        SpatialOffsetsRef       = GraphBuilder.RegisterExternalBuffer(SpatialOffsets, TEXT("Atlas SpatialOffsets"));  
+        PositionsRef            = GraphBuilder.RegisterExternalBuffer(Positions, TEXT("Atlas Positions " + (buffer_count)));
+        PredictedPositionsRef   = GraphBuilder.RegisterExternalBuffer(PredictedPositions, TEXT("Atlas PredictedPositions " + (buffer_count)));
+        VelocitiesRef           = GraphBuilder.RegisterExternalBuffer(Velocities, TEXT("Atlas Velocities " + (buffer_count)));
+        DensitiesRef            = GraphBuilder.RegisterExternalBuffer(Densities, TEXT("Atlas Densities " + (buffer_count)));
+        SpatialIndicesRef       = GraphBuilder.RegisterExternalBuffer(SpatialIndices, TEXT("Atlas SpatialIndices " + (buffer_count)));
+        SpatialOffsetsRef       = GraphBuilder.RegisterExternalBuffer(SpatialOffsets, TEXT("Atlas SpatialOffsets " + (buffer_count)));  
         
         TArray<USceneComponent*> Components;
         GetParentComponents(Components);
@@ -182,7 +203,7 @@ void UParticleBuffers::Register(FRDGBuilder& GraphBuilder)
         }
         if(!ParentVolume)
         {
-            bInitialized = false;
+	        UE_LOG(LogTemp, Warning, TEXT("Atlas: No parent volume found"));
         }
     }
 }
@@ -192,23 +213,25 @@ void UParticleBuffers::DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShade
     if(!bInitialized) return;
 
     //Update UBs
-    FFluidVolumeLocal FluidVolumeLocal;
-    FFluidVolume FluidVolume;
-    
-    TArray<FVector> VolumeBounds = ParentVolume->GetVolumeBounds();
-    FluidVolumeLocal.MinBounds = FVector3f(VolumeBounds[0]);
-    FluidVolumeLocal.MaxBounds = FVector3f(VolumeBounds[1]);
-    
-    FluidVolume.BoundsPosition = FVector3f(ParentVolume->Bounds->GetComponentLocation());
-    FluidVolume.BoundsSize = FVector3f(ParentVolume->Bounds->GetScaledBoxExtent());
-    
+    if(ParentVolume)
+    {
+        TArray<FVector> VolumeBounds = ParentVolume->GetVolumeBounds();
+        FluidVolumeLocal.MinBounds = FVector3f(VolumeBounds[0]);
+        FluidVolumeLocal.MaxBounds = FVector3f(VolumeBounds[1]);
+
+        FluidVolume.BoundsPosition = FVector3f(ParentVolume->Bounds->GetComponentLocation());
+        FluidVolume.BoundsSize = FVector3f(ParentVolume->Bounds->GetScaledBoxExtent());
+
+
+        FTransform WorldTransform = ParentVolume->Bounds->GetComponentTransform().Inverse();
+        WorldGravity = static_cast<FVector3f>(WorldTransform.TransformVectorNoScale(SimulationSettings.Gravity));
+    }
+
     UBFluidBounds = TUniformBufferRef<FFluidVolumeLocal>::CreateUniformBufferImmediate(FluidVolumeLocal, EUniformBufferUsage::UniformBuffer_SingleFrame);  
     UBFluidVolume = TUniformBufferRef<FFluidVolume>::CreateUniformBufferImmediate(FluidVolume, EUniformBufferUsage::UniformBuffer_SingleFrame);  
-        
-    // Fluid Math
-    FTransform WorldTransform = ParentVolume->Bounds->GetComponentTransform().Inverse();
-    FVector3f WorldGravity = static_cast<FVector3f>(WorldTransform.TransformVectorNoScale(SimulationSettings.Gravity));
+    
 
+    // Fluid Math
     FFluidMathParams FluidMath;
     FluidMath.Positions = GraphBuilder.CreateUAV(PositionsRef);
     FluidMath.PredictedPositions = GraphBuilder.CreateUAV(PredictedPositionsRef);
@@ -225,8 +248,7 @@ void UParticleBuffers::DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShade
     FluidMath.SmoothingRadius       = SimulationSettings.SmoothingRadius;
     FluidMath.TargetDensity         = SimulationSettings.TargetDensity;
     FluidMath.ViscosityStrength     = SimulationSettings.ViscosityStrength;
-
-    FluidMath.FluidBounds = UBFluidBounds;
+    FluidMath.FluidBounds           = UBFluidBounds;
 
     FluidMathDispatch::ExternalForces(GraphBuilder, GlobalShaderMap, FluidMath);
     FluidMathDispatch::UpdateSpatialLookup(GraphBuilder, GlobalShaderMap, FluidMath);
@@ -239,6 +261,8 @@ void UParticleBuffers::DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShade
 }
 
 void UParticleBuffers::DispatchPOCollisionResolution(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams& FluidMath) {
+    if(!ParentVolume) return;
+    
     TArray<FOverlapResult> Overlaps = ParentVolume->GetCollisionOverlaps();
 
     for (auto& Overlap : Overlaps)
@@ -296,25 +320,25 @@ void UParticleBuffers::DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalSha
     if(!bInitialized) return;
 
     //Update UBs
-    FFluidEnvironment FluidEnvironment;
+    if(ParentVolume)
+    {
+        FluidEnvironment.ExtinctionCoeff = FVector3f(ParentVolume->ExtinctionCoeff);
+        FluidEnvironment.MarchStepSize = ParentVolume->MarchStepSize;
+        FluidEnvironment.LightStepSize = ParentVolume->LightStepSize;
+        FluidEnvironment.DensityStepSize = ParentVolume->DensityStepSize;
+        FluidEnvironment.DensityMultiplier = ParentVolume->DensityMultiplier;
+        FluidEnvironment.indexOfRefraction = ParentVolume->indexOfRefraction;
+        FluidEnvironment.NumRefractions = ParentVolume->NumRefraction;
 
-    FluidEnvironment.ExtinctionCoeff = FVector3f(ParentVolume->ExtinctionCoeff);
-    FluidEnvironment.MarchStepSize = ParentVolume->MarchStepSize;
-    FluidEnvironment.LightStepSize = ParentVolume->LightStepSize;
-    FluidEnvironment.DensityStepSize = ParentVolume->DensityStepSize;
-    FluidEnvironment.DensityMultiplier = ParentVolume->DensityMultiplier;
-    FluidEnvironment.indexOfRefraction = ParentVolume->indexOfRefraction;
-    FluidEnvironment.NumRefractions = ParentVolume->NumRefraction;
-
-    FTransform Cube(ParentVolume->Bounds->GetComponentRotation(), ParentVolume->Bounds->GetComponentLocation(), ParentVolume->Bounds->GetComponentScale());
-    FluidEnvironment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
-    FluidEnvironment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
+        FTransform Cube(ParentVolume->Bounds->GetComponentRotation(), ParentVolume->Bounds->GetComponentLocation(), ParentVolume->Bounds->GetComponentScale());
+        FluidEnvironment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
+        FluidEnvironment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
+    }
 
     UBFluidEnvironment = TUniformBufferRef<FFluidEnvironment>::CreateUniformBufferImmediate(FluidEnvironment, EUniformBufferUsage::UniformBuffer_SingleFrame);  
         
     // Render Prep
     FRenderPrepParams RenderPrep;
-    
     RenderPrep.Positions = GraphBuilder.CreateSRV(PositionsRef);
     RenderPrep.PredictedPositions = GraphBuilder.CreateSRV(PredictedPositionsRef);
     RenderPrep.SpatialIndices = GraphBuilder.CreateSRV(SpatialIndicesRef);
@@ -332,7 +356,6 @@ void UParticleBuffers::DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalSha
 
     // Render
     FFluidMarchParams FluidParams;
-    
     FRDGTextureDesc OutputDesc {};
     OutputDesc = SceneColor->Desc;
     //OutputDesc.Extent /= 4.0;
@@ -354,4 +377,5 @@ void UParticleBuffers::DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalSha
     
     RenderDispatch::Raymarch(GraphBuilder, GlobalShaderMap, FluidParams);
     AddCopyTexturePass(GraphBuilder, OutputTexture, SceneColor);
+
 }
