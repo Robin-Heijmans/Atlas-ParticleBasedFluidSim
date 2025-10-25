@@ -13,19 +13,18 @@
 #include "ParticleLibrary.generated.h"
 
 
-
 UCLASS()
 class SHADERINTERFACE_API UParticleBuffers : public USceneComponent
 {
 GENERATED_BODY()
 public:
 	UParticleBuffers() = default;
-	~UParticleBuffers();
 
 	void Initialize(class UFluidBoundingVolumeComponent* Volume);
 	
 	// Call this at the beginning of the frame
 	void Register(FRDGBuilder& GraphBuilder);
+
 	virtual void OnUnregister() override;
 
 	void DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap);
@@ -71,4 +70,9 @@ private:
 	FRDGBufferRef SpatialOffsetsRef = nullptr;
 	
 	class UFluidBoundingVolumeComponent* ParentVolume;
+	
+    FFluidEnvironment FluidEnvironment;
+    FFluidVolumeLocal FluidVolumeLocal;
+    FFluidVolume FluidVolume;
+	FVector3f WorldGravity;
 };

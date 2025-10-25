@@ -28,6 +28,11 @@ public:
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& InView, const FPostProcessingInputs& Inputs) override;
 
 private:
+
+	void ReleaseBufferComponents(UFluidBoundingVolumeComponent* FluidComp);
+	void GenerateBufferComponents(UFluidBoundingVolumeComponent* FluidComp);
+
 	float TotalTime = 0.0f;
     const float FixedTimeStep = 1.f / 60.f;
+	bool bIsReleasing = false;
 };

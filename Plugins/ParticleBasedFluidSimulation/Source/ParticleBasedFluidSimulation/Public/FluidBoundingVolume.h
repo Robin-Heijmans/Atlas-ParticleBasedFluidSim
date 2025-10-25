@@ -10,6 +10,14 @@
 // Has to be last include in header
 #include "FluidBoundingVolume.generated.h"
 
+enum class EAtlasVolumeState
+{
+	EMPTY = 0,
+	RELEASE = 1,
+	GENERATE = 2,
+	SIMULATE = 3,
+};
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent, DisplayName="Atlas Bounding Volume"))
 class PARTICLEBASEDFLUIDSIMULATION_API UFluidBoundingVolumeComponent  : public USceneComponent
 {
@@ -58,6 +66,9 @@ public:
 
     UFUNCTION(CallInEditor, Category = "Particles")
     void GenerateParticleBuffers();
+	
+    UFUNCTION(CallInEditor, Category = "Particles")
+    void RemoveParticleBuffers();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fluid system")
     float MaxSpeedGradient = 30.f;
@@ -72,7 +83,7 @@ public:
 	TArray<FParticle> Particles;
 	TArray<FVector3f> InitialPositions;
 	TArray<FVector> MeshPositions;
-    bool HasParticles = true;
+	EAtlasVolumeState State = EAtlasVolumeState::EMPTY;
 
 public:
 	TArray<FVector> GetVolumeBounds();
