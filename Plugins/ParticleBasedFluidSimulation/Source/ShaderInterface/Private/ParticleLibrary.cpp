@@ -110,17 +110,18 @@ void UParticleBuffers::Initialize(UFluidBoundingVolumeComponent* Volume)
         FFluidVolume FluidVolume;
         
         FVector Extent = ParentVolume->Bounds->GetScaledBoxExtent();
-	    FVector WorldScale = ParentVolume->Bounds->GetComponentScale();
+	    FVector WorldScale = ParentVolume->GetOwner()->GetActorScale();
 
-        FVector LocalMin = -Extent / WorldScale;
-	    FVector LocalMax = Extent / WorldScale;
-        FluidVolumeLocal.MinBounds = FVector3f(LocalMin);
-        FluidVolumeLocal.MaxBounds = FVector3f(LocalMax);
+        FluidVolumeLocal.MinBounds = FVector3f(-Extent);
+        FluidVolumeLocal.MaxBounds = FVector3f(Extent);
+        UE_LOG(LogTemp, Warning, TEXT("LocalMin: %s"), *FluidVolumeLocal.MinBounds.ToString());
+        UE_LOG(LogTemp, Warning, TEXT("LocalMax: %s"), *FluidVolumeLocal.MaxBounds.ToString());
+        UE_LOG(LogTemp, Warning, TEXT("OwnerScale: %s"), *WorldScale.ToString());
         
         FluidVolume.BoundsPosition = FVector3f(ParentVolume->Bounds->GetComponentLocation());
         FluidVolume.BoundsSize = FVector3f(ParentVolume->Bounds->GetScaledBoxExtent());
         
-        FTransform Cube(ParentVolume->Bounds->GetComponentRotation(), ParentVolume->Bounds->GetComponentLocation(), ParentVolume->Bounds->GetComponentScale());
+        FTransform Cube(ParentVolume->Bounds->GetComponentRotation(), ParentVolume->Bounds->GetComponentLocation(), ParentVolume->GetOwner()->GetActorScale());
 
         FluidEnvironment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
         FluidEnvironment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
@@ -215,12 +216,14 @@ void UParticleBuffers::DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShade
     //Update UBs
     if(ParentVolume)
     {
-        TArray<FVector> VolumeBounds = ParentVolume->GetVolumeBounds();
-        FluidVolumeLocal.MinBounds = FVector3f(VolumeBounds[0]);
-        FluidVolumeLocal.MaxBounds = FVector3f(VolumeBounds[1]);
+        
+        FVector Extent = ParentVolume->Bounds->GetScaledBoxExtent();
+	    FVector WorldScale = ParentVolume->GetOwner()->GetActorScale();
+        FluidVolumeLocal.MinBounds = FVector3f(-Extent);
+        FluidVolumeLocal.MaxBounds = FVector3f(Extent);
 
         FluidVolume.BoundsPosition = FVector3f(ParentVolume->Bounds->GetComponentLocation());
-        FluidVolume.BoundsSize = FVector3f(ParentVolume->Bounds->GetScaledBoxExtent());
+        FluidVolume.BoundsSize = FVector3f(Extent * 2);
 
 
         FTransform WorldTransform = ParentVolume->Bounds->GetComponentTransform().Inverse();
@@ -330,7 +333,7 @@ void UParticleBuffers::DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalSha
         FluidEnvironment.indexOfRefraction = ParentVolume->indexOfRefraction;
         FluidEnvironment.NumRefractions = ParentVolume->NumRefraction;
 
-        FTransform Cube(ParentVolume->Bounds->GetComponentRotation(), ParentVolume->Bounds->GetComponentLocation(), ParentVolume->Bounds->GetComponentScale());
+        FTransform Cube(ParentVolume->Bounds->GetComponentRotation(), ParentVolume->Bounds->GetComponentLocation(), ParentVolume->GetOwner()->GetActorScale());
         FluidEnvironment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
         FluidEnvironment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
     }
