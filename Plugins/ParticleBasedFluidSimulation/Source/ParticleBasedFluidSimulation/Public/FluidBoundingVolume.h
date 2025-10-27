@@ -63,6 +63,8 @@ public:
 	float indexOfRefraction = 1.33f;
     UPROPERTY(EditAnywhere, Category = "Particles")
 	int32 NumRefraction = 4;
+    UPROPERTY(EditAnywhere, Category = "Particles")
+	float SmoothingRadius = 3.0;
 
     UFUNCTION(CallInEditor, Category = "Particles")
     void GenerateParticleBuffers();

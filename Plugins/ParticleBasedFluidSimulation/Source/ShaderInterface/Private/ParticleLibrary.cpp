@@ -332,6 +332,7 @@ void UParticleBuffers::DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalSha
         FluidEnvironment.DensityMultiplier = ParentVolume->DensityMultiplier;
         FluidEnvironment.indexOfRefraction = ParentVolume->indexOfRefraction;
         FluidEnvironment.NumRefractions = ParentVolume->NumRefraction;
+        SimulationSettings.SmoothingRadius = ParentVolume->SmoothingRadius;
 
         FTransform Cube(ParentVolume->Bounds->GetComponentRotation(), ParentVolume->Bounds->GetComponentLocation(), ParentVolume->GetOwner()->GetActorScale());
         FluidEnvironment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
@@ -347,6 +348,7 @@ void UParticleBuffers::DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalSha
     RenderPrep.SpatialIndices = GraphBuilder.CreateSRV(SpatialIndicesRef);
     RenderPrep.SpatialOffsets = GraphBuilder.CreateSRV(SpatialOffsetsRef);
     RenderPrep.NumParticles = SimulationSettings.NumParticles;
+    RenderPrep.SmoothingRadius = SimulationSettings.SmoothingRadius;
     
     RenderPrep.FluidBounds = UBFluidBounds;
     RenderPrep.FluidVolume = UBFluidVolume;
