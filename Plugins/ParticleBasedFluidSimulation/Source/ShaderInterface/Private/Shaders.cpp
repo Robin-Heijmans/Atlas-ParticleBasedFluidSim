@@ -86,7 +86,7 @@ namespace RenderDispatch
         *PassParameters = Params;
 
         const FIntPoint ViewSize = PassParameters->SceneColor->Desc.Extent;
-        const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, 32);
+        const FIntVector DispatchCount = FComputeShaderUtils::GetGroupCount(ViewSize, 8);
         TShaderMapRef<ShaderType> ComputeShader(GlobalShaderMap);
 
         return FComputeShaderUtils::AddPass(

@@ -2,6 +2,7 @@
 #include "/Engine/Private/Common.ush"
 
 //#define STEP_VISUAL
+//#define NORMAL_VISUAL
 //#define TWO_LEVEL_STEPPING
 #define MARCH_STEP_ADJUSTMENT
 #define DENSITY_STEP_ADJUSTMENT
@@ -222,7 +223,7 @@ SurfaceInfo FindNextSurface(float3 origin, float3 RayDir, bool findNextFluidEntr
     if (dot(RayDir, RayDir) < 0.5) return info;
 
     float2 boundsDstInfo = RayBoxDst(Bounds.MinBounds, Bounds.MaxBounds, origin, RayDir);
-    float r = (RandomValue(RNG) - 0.5) * Environment.MarchStepSize * 0.4 * 1;
+    float r = (RandomValue(RNG)) * Environment.MarchStepSize * 0.4 * 1.0;
     bool hasExittedFluid = !FluidContains(origin);
     origin = origin + RayDir * (boundsDstInfo.x + r);
 
@@ -313,7 +314,7 @@ float3 CalculateNormal(float3 RayPos)
 {   
     float3 pos = RayPos - FluidVolume.BoundsPosition;
 
-    const float s = 0.2;
+    const float s = 0.1;
     float3 offsetX = float3(1, 0, 0) * s;
     float3 offsetY = float3(0, 1, 0) * s;
     float3 offsetZ = float3(0, 0, 1) * s;
@@ -329,9 +330,8 @@ float3 CalculateNormal(float3 RayPos)
     float faceWeight = min(o.x, min(o.y, o.z));
     float3 faceNormal = normalize(CalculateClosestFaceNormal(FluidVolume.BoundsSize, pos));
     const float smoothDst = 0.3;
-    const float smoothPow = 3;
+    const float smoothPow = 5;
     faceWeight = (1 - smoothstep(0, smoothDst, faceWeight)) * (1 - pow(saturate(volumeNormal.y), smoothPow));
-    faceWeight = 0;
 
     return normalize(volumeNormal * (1 - faceWeight) + faceNormal * (faceWeight));
 }
@@ -548,6 +548,9 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, uint UVRNG)
         float3 normal = CalculateNormal(surfaceInfo.pos);
         if (dot(normal, RayDir) > 0) normal = -normal;
         
+        #ifdef NORMAL_VISUAL
+        return abs(normal);
+        #endif
 
         // Indicies of refraction
         float iorA = bInsideFluid ? Environment.indexOfRefraction : iorAir;
