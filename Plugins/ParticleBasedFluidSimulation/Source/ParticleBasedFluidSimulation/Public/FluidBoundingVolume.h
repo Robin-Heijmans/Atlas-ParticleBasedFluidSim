@@ -73,9 +73,12 @@ public:
 	float indexOfRefraction = 1.33f;
     UPROPERTY(EditAnywhere, Category = "Atlas/Particles")
 	int32 NumRefraction = 4;
-    UFUNCTION(CallInEditor, Category = "Atlas/Particles")
-    void GenerateParticleBuffers();	
+    UPROPERTY(EditAnywhere, Category = "Atlas/Particles")
+	float SmoothingRadius = 3.0;
 	
+	UFUNCTION(CallInEditor, Category = "Atlas/Particles")
+    void GenerateParticleBuffers();	
+    
     UFUNCTION(CallInEditor, Category = "Atlas/Particles")
     void RemoveParticleBuffers();
 

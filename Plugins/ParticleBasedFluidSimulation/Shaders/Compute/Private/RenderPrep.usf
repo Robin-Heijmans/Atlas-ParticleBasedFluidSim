@@ -20,12 +20,12 @@ struct FFluidVolumeLocal {
 ConstantBuffer<FFluidVolume> FluidVolume;
 ConstantBuffer<FFluidVolumeLocal> Bounds;
 
-
 StructuredBuffer<float3> Positions;
 StructuredBuffer<float3> PredictedPositions;
 StructuredBuffer<uint3> SpatialIndices; //uint3(index, hash, key)
 StructuredBuffer<uint> SpatialOffsets;
 uint NumParticles;
+float SmoothingRadius;
 
 RWTexture3D<float> DensityMap;
 uint3 DensityMapSize;
@@ -44,8 +44,6 @@ float SpikyKernelPow2(float dst, float radius)
 
 float CalcDensity(float3 pos)
 {
-    float SmoothingRadius = 3.0;
-
     int3 centreCoords = PositionToCellCoords(pos, SmoothingRadius);
     float sqrRadius = SmoothingRadius * SmoothingRadius;
 
