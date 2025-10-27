@@ -30,7 +30,7 @@ float SmoothingRadius;
 RWTexture3D<float> DensityMap;
 uint3 DensityMapSize;
 
-static const float K_SpikyPow2 = 15 / (2 * PI * pow(4.0, 5));
+static const float K_SpikyPow2 = 15 / (2 * PI * pow(SmoothingRadius, 5));
 
 float SpikyKernelPow2(float dst, float radius)
 {

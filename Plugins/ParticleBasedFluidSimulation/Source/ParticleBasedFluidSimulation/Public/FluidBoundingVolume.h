@@ -54,11 +54,11 @@ public:
     UPROPERTY(EditAnywhere, Category = "Particles")
 	float MarchStepSize = 0.02f;
     UPROPERTY(EditAnywhere, Category = "Particles")
-	float LightStepSize = 0.4f;
+	float LightStepSize = 0.2f;
     UPROPERTY(EditAnywhere, Category = "Particles")
-	float DensityStepSize = 0.5f;
+	float DensityStepSize = 0.25f;
     UPROPERTY(EditAnywhere, Category = "Particles")
-	float DensityMultiplier = 25.f;
+	float DensityMultiplier = 2.f;
     UPROPERTY(EditAnywhere, Category = "Particles")
 	float indexOfRefraction = 1.33f;
     UPROPERTY(EditAnywhere, Category = "Particles")

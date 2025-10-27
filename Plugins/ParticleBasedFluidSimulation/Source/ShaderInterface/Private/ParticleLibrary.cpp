@@ -278,7 +278,7 @@ void UParticleBuffers::DispatchPOCollisionResolution(FRDGBuilder& GraphBuilder, 
             FluidMath.OtherLocalTransform = static_cast<FMatrix44f>(Box->GetComponentTransform().GetRelativeTransform(ParentVolume->Bounds->GetComponentTransform()).ToMatrixWithScale());
             FluidMath.OtherLocalTransformInverse = static_cast<FMatrix44f>(FluidMath.OtherLocalTransform.Inverse());
             FluidMath.OtherLocalExtent = static_cast<FVector3f>(Box->GetUnscaledBoxExtent());
-            FluidMath.LocalScale = static_cast<FVector3f>(Box->GetComponentScale() / ParentVolume->Bounds->GetComponentScale());
+            FluidMath.LocalScale = static_cast<FVector3f>(Box->GetComponentScale() / ParentVolume->GetOwner()->GetActorScale());
             
             FluidMathDispatch::ResolveBoxCollision(GraphBuilder, GlobalShaderMap, FluidMath);
         }
@@ -288,12 +288,12 @@ void UParticleBuffers::DispatchPOCollisionResolution(FRDGBuilder& GraphBuilder, 
             FluidMath.OtherLocalTransform = static_cast<FMatrix44f>(OtherLocalTransform.ToMatrixWithScale().Inverse().GetTransposed());
             FluidMath.OtherLocalTransformInverse = static_cast<FMatrix44f>(OtherLocalTransform.ToMatrixWithScale().Inverse());
             FluidMath.OtherLocalExtent = static_cast<FVector3f>(Sphere->GetUnscaledSphereRadius());
-            FluidMath.LocalScale = static_cast<FVector3f>(Sphere->GetUnscaledSphereRadius() * (Sphere->GetComponentScale() / ParentVolume->Bounds->GetComponentScale()));
+            FluidMath.LocalScale = static_cast<FVector3f>(Sphere->GetUnscaledSphereRadius() * (Sphere->GetComponentScale() / ParentVolume->GetOwner()->GetActorScale()));
 
             FluidMathDispatch::ResolveSphereCollision(GraphBuilder, GlobalShaderMap, FluidMath);
         }
         else if (UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Comp)) {
-            FVector LocalScale = Capsule->GetComponentScale() / ParentVolume->Bounds->GetComponentScale();
+            FVector LocalScale = Capsule->GetComponentScale() / ParentVolume->GetOwner()->GetActorScale();
             float SphereRadius = Capsule->GetUnscaledCapsuleRadius() * (LocalScale.X + LocalScale.Y) * 0.5f;
             FVector LocalCenter = ParentVolume->Bounds->GetComponentTransform().Inverse().TransformPosition(Capsule->GetComponentLocation());
             FVector UpCapsule = Capsule->GetUpVector();
