@@ -66,10 +66,12 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
 
         TArray<UFluidBoundingVolumeComponent*> FluidComponents;
         Actor->GetComponents<UFluidBoundingVolumeComponent>(FluidComponents);
+        
 
         // Setup or Remove particle buffers
         for (UFluidBoundingVolumeComponent* FluidComp : FluidComponents)
         {
+            if(!FluidComp) continue;
             switch (FluidComp->State)
             {
             case EAtlasVolumeState::RELEASE:
@@ -162,7 +164,7 @@ void FFluidExtention::ReleaseBufferComponents(UFluidBoundingVolumeComponent* Flu
 
 void FFluidExtention::GenerateBufferComponents(UFluidBoundingVolumeComponent* FluidComp)
 {
-    const uint32 NumParticles = FluidComp->NumParticlesX * FluidComp->NumParticlesY * FluidComp->NumParticlesZ;
+    const uint32 NumParticles = FluidComp->GetNumParticles();
     if(NumParticles > 5000 || NumParticles == 0)     
     {
         UE_LOG(LogTemp, Warning, TEXT("Atlas: Illegal NumParticles: %d"), NumParticles);

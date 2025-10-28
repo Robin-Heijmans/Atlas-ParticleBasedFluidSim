@@ -49,7 +49,7 @@ void UParticleBuffers::Initialize(UFluidBoundingVolumeComponent* Volume)
 
         // Create External Particle Buffers | make them persistent :3
         
-        SimulationSettings.NumParticles = ParentVolume->Simulation->GetParticles().Num();
+        SimulationSettings.NumParticles = ParentVolume->GetNumParticles();
         FRDGBufferDesc PositionsDesc            = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f),       SimulationSettings.NumParticles);
         FRDGBufferDesc PredictedPositionsDesc   = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f),       SimulationSettings.NumParticles);
         FRDGBufferDesc VelocitiesDesc           = FRDGBufferDesc::CreateStructuredDesc(sizeof(FVector3f),       SimulationSettings.NumParticles);
@@ -218,7 +218,6 @@ void UParticleBuffers::DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShade
     {
         
         FVector Extent = ParentVolume->Bounds->GetScaledBoxExtent();
-	    FVector WorldScale = ParentVolume->GetOwner()->GetActorScale();
         FluidVolumeLocal.MinBounds = FVector3f(-Extent);
         FluidVolumeLocal.MaxBounds = FVector3f(Extent);
 
@@ -278,7 +277,7 @@ void UParticleBuffers::DispatchPOCollisionResolution(FRDGBuilder& GraphBuilder, 
             FluidMath.OtherLocalTransform = static_cast<FMatrix44f>(Box->GetComponentTransform().GetRelativeTransform(ParentVolume->Bounds->GetComponentTransform()).ToMatrixWithScale());
             FluidMath.OtherLocalTransformInverse = static_cast<FMatrix44f>(FluidMath.OtherLocalTransform.Inverse());
             FluidMath.OtherLocalExtent = static_cast<FVector3f>(Box->GetUnscaledBoxExtent());
-            FluidMath.LocalScale = static_cast<FVector3f>(Box->GetComponentScale() / ParentVolume->GetOwner()->GetActorScale());
+            FluidMath.LocalScale = static_cast<FVector3f>(Box->GetComponentScale() / ParentVolume->Bounds->GetComponentScale());
             
             FluidMathDispatch::ResolveBoxCollision(GraphBuilder, GlobalShaderMap, FluidMath);
         }
@@ -288,12 +287,12 @@ void UParticleBuffers::DispatchPOCollisionResolution(FRDGBuilder& GraphBuilder, 
             FluidMath.OtherLocalTransform = static_cast<FMatrix44f>(OtherLocalTransform.ToMatrixWithScale().Inverse().GetTransposed());
             FluidMath.OtherLocalTransformInverse = static_cast<FMatrix44f>(OtherLocalTransform.ToMatrixWithScale().Inverse());
             FluidMath.OtherLocalExtent = static_cast<FVector3f>(Sphere->GetUnscaledSphereRadius());
-            FluidMath.LocalScale = static_cast<FVector3f>(Sphere->GetUnscaledSphereRadius() * (Sphere->GetComponentScale() / ParentVolume->GetOwner()->GetActorScale()));
+            FluidMath.LocalScale = static_cast<FVector3f>(Sphere->GetUnscaledSphereRadius() * (Sphere->GetComponentScale() / ParentVolume->Bounds->GetComponentScale()));
 
             FluidMathDispatch::ResolveSphereCollision(GraphBuilder, GlobalShaderMap, FluidMath);
         }
         else if (UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Comp)) {
-            FVector LocalScale = Capsule->GetComponentScale() / ParentVolume->GetOwner()->GetActorScale();
+            FVector LocalScale = Capsule->GetComponentScale() / ParentVolume->Bounds->GetComponentScale();
             float SphereRadius = Capsule->GetUnscaledCapsuleRadius() * (LocalScale.X + LocalScale.Y) * 0.5f;
             FVector LocalCenter = ParentVolume->Bounds->GetComponentTransform().Inverse().TransformPosition(Capsule->GetComponentLocation());
             FVector UpCapsule = Capsule->GetUpVector();
@@ -334,7 +333,7 @@ void UParticleBuffers::DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalSha
         FluidEnvironment.NumRefractions = ParentVolume->NumRefraction;
         SimulationSettings.SmoothingRadius = ParentVolume->SmoothingRadius;
 
-        FTransform Cube(ParentVolume->Bounds->GetComponentRotation(), ParentVolume->Bounds->GetComponentLocation(), ParentVolume->GetOwner()->GetActorScale());
+        FTransform Cube(ParentVolume->Bounds->GetComponentRotation(), ParentVolume->Bounds->GetComponentLocation(), ParentVolume->Bounds->GetComponentScale());
         FluidEnvironment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
         FluidEnvironment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
     }

@@ -50,11 +50,22 @@ UFluidBoundingVolumeComponent::UFluidBoundingVolumeComponent()
 
     //GenerateParticleBuffers();
 }
+UFluidBoundingVolumeComponent::~UFluidBoundingVolumeComponent()
+{
+    RemoveParticleBuffers();
+}
+
+void UFluidBoundingVolumeComponent::OnUnregister()
+{
+    RemoveParticleBuffers();
+    Super::OnUnregister();
+}
 
 void UFluidBoundingVolumeComponent::OnRegister()
 {
     Super::OnRegister();
     UpdateVolumeBounds();
+
     if (!IsInitialized) {
         InitializeParticles();
         UpdateInstances(true);
@@ -143,6 +154,7 @@ void UFluidBoundingVolumeComponent::BeginPlay()
     if (Simulation){
         Simulation->ApplySettings(Settings);
     }
+    GenerateParticleBuffers();
 }
 
 // Called every frame
@@ -252,6 +264,11 @@ void UFluidBoundingVolumeComponent::PostEditChangeProperty(FPropertyChangedEvent
     //Simulation->ApplySettings(Settings);
 }
 #endif
+
+uint32 UFluidBoundingVolumeComponent::GetNumParticles()
+{
+    return NumParticlesX * NumParticlesY * NumParticlesZ;
+}
 
 TArray<FVector> UFluidBoundingVolumeComponent::GetVolumeBounds() {
     FVector Extent = Bounds->GetScaledBoxExtent();
