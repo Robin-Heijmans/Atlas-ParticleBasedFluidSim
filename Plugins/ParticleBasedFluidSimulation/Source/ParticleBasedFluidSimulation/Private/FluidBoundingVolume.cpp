@@ -25,7 +25,7 @@ UFluidBoundingVolumeComponent::UFluidBoundingVolumeComponent()
 
 
 	Bounds = CreateDefaultSubobject<UBoxComponent>(TEXT("Bounds"));
-    Bounds->SetBoxExtent(BoxExtents, true);
+    Bounds->SetBoxExtent(BoxExtents * Bounds->GetComponentScale(), true);
     Bounds->SetupAttachment(this);
     Bounds->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     Bounds->SetCollisionObjectType(ECC_WorldDynamic);
@@ -89,12 +89,15 @@ void UFluidBoundingVolumeComponent::InitializeParticles()
         }
     }
     UpdateVolumeBounds();
-    FVector Extent = SpawnParticlesBounds->GetScaledBoxExtent();
+    FVector Extent = SpawnParticlesBounds->GetUnscaledBoxExtent();
 	FVector WorldScale = SpawnParticlesBounds->GetComponentScale();
 
 	float SpacingX = (Extent.X * 2.f) / FMath::Max(NumParticlesX, 1);
     float SpacingY = (Extent.Y * 2.f) / FMath::Max(NumParticlesY, 1);
     float SpacingZ = (Extent.Z * 2.f) / FMath::Max(NumParticlesZ, 1);
+    const float SpacingXOffset = SpacingX * 0.1f;
+    const float SpacingYOffset = SpacingY * 0.1f;
+    const float SpacingZOffset = SpacingZ * 0.1f;
 
 	const FTransform BoxTransform = SpawnParticlesBounds->GetComponentTransform().GetRelativeTransform(Bounds->GetComponentTransform());
     
@@ -106,7 +109,9 @@ void UFluidBoundingVolumeComponent::InitializeParticles()
         {
             for (int z = 0; z < NumParticlesZ; z++)
             {
-                FVector LocalPos = SpawnMin + FVector(x * SpacingX, y * SpacingY, z * SpacingZ);
+                FVector LocalPos = SpawnMin + FVector(x * SpacingX + (FMath::FRand() * 2 * SpacingXOffset - SpacingXOffset), 
+                                                      y * SpacingY + (FMath::FRand() * 2 * SpacingYOffset - SpacingYOffset),
+                                                      z * SpacingZ + (FMath::FRand() * 2 * SpacingZOffset - SpacingZOffset));
 				FVector BoundsPos = BoxTransform.TransformPosition(LocalPos);
                 Particles.Add(FParticle{BoundsPos});
                 MeshPositions.Add(BoundsPos);
@@ -122,7 +127,7 @@ void UFluidBoundingVolumeComponent::InitializeParticles()
     if (!Simulation) {
 	    Simulation = MakeUnique<FFluidSimulationSystem>();
     }
-    Extent = Bounds->GetScaledBoxExtent();
+    Extent = Bounds->GetUnscaledBoxExtent();
     FVector LocalMin = -Extent;
 	FVector LocalMax = Extent;
 	Simulation->InitializeParticles(Particles, LocalMin, LocalMax);
@@ -133,8 +138,8 @@ void UFluidBoundingVolumeComponent::UpdateVolumeBounds() {
 
     SpawnParticlesBounds->SetRelativeLocation(SpawnBoxOffset);
     SpawnParticlesBounds->SetBoxExtent(SpawnBoxExtents, false);
-    Bounds->SetBoxExtent(BoxExtents, true);
-    FVector Extent = Bounds->GetScaledBoxExtent();
+    Bounds->SetBoxExtent(BoxExtents * Bounds->GetComponentScale(), true);
+    FVector Extent = Bounds->GetUnscaledBoxExtent();
 
     FVector LocalMin = -Extent;
 	FVector LocalMax = Extent;
@@ -188,7 +193,7 @@ void UFluidBoundingVolumeComponent::PostLoad() {
     Super::PostLoad();
     //GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, (FString::Printf(TEXT("Post load"))));  
 
-    UpdateVolumeBounds();
+    //UpdateVolumeBounds();
 
     if (!Simulation) {
 	    Simulation = MakeUnique<FFluidSimulationSystem>();
