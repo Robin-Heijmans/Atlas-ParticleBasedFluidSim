@@ -10,6 +10,14 @@
 // Has to be last include in header
 #include "FluidBoundingVolume.generated.h"
 
+enum class EAtlasVolumeState
+{
+	EMPTY = 0,
+	RELEASE = 1,
+	GENERATE = 2,
+	SIMULATE = 3,
+};
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent, DisplayName="Atlas Bounding Volume"))
 class PARTICLEBASEDFLUIDSIMULATION_API UFluidBoundingVolumeComponent  : public USceneComponent
 {
@@ -18,12 +26,14 @@ class PARTICLEBASEDFLUIDSIMULATION_API UFluidBoundingVolumeComponent  : public U
 public:	
 	// Sets default values for this actor's properties
 	UFluidBoundingVolumeComponent();
+	~UFluidBoundingVolumeComponent();
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 	virtual void OnRegister() override;
+	virtual void OnUnregister() override;
 
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -46,18 +56,23 @@ public:
     UPROPERTY(EditAnywhere, Category = "Particles")
 	float MarchStepSize = 0.02f;
     UPROPERTY(EditAnywhere, Category = "Particles")
-	float LightStepSize = 0.4f;
+	float LightStepSize = 0.2f;
     UPROPERTY(EditAnywhere, Category = "Particles")
-	float DensityStepSize = 0.5f;
+	float DensityStepSize = 0.25f;
     UPROPERTY(EditAnywhere, Category = "Particles")
-	float DensityMultiplier = 25.f;
+	float DensityMultiplier = 2.f;
     UPROPERTY(EditAnywhere, Category = "Particles")
 	float indexOfRefraction = 1.33f;
     UPROPERTY(EditAnywhere, Category = "Particles")
 	int32 NumRefraction = 4;
+    UPROPERTY(EditAnywhere, Category = "Particles")
+	float SmoothingRadius = 3.0;
 
     UFUNCTION(CallInEditor, Category = "Particles")
     void GenerateParticleBuffers();
+	
+    UFUNCTION(CallInEditor, Category = "Particles")
+    void RemoveParticleBuffers();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fluid system")
     float MaxSpeedGradient = 30.f;
@@ -72,9 +87,10 @@ public:
 	TArray<FParticle> Particles;
 	TArray<FVector3f> InitialPositions;
 	TArray<FVector> MeshPositions;
-    bool HasParticles = true;
+	EAtlasVolumeState State = EAtlasVolumeState::EMPTY;
 
 public:
+	uint32 GetNumParticles();
 	TArray<FVector> GetVolumeBounds();
 	TArray<FOverlapResult> GetCollisionOverlaps();
 private:
