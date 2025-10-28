@@ -89,7 +89,7 @@ void UFluidBoundingVolumeComponent::InitializeParticles()
         }
     }
     UpdateVolumeBounds();
-    FVector Extent = SpawnParticlesBounds->GetUnscaledBoxExtent();
+    FVector Extent = SpawnParticlesBounds->GetScaledBoxExtent();
 	FVector WorldScale = SpawnParticlesBounds->GetComponentScale();
 
 	float SpacingX = (Extent.X * 2.f) / FMath::Max(NumParticlesX, 1);
@@ -122,7 +122,7 @@ void UFluidBoundingVolumeComponent::InitializeParticles()
     if (!Simulation) {
 	    Simulation = MakeUnique<FFluidSimulationSystem>();
     }
-    Extent = Bounds->GetUnscaledBoxExtent();
+    Extent = Bounds->GetScaledBoxExtent();
     FVector LocalMin = -Extent;
 	FVector LocalMax = Extent;
 	Simulation->InitializeParticles(Particles, LocalMin, LocalMax);
@@ -134,7 +134,7 @@ void UFluidBoundingVolumeComponent::UpdateVolumeBounds() {
     SpawnParticlesBounds->SetRelativeLocation(SpawnBoxOffset);
     SpawnParticlesBounds->SetBoxExtent(SpawnBoxExtents, false);
     Bounds->SetBoxExtent(BoxExtents, true);
-    FVector Extent = Bounds->GetUnscaledBoxExtent();
+    FVector Extent = Bounds->GetScaledBoxExtent();
 
     FVector LocalMin = -Extent;
 	FVector LocalMax = Extent;
@@ -180,7 +180,7 @@ void UFluidBoundingVolumeComponent::TickComponent(float DeltaTime, ELevelTick Ti
             UpdateMaterials();
             FrameCount++;
         }
-        FVector Extent = Bounds->GetUnscaledBoxExtent();
+        //FVector Extent = Bounds->GetUnscaledBoxExtent();
     }
 }
 
@@ -273,7 +273,7 @@ void UFluidBoundingVolumeComponent::PostEditChangeProperty(FPropertyChangedEvent
 #endif
 
 TArray<FVector> UFluidBoundingVolumeComponent::GetVolumeBounds() {
-    FVector Extent = Bounds->GetUnscaledBoxExtent();
+    FVector Extent = Bounds->GetScaledBoxExtent();
 
     FVector LocalMin = -Extent;
 	FVector LocalMax = Extent;
