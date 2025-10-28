@@ -1,3 +1,6 @@
+// Most of this implementation is taken from Sebastian Lagues fluid simulation videos
+// https://github.com/ICE-5/fluid-unity/tree/main
+
 #include "/Engine/Public/Platform.ush"
 #include "/Engine/Private/Common.ush"
 
