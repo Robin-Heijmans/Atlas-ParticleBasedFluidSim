@@ -26,12 +26,14 @@ class PARTICLEBASEDFLUIDSIMULATION_API UFluidBoundingVolumeComponent  : public U
 public:	
 	// Sets default values for this actor's properties
 	UFluidBoundingVolumeComponent();
+	~UFluidBoundingVolumeComponent();
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 	virtual void OnRegister() override;
+	virtual void OnUnregister() override;
 
 	virtual void OnUnregister() override;
 
@@ -97,6 +99,7 @@ public:
 	EAtlasVolumeState State = EAtlasVolumeState::EMPTY;
 
 public:
+	uint32 GetNumParticles();
 	TArray<FVector> GetVolumeBounds();
 	TArray<FOverlapResult> GetCollisionOverlaps();
 private:
