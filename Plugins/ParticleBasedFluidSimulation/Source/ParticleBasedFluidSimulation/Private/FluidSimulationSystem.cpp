@@ -273,7 +273,13 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
     FIntVector MinCoords = PositionToCellCoords(IntersectionMin, SmoothingRadius);
     FIntVector MaxCoords = PositionToCellCoords(IntersectionMax, SmoothingRadius);
     
-    //DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), RotatedExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
+    DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), RotatedExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
+    
+    FTransform BoundsNoScale(
+                    Bounds.GetComponentRotation(),
+                    Bounds.GetComponentLocation(),
+                    FVector::OneVector // neutral scale
+                );
     FTransform OtherLocalTransform = OtherTransform.GetRelativeTransform(Bounds.GetComponentTransform());
     FVector OtherLocalExtent = OtherComp.GetUnscaledBoxExtent();
 
@@ -289,7 +295,7 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
             FVector& Pos = Particles[ParticleIndex].Position;
             FVector Offset = OtherLocalTransform.InverseTransformPosition(Pos);
             if (CheckBoxCollision(Offset, -OtherLocalExtent, OtherLocalExtent)) {
-                //GEngine->AddOnScreenDebugMessage(4, 1.f, FColor::Yellow, (FString::Printf(TEXT("Box collision detected"))));
+                GEngine->AddOnScreenDebugMessage(4, 1.f, FColor::Yellow, (FString::Printf(TEXT("Box collision detected"))));
                 FVector& Vel = Particles[ParticleIndex].Velocity;
                 FVector Direction = Offset/Offset.Size();
 
@@ -314,8 +320,8 @@ void FFluidSimulationSystem::BoxCollision(const UBoxComponent& OtherComp, const 
                 FVector OnSurfaceWorld = ((AxisBound - Distance)) * LocalScale * Direction;
                 Pos += OnSurfaceWorld;
                 Vel = ReflectVelocity(Vel, Direction) + MomentumFromPhysicsObject(Distance, Direction);
-                //FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
-                //DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
+                FVector WorldPos = Bounds.GetComponentTransform().TransformPositionNoScale(Pos);
+                DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
             }
         }
     }
@@ -349,7 +355,12 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
     FIntVector MinCoords = PositionToCellCoords(IntersectionMin, SmoothingRadius);
     FIntVector MaxCoords = PositionToCellCoords(IntersectionMax, SmoothingRadius);
 
-    //DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), RotatedExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
+    DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), RotatedExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
+    FTransform BoundsNoScale(
+                    Bounds.GetComponentRotation(),
+                    Bounds.GetComponentLocation(),
+                    FVector::OneVector // neutral scale
+                );
     FTransform OtherLocalTransform = OtherTransform.GetRelativeTransform(Bounds.GetComponentTransform());
     float OtherLocalExtent = OtherComp.GetUnscaledSphereRadius();
     FMatrix NormalMatrix = OtherLocalTransform.ToMatrixWithScale().Inverse().GetTransposed();
@@ -358,7 +369,7 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
     for (int CellY = MinCoords.Y; CellY <= MaxCoords.Y; CellY++)
     for (int CellZ = MinCoords.Z; CellZ <= MaxCoords.Z; CellZ++) {
         FIntVector CellCoords = FIntVector(CellX, CellY, CellZ);
-        //GEngine->AddOnScreenDebugMessage(5, 1.f, FColor::Yellow, (FString::Printf(TEXT("Sphere collision detected"))));
+        GEngine->AddOnScreenDebugMessage(5, 1.f, FColor::Yellow, (FString::Printf(TEXT("Sphere collision detected"))));
         //if (!CheckSphereCellCollision(CellCoords, LocalCenter, SphereRadius3D)) continue;
 
         uint32 Key = GetKeyFromHash(HashCell(CellCoords));
@@ -375,8 +386,8 @@ void FFluidSimulationSystem::SphereCollision(const USphereComponent& OtherComp, 
                 FVector OnSurfaceWorld = (1.f - Distance) * ObjectExtent * Direction;
                 Pos += OnSurfaceWorld;
                 Vel = ReflectVelocity(Vel, Direction)  + MomentumFromPhysicsObject(Distance, Direction);
-                //FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
-                //DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
+                FVector WorldPos = Bounds.GetComponentTransform().TransformPositionNoScale(Pos);
+                DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
             }
         }
     }
@@ -415,7 +426,12 @@ void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp
     FIntVector MinCoords = PositionToCellCoords(IntersectionMin, SmoothingRadius);
     FIntVector MaxCoords = PositionToCellCoords(IntersectionMax, SmoothingRadius);
 
-    //DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), ObjectExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
+    DrawDebugBox(World, Bounds.GetComponentTransform().TransformPosition(LocalCenter), ObjectExtent * Bounds.GetComponentScale(), Bounds.GetComponentRotation().Quaternion(), FColor::Red);
+    FTransform BoundsNoScale(
+                    Bounds.GetComponentRotation(),
+                    Bounds.GetComponentLocation(),
+                    FVector::OneVector // neutral scale
+                );
     FTransform OtherLocalTransform = OtherTransform.GetRelativeTransform(Bounds.GetComponentTransform());
     float OtherLocalExtent = OtherComp.GetUnscaledCapsuleRadius();
     FMatrix NormalMatrix = OtherLocalTransform.ToMatrixWithScale().Inverse().GetTransposed();
@@ -424,7 +440,7 @@ void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp
     for (int CellY = MinCoords.Y; CellY <= MaxCoords.Y; CellY++)
     for (int CellZ = MinCoords.Z; CellZ <= MaxCoords.Z; CellZ++) {
         FIntVector CellCoords = FIntVector(CellX, CellY, CellZ);
-        //GEngine->AddOnScreenDebugMessage(6, 1.f, FColor::Yellow, (FString::Printf(TEXT("Capsule collision detected"))));
+        GEngine->AddOnScreenDebugMessage(6, 1.f, FColor::Yellow, (FString::Printf(TEXT("Capsule collision detected"))));
         uint32 Key = GetKeyFromHash(HashCell(CellCoords));
         uint32 StartIndex = StartIndices[Key];
         for (uint32 i = StartIndex; i < TableSize; i++) {
@@ -447,8 +463,8 @@ void FFluidSimulationSystem::CapsuleCollision(const UCapsuleComponent& OtherComp
                 FVector OnSurfaceWorld = (1.f - Distance) * SphereRadius * Direction;
                 Pos += OnSurfaceWorld;
                 Vel = ReflectVelocity(Vel, Direction) + MomentumFromPhysicsObject(Distance, Direction);
-                //FVector WorldPos = Bounds.GetComponentTransform().TransformPosition(Pos);
-                //DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
+                FVector WorldPos = Bounds.GetComponentTransform().TransformPositionNoScale(Pos);
+                DrawDebugLine(World, WorldPos, WorldPos + Direction * 20, FColor::Red);
             }
         }
     }
