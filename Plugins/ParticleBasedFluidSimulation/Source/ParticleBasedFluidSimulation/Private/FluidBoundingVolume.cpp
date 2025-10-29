@@ -25,7 +25,7 @@ UFluidBoundingVolumeComponent::UFluidBoundingVolumeComponent()
 
 
 	Bounds = CreateDefaultSubobject<UBoxComponent>(TEXT("Bounds"));
-    Bounds->SetBoxExtent(BoxExtents * Bounds->GetComponentScale(), true);
+    //Bounds->SetBoxExtent(BoxExtents * Bounds->GetComponentScale(), true);
     Bounds->SetupAttachment(this);
     Bounds->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     Bounds->SetCollisionObjectType(ECC_WorldDynamic);
@@ -41,6 +41,7 @@ UFluidBoundingVolumeComponent::UFluidBoundingVolumeComponent()
 
 	ParticleMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ParticleMesh"));
     ParticleMesh->SetupAttachment(this);
+    ParticleMesh->SetAbsolute(false, false, true);
     ParticleMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMeshObj(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
@@ -63,12 +64,6 @@ UFluidBoundingVolumeComponent::~UFluidBoundingVolumeComponent()
     RemoveParticleBuffers();
 }
 
-void UFluidBoundingVolumeComponent::OnUnregister()
-{
-    RemoveParticleBuffers();
-    Super::OnUnregister();
-}
-
 void UFluidBoundingVolumeComponent::OnRegister()
 {
     Super::OnRegister();
@@ -78,6 +73,7 @@ void UFluidBoundingVolumeComponent::OnRegister()
 }
 
 void UFluidBoundingVolumeComponent::OnUnregister() {
+    RemoveParticleBuffers();
     Super::OnUnregister();
 }
 
@@ -144,7 +140,8 @@ void UFluidBoundingVolumeComponent::InitializeParticles()
     if (!Simulation) {
 	    Simulation = MakeUnique<FFluidSimulationSystem>();
     }
-    Extent = Bounds->GetUnscaledBoxExtent();
+    Extent = Bounds->GetScaledBoxExtent();
+    GEngine->AddOnScreenDebugMessage(3, 5.f, FColor::Green, (FString::Printf(TEXT("Bounds extent CPU (unscaled): %f"), Extent.X)));
     FVector LocalMin = -Extent;
 	FVector LocalMax = Extent;
 	Simulation->InitializeParticles(Particles, LocalMin, LocalMax);
@@ -155,8 +152,7 @@ void UFluidBoundingVolumeComponent::UpdateVolumeBounds() {
 
     SpawnParticlesBounds->SetRelativeLocation(SpawnBoxOffset);
     SpawnParticlesBounds->SetBoxExtent(SpawnBoxExtents, false);
-    Bounds->SetBoxExtent(BoxExtents * Bounds->GetComponentScale(), true);
-    FVector Extent = Bounds->GetUnscaledBoxExtent();
+    FVector Extent = Bounds->GetScaledBoxExtent();
 
     FVector LocalMin = -Extent;
 	FVector LocalMax = Extent;
@@ -225,7 +221,7 @@ void UFluidBoundingVolumeComponent::UpdateMaterials()
     FTransform WorldTransfom = Bounds->GetComponentTransform();
     for (int32 i = 0; i < Particles.Num(); i++) {
         const FParticle& particle = Particles[i];
-        FVector posOffset = WorldTransfom.TransformVector(particle.Position - MeshPositions[i]);
+        FVector posOffset = WorldTransfom.TransformVectorNoScale(particle.Position - MeshPositions[i]);
 
         FLinearColor Color = VelocityToColor(particle.Velocity.Length());
 

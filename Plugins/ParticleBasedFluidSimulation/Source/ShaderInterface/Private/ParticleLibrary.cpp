@@ -121,7 +121,7 @@ void UParticleBuffers::Initialize(UFluidBoundingVolumeComponent* Volume)
         FluidVolume.BoundsPosition = FVector3f(ParentVolume->Bounds->GetComponentLocation());
         FluidVolume.BoundsSize = FVector3f(ParentVolume->Bounds->GetScaledBoxExtent());
         
-        FTransform Cube(ParentVolume->Bounds->GetComponentRotation(), ParentVolume->Bounds->GetComponentLocation(), ParentVolume->GetOwner()->GetActorScale());
+        FTransform Cube(ParentVolume->Bounds->GetComponentRotation(), ParentVolume->Bounds->GetComponentLocation(), ParentVolume->Bounds->GetComponentScale());
 
         FluidEnvironment.CubeLocalToWorld = FMatrix44f(Cube.ToMatrixWithScale());
         FluidEnvironment.CubeWorldToLocal = FMatrix44f(Cube.ToMatrixWithScale().Inverse());
