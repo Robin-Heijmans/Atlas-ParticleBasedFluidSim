@@ -317,7 +317,7 @@ void UParticleBuffers::DispatchPOCollisionResolution(FRDGBuilder& GraphBuilder, 
     }
 }
 
-void UParticleBuffers::DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRDGTexture* SceneColor, const FSceneView& InView)
+void UParticleBuffers::DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRDGTexture* SceneColor, FRDGTexture* SceneDepth, const FSceneView& InView)
 {
     if(!bInitialized) return;
 
@@ -377,6 +377,7 @@ void UParticleBuffers::DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalSha
     FluidParams.FluidBounds = UBFluidBounds;
     FluidParams.Enviroment = UBFluidEnvironment;
     FluidParams.SceneColor = SceneColor;
+    FluidParams.SceneDepth = SceneDepth;
     FluidParams.View = InView.ViewUniformBuffer;
     
     RenderDispatch::Raymarch(GraphBuilder, GlobalShaderMap, FluidParams);

@@ -52,7 +52,7 @@ void FFluidExtention::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
     if(World == nullptr) return;
 
     // Advance simulation
-    if( CVarSimulation.GetValueOnRenderThread() == 1 && 
+    if( CVarSimulation.GetValueOnAnyThread() == 1 && 
         (World->WorldType == EWorldType::Game || World->WorldType == EWorldType::PIE) && 
         !World->IsPaused()) 
     {
@@ -136,7 +136,8 @@ void FFluidExtention::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
         // Note: ParticleBuffers->Register() called in the simulation step already :)
         // Particle Rendering
         FRDGTexture* SceneColor = Inputs.SceneTextures->GetContents()->SceneColorTexture;
-        ParticleBuffers->DispatchFluidRender(GraphBuilder, GlobalShaderMap, SceneColor, InView);
+        FRDGTexture* SceneDepth = Inputs.SceneTextures->GetContents()->SceneDepthTexture;
+        ParticleBuffers->DispatchFluidRender(GraphBuilder, GlobalShaderMap, SceneColor, SceneDepth, InView);
     }
 }
 

@@ -29,7 +29,7 @@ public:
 
 	void DispatchFluidMath(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap);
 	void DispatchPOCollisionResolution(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FFluidMathParams& FluidMath);
-	void DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRDGTexture* SceneColor, const FSceneView& InView);
+	void DispatchFluidRender(FRDGBuilder& GraphBuilder, FGlobalShaderMap* GlobalShaderMap, FRDGTexture* SceneColor, FRDGTexture* SceneDepth, const FSceneView& InView);
 
 	struct FSimulationSettings
 	{

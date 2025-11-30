@@ -129,6 +129,7 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidMarchParams, )
     
     SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float3>, Target)
     SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SceneColor)
+    SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SceneDepth)
     
     SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture3D<float>, DensityMap)
     SHADER_PARAMETER(FUintVector3, DensityMapSize)

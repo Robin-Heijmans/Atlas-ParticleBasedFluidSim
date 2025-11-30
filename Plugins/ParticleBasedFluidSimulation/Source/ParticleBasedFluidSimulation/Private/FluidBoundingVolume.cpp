@@ -23,9 +23,7 @@ UFluidBoundingVolumeComponent::UFluidBoundingVolumeComponent()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryComponentTick.bCanEverTick = true;
 
-
 	Bounds = CreateDefaultSubobject<UBoxComponent>(TEXT("Bounds"));
-    Bounds->SetupAttachment(this);
     Bounds->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     Bounds->SetCollisionObjectType(ECC_WorldDynamic);
     Bounds->SetCollisionResponseToAllChannels(ECR_Ignore);
@@ -33,7 +31,6 @@ UFluidBoundingVolumeComponent::UFluidBoundingVolumeComponent()
     Bounds->SetGenerateOverlapEvents(true);
 
 	ParticleMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ParticleMesh"));
-    ParticleMesh->SetupAttachment(this);
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMeshObj(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
     if (SphereMeshObj.Succeeded())
@@ -65,6 +62,9 @@ void UFluidBoundingVolumeComponent::OnRegister()
 {
     Super::OnRegister();
     UpdateVolumeBounds();
+
+    Bounds->SetupAttachment(this);
+    ParticleMesh->SetupAttachment(this);
 
     if (!IsInitialized) {
         InitializeParticles();

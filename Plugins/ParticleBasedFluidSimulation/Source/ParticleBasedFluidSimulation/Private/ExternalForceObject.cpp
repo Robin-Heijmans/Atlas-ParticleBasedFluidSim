@@ -5,7 +5,6 @@ UExternalForceComponent::UExternalForceComponent() {
     PrimaryComponentTick.bCanEverTick = true;
 
     ExternalForceMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ExternalForceMesh"));
-    ExternalForceMesh->SetupAttachment(this);
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshObj(TEXT("/Engine/BasicShapes/Cube.Cube"));
     if (CubeMeshObj.Succeeded())
@@ -28,6 +27,8 @@ void UExternalForceComponent::BeginPlay() {
 void UExternalForceComponent::OnRegister()
 {
     Super::OnRegister();
+    
+    ExternalForceMesh->SetupAttachment(this);
 
     if (ExternalForceMesh && ExternalForceMesh->GetStaticMesh())
     {

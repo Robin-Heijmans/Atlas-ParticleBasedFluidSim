@@ -107,7 +107,9 @@ private:
 	#endif
 
 	UStaticMesh* DefaultSphereMesh;
-	class UInstancedStaticMeshComponent* ParticleMesh;
+	
+	UPROPERTY()
+	class UInstancedStaticMeshComponent* ParticleMesh = nullptr;
 
 	const float SphereRadius = 1.0f;
 	const float FixedTimeStep = 1.f/60.f;

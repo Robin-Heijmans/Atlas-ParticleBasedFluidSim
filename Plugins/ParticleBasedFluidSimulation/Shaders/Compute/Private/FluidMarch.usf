@@ -41,6 +41,7 @@ ConstantBuffer<FFluidEnvironment> Environment;
 
 RWTexture2D<float3> Target;
 Texture2D<float3> SceneColor;
+Texture2D<float3> SceneDepth;
 
 Texture3D<float> DensityMap;
 uint3 DensityMapSize;
@@ -507,7 +508,7 @@ float3 Light(float3 pos, float3 dir, float3 Scene)
     return SampleEnvironment(pos, dir,Scene);
 }
 
-float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, uint UVRNG)
+float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, float Depth, uint UVRNG)
 {
     bool bInsideFluid = FluidContains(RayPos);
 
@@ -526,6 +527,13 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, uint UVRNG)
         bool useCubeHit = CubeHit.didHit && CubeHit.dst < length(surfaceInfo.pos - RayPos);
         
         if (!surfaceInfo.foundSurface) break;
+
+        if ((distance(GetRayOrigin(), surfaceInfo.pos)) > 
+        (distance(GetRayOrigin(), (GetRayOrigin() + View.ViewForward * Depth / dot(RayDir, View.ViewForward))))) 
+            return Scene;
+
+        // check for occlusion
+        //if(distance(RayPos, GetRayOrigin()) > Depth) return Scene;
 
         transmittance *= Transmittance(surfaceInfo.densityAlongRay);
 
@@ -612,6 +620,6 @@ void Compute(
     float3 RayOrigin = GetRayOrigin();
     float3 RayDirection = GetRayDirection(UV);
 
-    float3 FluidColor = FluidMarch(RayOrigin, RayDirection, SceneColor[DispatchThreadId.xy], (uint)(UV.x * 1243 + UV.y * 96456));
+    float3 FluidColor = FluidMarch(RayOrigin, RayDirection, SceneColor[DispatchThreadId.xy], SceneDepth[DispatchThreadId.xy].r, (uint)(UV.x * 1243 + UV.y * 96456));
     Target[DispatchThreadId.xy] = FluidColor;
 }
