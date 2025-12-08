@@ -535,6 +535,7 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, float Depth, uint 
         // source: https://forums.unrealengine.com/t/clarification-with-scenedepth-visualization/338315/4 (05.12.25)
         float surfaceDepth = (1000 - dot(abs(View.ViewForward), surfaceDistance)) * 0.0001;
         surfaceDepth -= 0.03; //???
+        // source: https://forums.unrealengine.com/t/how-to-normalise-the-scenedepth/318713/2 (05.12.25)
         if (surfaceDepth < Depth)
         {
             return Scene;
