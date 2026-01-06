@@ -528,17 +528,16 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, float Depth, uint 
         
         if (!surfaceInfo.foundSurface) break;
 
-        // transpose world space distance to scene depth
-        // dot(CamDir, (Pos - CamPos)) = SceneDepth
-        float3 surfaceDistance = ((surfaceInfo.pos - GetRayOrigin()));
-        surfaceDistance = abs(surfaceDistance) % 1000;
-        // source: https://forums.unrealengine.com/t/clarification-with-scenedepth-visualization/338315/4 (05.12.25)
-        float surfaceDepth = (1000 - dot(abs(View.ViewForward), surfaceDistance)) * 0.0001;
-        surfaceDepth -= 0.03; //???
-        // source: https://forums.unrealengine.com/t/how-to-normalise-the-scenedepth/318713/2 (05.12.25)
-        if (surfaceDepth < Depth)
+        // check for occlusion on the first iteration
+        if(!i)
         {
-            return Scene;
+            // transpose world scene depth to space distance
+            float3 surfaceDistance = ((surfaceInfo.pos - GetRayOrigin()));
+            float surfaceDepth = length(surfaceDistance);
+            if (surfaceDepth >= ConvertToDeviceZ(Depth))
+            {
+                return Scene;
+            }
         }
 
 
