@@ -468,7 +468,11 @@ float3 TweakHSV(float3 colRGB, float3 shift)
     return saturate(HSVToRGB(hsv + shift));
 }
 
-float3 SampleEnvironment(float3 pos, float3 dir, float3 Scene)
+float map(float value, float min1, float max1, float min2, float max2) {
+  return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
+}
+
+float3 SampleEnvironment(float3 pos, float3 dir, float3 Scene, float Depth)
 {
     /*
     HitInfo floorInfo = RayBox(pos, dir);
@@ -503,9 +507,56 @@ float3 SampleEnvironment(float3 pos, float3 dir, float3 Scene)
     return Scene;
 }
 
-float3 Light(float3 pos, float3 dir, float3 Scene)
+float3 Light(float3 pos, float3 dir, float3 Scene, float Depth)
 {
-    return SampleEnvironment(pos, dir,Scene);
+    return SampleEnvironment(pos, dir, Scene, Depth);
+}
+
+float3 ReflectedSSR(float3 pos, float3 dir, float3 Scene, float Depth)
+{
+    // Do SSR here march in world space, sample from viewport
+
+    // dummy values for now TODO: check with unreals metrics later
+    const float _MaxDistance = 15.0;
+    const float _Step = 0.05;
+    const float _Thickness = 0.0006;
+    const float aspect = View.ViewRectMinAndSize.z / View.ViewRectMinAndSize.w;
+
+    float2 reflectionUV = 0.0;
+    float atten = 0.0f;
+
+    float3 marchReflection;
+    float currentDepth = Depth;
+    for(float i = _Step; i < _MaxDistance; i+= _Step) {
+        marchReflection = i * dir;
+
+        float2 target = mul(float4(pos + marchReflection, 1.0), View.TranslatedWorldToClip).xy;
+        float targetDepth = SceneDepth.SampleLevel(GlobalPointClampedSampler, target, 0).r;
+        
+        
+        target.x = map(target.x, -aspect, aspect, 0.0, 1.0); 
+        target.y = map(target.y, -1.0, 1.0, 0.0, 1.0); 
+        float sampledDepth = SceneDepth.SampleLevel(GlobalPointClampedSampler, target, 0).r;
+        float depthDiff = sampledDepth - currentDepth;
+        if(depthDiff > 0.0 && depthDiff < targetDepth - currentDepth + _Thickness) {
+            reflectionUV = target;
+            atten = 1.0 - i / _MaxDistance;
+            break;
+        }
+        currentDepth = targetDepth;
+        if(currentDepth > 100000.0) {
+            atten = 1.0;
+            break;
+        }
+    }
+
+    if(any(reflectionUV) != 0)
+    {
+        float3 SSRColor = SceneColor.SampleLevel(GlobalBilinearClampedSampler, reflectionUV, 0).xyz;
+        return SSRColor;
+    }
+    else
+        return float3(1,1,1);
 }
 
 float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, float Depth, uint UVRNG)
@@ -550,7 +601,7 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, float Depth, uint 
             {
                 transmittance *= Transmittance(CalculateDensityAlongRay(CubeHit.hitPoint, CubeHit.normal, densityStepSize, num_steps));
             }
-            light += Light(RayPos, RayDir, Scene) * transmittance;
+            light += Light(RayPos, RayDir, Scene, Depth) * transmittance;
             transmittance = 0;
             break;
         }
@@ -581,8 +632,8 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, float Depth, uint 
         bInsideFluid = traceRefractedRay != bInsideFluid;
 
         // Approximate less interesting path
-        if (traceRefractedRay) light += Light(surfaceInfo.pos, lightResponse.reflectDir, Scene) * transmittance * Transmittance(densityAlongReflectRay) * lightResponse.reflectWeight;
-        else light += Light(surfaceInfo.pos, lightResponse.refractDir, Scene) * transmittance * Transmittance(densityAlongRefractRay) * lightResponse.refractWeight;
+        if (traceRefractedRay) light += ReflectedSSR(surfaceInfo.pos, lightResponse.reflectDir, Scene, Depth) * transmittance * Transmittance(densityAlongReflectRay) * lightResponse.reflectWeight;
+        else light += ReflectedSSR(surfaceInfo.pos, lightResponse.refractDir, Scene, Depth) * transmittance * Transmittance(densityAlongRefractRay) * lightResponse.refractWeight;
 
         // Set up ray for more interesting path
         RayPos = surfaceInfo.pos;
@@ -593,7 +644,7 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, float Depth, uint 
     // Approximate remaining path
     uint dummy = 0;
     float densityRemainder = CalculateDensityAlongRay(RayPos, RayDir, Environment.LightStepSize, dummy);
-    light += Light(RayPos, RayDir, Scene) * transmittance * Transmittance(densityRemainder);
+    light += Light(RayPos, RayDir, Scene, Depth) * transmittance * Transmittance(densityRemainder);
 
 #ifdef STEP_VISUAL
     if(num_steps > 0)
