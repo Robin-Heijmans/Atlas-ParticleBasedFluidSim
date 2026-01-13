@@ -420,7 +420,7 @@ LightResponse CalculateReflectionAndRefraction(float3 inDir, float3 normal, floa
     LightResponse result;
 
     result.reflectWeight = CalculateReflectance(inDir, normal, iorA, iorB);
-    result.refractWeight = 0.f;
+    result.refractWeight = 1 - result.reflectWeight;
 
     result.reflectDir = Reflect(inDir, normal);
     result.refractDir = Refract(inDir, normal, iorA, iorB);
@@ -495,7 +495,7 @@ float3 ReflectedSSR(float3 pos, float3 dir, float3 Scene, float Depth)
     // dummy values for now TODO: check with unreals metrics later
     const float _MaxDistance = 100.0;
     const float _Step = Environment.LightStepSize;
-    const float _Thickness = 0.06;
+    const float _Thickness = 0.0006;
 
     float2 reflectionUV = 0.0;
 
@@ -506,22 +506,19 @@ float3 ReflectedSSR(float3 pos, float3 dir, float3 Scene, float Depth)
         marchReflection = i * dir;
 
         float4 clip = mul(float4(pos + marchReflection, 1.0), View.TranslatedWorldToClip);
-        float2 target = (clip.rgba / clip.a).xy;
-        float targetDepth = SceneDepth.SampleLevel(GlobalPointClampedSampler, target, 0).r;
+        //float2 target = (clip.rgba / clip.a).xy;
+        float2 target = clip.xy;
         
-        
-        target.x = map(target.x, -1.0, 1.0, 0.0, 1.0); 
-        target.y = map(target.y, -1.0, 1.0, 0.0, 1.0); 
         float sampledDepth = SceneDepth.SampleLevel(GlobalPointClampedSampler, target, 0).r;
         float depthDiff = (currentDepth - sampledDepth);
-        if(depthDiff > 0.0 && depthDiff < (currentDepth - targetDepth) + _Thickness) 
+        if(depthDiff > 0.0 && depthDiff < (currentDepth) + _Thickness) 
         {
             reflectionUV = target;
             SSRused = true;
             break;
         }
 
-        currentDepth = targetDepth;
+        currentDepth = sampledDepth;
         if(currentDepth > 10.0) 
         {
             break;
