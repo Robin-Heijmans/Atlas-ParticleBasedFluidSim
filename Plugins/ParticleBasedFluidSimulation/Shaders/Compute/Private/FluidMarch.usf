@@ -9,6 +9,8 @@
 //#define TWO_LEVEL_STEPPING
 #define MARCH_STEP_ADJUSTMENT
 #define DENSITY_STEP_ADJUSTMENT
+//#define REFLECTION_ONLY
+//#define REFLECTION_NORMAL // need to be used together with REFLECTION_ONLY
 
 struct FFluidVolume {
     // Volume Data
@@ -410,7 +412,7 @@ float3 Refract(float3 inDir, float3 normal, float iorA, float iorB)
 
 float3 Reflect(float3 inDir, float3 normal)
 {
-    return inDir - 2 * dot(inDir, normal) * normal;
+    return dot(inDir, normal);
 }
 
 LightResponse CalculateReflectionAndRefraction(float3 inDir, float3 normal, float iorA, float iorB)
@@ -418,7 +420,7 @@ LightResponse CalculateReflectionAndRefraction(float3 inDir, float3 normal, floa
     LightResponse result;
 
     result.reflectWeight = CalculateReflectance(inDir, normal, iorA, iorB);
-    result.refractWeight = 1 - result.reflectWeight;
+    result.refractWeight = 0.f;
 
     result.reflectDir = Reflect(inDir, normal);
     result.refractDir = Refract(inDir, normal, iorA, iorB);
@@ -474,36 +476,6 @@ float map(float value, float min1, float max1, float min2, float max2) {
 
 float3 SampleEnvironment(float3 pos, float3 dir, float3 Scene, float Depth)
 {
-    /*
-    HitInfo floorInfo = RayBox(pos, dir);
-    HitInfo cubeInfo = RayBoxWithMatrix(pos, dir, Environment.CubeLocalToWorld, Environment.CubeWorldToLocal);
-
-    if (cubeInfo.didHit && cubeInfo.dst < floorInfo.dst)
-    {
-        return saturate(dot(cubeInfo.normal, dirToSun) * 0.5 + 0.5) * cubeCol;
-    }
-    else if (floorInfo.didHit)
-    {
-        // Choose tileCol based on quadrant
-        float3 tileCol = floorInfo.hitPoint.x < 0 ? tileCol1 : tileCol2;
-        if (floorInfo.hitPoint.z < 0) tileCol = floorInfo.hitPoint.x < 0 ? tileCol3 : tileCol4;
-
-        // If tile is a dark tile, then darken it
-        int2 tileCoord = floor(floorInfo.hitPoint.xz * tileScale);
-        bool isDarkTile = Modulo(tileCoord.x, 2) == Modulo(tileCoord.y, 2);
-        tileCol = TweakHSV(tileCol, float3(0, 0, tileDarkOffset * isDarkTile));
-
-        // Vary hue/sat/val randomly
-        uint RNG = HashInt2(tileCoord);
-        float3 randomVariation = RandomSNorm3(RNG) * tileColVariation * 0.1;
-        tileCol = TweakHSV(tileCol, randomVariation);
-
-        float3 shadowMap = Transmittance(CalculateDensityAlongRay(floorInfo.hitPoint, LightPos, Environment.LightStepSize * 2) * 2);
-        bool inShadow = RayBoxWithMatrix(floorInfo.hitPoint, dirToSun, Environment.CubeLocalToWorld, Environment.CubeWorldToLocal).didHit;
-        if (inShadow) shadowMap *= 0.2;
-        return tileCol * shadowMap;
-    }
-    */
     return Scene;
 }
 
@@ -514,49 +486,56 @@ float3 Light(float3 pos, float3 dir, float3 Scene, float Depth)
 
 float3 ReflectedSSR(float3 pos, float3 dir, float3 Scene, float Depth)
 {
+#ifdef REFLECTION_NORMAL
+    return dir;
+#endif
+
     // Do SSR here march in world space, sample from viewport
 
     // dummy values for now TODO: check with unreals metrics later
-    const float _MaxDistance = 15.0;
-    const float _Step = 0.05;
-    const float _Thickness = 0.0006;
-    const float aspect = View.ViewRectMinAndSize.z / View.ViewRectMinAndSize.w;
+    const float _MaxDistance = 100.0;
+    const float _Step = Environment.LightStepSize;
+    const float _Thickness = 0.06;
 
     float2 reflectionUV = 0.0;
-    float atten = 0.0f;
 
     float3 marchReflection;
     float currentDepth = Depth;
+    bool SSRused = false;
     for(float i = _Step; i < _MaxDistance; i+= _Step) {
         marchReflection = i * dir;
 
-        float2 target = mul(float4(pos + marchReflection, 1.0), View.TranslatedWorldToClip).xy;
+        float4 clip = mul(float4(pos + marchReflection, 1.0), View.TranslatedWorldToClip);
+        float2 target = (clip.rgba / clip.a).xy;
         float targetDepth = SceneDepth.SampleLevel(GlobalPointClampedSampler, target, 0).r;
         
         
-        target.x = map(target.x, -aspect, aspect, 0.0, 1.0); 
+        target.x = map(target.x, -1.0, 1.0, 0.0, 1.0); 
         target.y = map(target.y, -1.0, 1.0, 0.0, 1.0); 
         float sampledDepth = SceneDepth.SampleLevel(GlobalPointClampedSampler, target, 0).r;
-        float depthDiff = sampledDepth - currentDepth;
-        if(depthDiff > 0.0 && depthDiff < targetDepth - currentDepth + _Thickness) {
+        float depthDiff = (currentDepth - sampledDepth);
+        if(depthDiff > 0.0 && depthDiff < (currentDepth - targetDepth) + _Thickness) 
+        {
             reflectionUV = target;
-            atten = 1.0 - i / _MaxDistance;
+            SSRused = true;
             break;
         }
+
         currentDepth = targetDepth;
-        if(currentDepth > 100000.0) {
-            atten = 1.0;
+        if(currentDepth > 10.0) 
+        {
             break;
         }
     }
 
-    if(any(reflectionUV) != 0)
+
+    if(SSRused)
     {
         float3 SSRColor = SceneColor.SampleLevel(GlobalBilinearClampedSampler, reflectionUV, 0).xyz;
         return SSRColor;
     }
     else
-        return float3(1,1,1);
+        return float3(0,0,0);
 }
 
 float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, float Depth, uint UVRNG)
@@ -591,7 +570,7 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, float Depth, uint 
             }
         }
 
-
+#ifndef REFLECTION_ONLY
         transmittance *= Transmittance(surfaceInfo.densityAlongRay);
 
         // Hit test cube
@@ -612,13 +591,14 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, float Depth, uint 
         {
             break;
         }
+#endif        
 
         float3 normal = CalculateNormal(surfaceInfo.pos);
         if (dot(normal, RayDir) > 0) normal = -normal;
-        
-        #ifdef NORMAL_VISUAL
+
+#ifdef NORMAL_VISUAL
         return abs(normal);
-        #endif
+#endif
 
         // Indicies of refraction
         float iorA = bInsideFluid ? Environment.indexOfRefraction : iorAir;
@@ -641,10 +621,12 @@ float3 FluidMarch(float3 RayPos, float3 RayDir, float3 Scene, float Depth, uint 
         transmittance *= (traceRefractedRay ? lightResponse.refractWeight : lightResponse.reflectWeight);
 
     }
+#ifndef REFLECTION_ONLY
     // Approximate remaining path
     uint dummy = 0;
     float densityRemainder = CalculateDensityAlongRay(RayPos, RayDir, Environment.LightStepSize, dummy);
     light += Light(RayPos, RayDir, Scene, Depth) * transmittance * Transmittance(densityRemainder);
+#endif
 
 #ifdef STEP_VISUAL
     if(num_steps > 0)
@@ -664,8 +646,6 @@ void Compute(
 	uint3 DispatchThreadId : SV_DispatchThreadID,
 	uint GroupIndex : SV_GroupIndex )
 {
-
-    
     // Calculate the pixel coordinate of this thread.
     const uint2 Pixel = View.ViewRectMinAndSize.xy + DispatchThreadId.xy;
     
