@@ -9,6 +9,7 @@
 //#define TWO_LEVEL_STEPPING
 #define MARCH_STEP_ADJUSTMENT
 #define DENSITY_STEP_ADJUSTMENT
+//#define REFLECT_ONLY // only reflect rays, no refractions
 //#define REFLECTION_ONLY
 //#define REFLECTION_NORMAL // need to be used together with REFLECTION_ONLY
 
@@ -401,29 +402,40 @@ float CalculateReflectance(float3 inDir, float3 normal, float iorA, float iorB)
 
 float3 Refract(float3 inDir, float3 normal, float iorA, float iorB)
 {
-    float refractRatio = iorA / iorB;
-    float cosAngleIn = -dot(inDir, normal);
-    float sinSqrAngleOfRefraction = refractRatio * refractRatio * (1 - cosAngleIn * cosAngleIn);
-    if (sinSqrAngleOfRefraction > 1) return 0; // Ray is fully reflected, no refraction occurs
+    float cos_theta = min(dot(-inDir, normal), 1.0);
+    vec3 r_out_perp =  (iorA/iorB) * (inDir + cos_theta*normal);
+    vec3 r_out_parallel = -sqrt(abs(1.0 - length(r_out_perp) * length(r_out_perp)) * normal;
+    return r_out_perp + r_out_parallel;
 
-    float3 refractDir = refractRatio * inDir + (refractRatio * cosAngleIn - sqrt(1 - sinSqrAngleOfRefraction)) * normal;
-    return refractDir;
+    //float refractRatio = iorA / iorB;
+    //float cosAngleIn = -dot(inDir, normal);
+    //float sinSqrAngleOfRefraction = refractRatio * refractRatio * (1 - cosAngleIn * cosAngleIn);
+    //if (sinSqrAngleOfRefraction > 1) return 0; // Ray is fully reflected, no refraction occurs
+
+    //float3 refractDir = refractRatio * inDir + (refractRatio * cosAngleIn - sqrt(1 - sinSqrAngleOfRefraction)) * normal;
+    //return refractDir;
 }
 
 float3 Reflect(float3 inDir, float3 normal)
 {
-    return dot(inDir, normal);
+    return inDir - 2 * dot(inDir,normal) * normal;
 }
 
 LightResponse CalculateReflectionAndRefraction(float3 inDir, float3 normal, float iorA, float iorB)
 {
     LightResponse result;
 
+#ifdef REFLECT_ONLY
     result.reflectWeight = CalculateReflectance(inDir, normal, iorA, iorB);
     result.refractWeight = 1 - result.reflectWeight;
+#else
+    result.reflectWeight = 1.f;
+    result.refractWeight = 0.f;
+#endif
 
-    result.reflectDir = Reflect(inDir, normal);
-    result.refractDir = Refract(inDir, normal, iorA, iorB);
+
+    result.reflectDir = reflect(inDir, normal);
+    result.refractDir = refract(inDir, normal, iorA / iorB);
 
     return result;
 }
@@ -495,7 +507,7 @@ float3 ReflectedSSR(float3 pos, float3 dir, float3 Scene, float Depth)
     // dummy values for now TODO: check with unreals metrics later
     const float _MaxDistance = 100.0;
     const float _Step = Environment.LightStepSize;
-    const float _Thickness = 0.0006;
+    const float _Thickness = 0.006;
 
     float2 reflectionUV = 0.0;
 
@@ -504,6 +516,8 @@ float3 ReflectedSSR(float3 pos, float3 dir, float3 Scene, float Depth)
     bool SSRused = false;
     for(float i = _Step; i < _MaxDistance; i+= _Step) {
         marchReflection = i * dir;
+        
+		float targetDepth = dot(View.ViewOriginHigh + marchReflection, View.ViewForward) / FarDepthValue;
 
         float4 clip = mul(float4(pos + marchReflection, 1.0), View.TranslatedWorldToClip);
         //float2 target = (clip.rgba / clip.a).xy;
@@ -511,15 +525,15 @@ float3 ReflectedSSR(float3 pos, float3 dir, float3 Scene, float Depth)
         
         float sampledDepth = SceneDepth.SampleLevel(GlobalPointClampedSampler, target, 0).r;
         float depthDiff = (currentDepth - sampledDepth);
-        if(depthDiff > 0.0 && depthDiff < (currentDepth) + _Thickness) 
+        if(depthDiff > NearDepthValue && depthDiff < (targetDepth - currentDepth) + _Thickness) 
         {
             reflectionUV = target;
             SSRused = true;
             break;
         }
 
-        currentDepth = sampledDepth;
-        if(currentDepth > 10.0) 
+        currentDepth = targetDepth;
+        if(currentDepth > FarDepthValue) 
         {
             break;
         }
