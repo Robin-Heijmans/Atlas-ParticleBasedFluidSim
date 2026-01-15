@@ -9,7 +9,7 @@
 //#define TWO_LEVEL_STEPPING
 #define MARCH_STEP_ADJUSTMENT
 #define DENSITY_STEP_ADJUSTMENT
-//#define REFLECT_ONLY // only reflect rays, no refractions
+#define REFLECT_ONLY // only reflect rays, no refractions
 //#define REFLECTION_ONLY
 //#define REFLECTION_NORMAL // need to be used together with REFLECTION_ONLY
 
